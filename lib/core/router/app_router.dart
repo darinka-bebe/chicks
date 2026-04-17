@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/home/ui/home_shell.dart';
 import '../../features/home/ui/main_tab.dart';
-import '../../features/home/ui/profile_tab.dart';
+import '../../features/profile/ui/profile.dart';
 import '../../features/login/ui/login_screen.dart';
 import '../../features/splash/ui/splash_screen.dart';
 import 'route_names.dart';

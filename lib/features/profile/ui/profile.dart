@@ -4,9 +4,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/router/route_names.dart';
-import '../../../features/app/bloc/app_bloc.dart';
-import '../../../features/app/bloc/app_event.dart';
-import '../../../features/app/bloc/app_state.dart';
+import '../../app/bloc/app_bloc.dart';
+import '../../app/bloc/app_event.dart';
+import '../../app/bloc/app_state.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../ui_kit/ui_kit.dart';
 import '../../../widgets/user_avatar.dart';
