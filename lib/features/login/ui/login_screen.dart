@@ -11,12 +11,10 @@ import '../../../features/app/bloc/app_state.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../widgets/google_sign_in_button.dart';
 
-/// Экран входа — показывает кнопку «Войти через Google».
+/// Экран входа с анимацией появления элементов.
 ///
 /// Слушает [AppBloc] через [BlocListener]:
-/// - Когда статус меняется на `authenticated` → переходим на Home.
-/// - Это надёжнее, чем навигация внутри `onPressed`,
-///   потому что BLoC гарантирует актуальный статус.
+/// - Когда статус меняется на `authenticated` → плавный переход на Home.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -24,29 +22,55 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
-  /// Флаг загрузки — блокирует кнопку при нажатии.
+class _LoginScreenState extends State<LoginScreen>
+    with SingleTickerProviderStateMixin {
   bool _isLoading = false;
+  late final AnimationController _controller;
+  late final List<Animation<double>> _itemAnims;
 
-  /// Обработчик нажатия на кнопку входа.
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+
+    // Последовательная анимация для 3 элементов (лого, заголовок, кнопка)
+    _itemAnims = List.generate(3, (i) {
+      final start = i * 0.2;
+      final end = start + 0.6;
+      return Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(
+          parent: _controller,
+          curve: Interval(start, end.clamp(0.0, 1.0), curve: Curves.easeOutCubic),
+        ),
+      );
+    });
+
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
   Future<void> _onSignInPressed() async {
     setState(() => _isLoading = true);
-
     try {
       await AuthRepository.instance.signInWithGoogle();
-      // Навигация произойдёт через BlocListener ниже.
     } catch (error) {
       AppLogger.error('LoginScreen: ошибка входа', error: error);
-
       if (!mounted) return;
-
-      // Получаем локализованную строку ошибки.
-      // AppLocalizations.of(context) — сгенерированный метод, возвращающий
-      // объект со всеми строками из .arb файлов для текущего языка.
       final loc = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(loc.signInError),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          margin: const EdgeInsets.all(16),
         ),
       );
     } finally {
@@ -54,55 +78,104 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Widget _animated(int index, Widget child) {
+    return FadeTransition(
+      opacity: _itemAnims[index],
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, 0.15),
+          end: Offset.zero,
+        ).animate(_itemAnims[index]),
+        child: child,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Получаем объект локализации — содержит геттеры для всех строк.
     final loc = AppLocalizations.of(context);
-
-    // Получаем текстовые стили из темы.
-    // Никогда не используем AppTextStyles напрямую в виджетах —
-    // только через Theme.of(context).textTheme, чтобы стили
-    // автоматически адаптировались при смене темы.
     final textTheme = Theme.of(context).textTheme;
 
     return BlocListener<AppBloc, AppState>(
-      // Слушаем только изменения статуса авторизации.
       listenWhen: (previous, current) => previous.status != current.status,
       listener: (context, state) {
         if (state.status == AppStatus.authenticated) {
-          // Пользователь авторизовался → переходим на главную.
           context.go(RouteNames.main);
         }
       },
       child: Scaffold(
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppConstants.largePadding,
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Заголовок.
-                Text(
-                  loc.loginTitle,
-                  style: textTheme.headlineLarge,
-                ),
-                const SizedBox(height: AppConstants.smallPadding),
+        backgroundColor: const Color(0xFFFFF0F5),
+        body: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppConstants.largePadding,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Лого
+                  _animated(
+                    0,
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF4FA0),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFFF4FA0).withOpacity(0.3),
+                            blurRadius: 24,
+                            spreadRadius: 2,
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.auto_awesome,
+                        color: Colors.white,
+                        size: 38,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
 
-                // Подзаголовок.
-                Text(
-                  loc.loginSubtitle,
-                  style: textTheme.bodySmall,
-                ),
-                const SizedBox(height: AppConstants.largePadding * 2),
+                  // Заголовок и подзаголовок
+                  _animated(
+                    1,
+                    Column(
+                      children: [
+                        Text(
+                          loc.loginTitle,
+                          style: textTheme.headlineLarge?.copyWith(
+                            color: const Color(0xFFFF4FA0),
+                            fontWeight: FontWeight.w700,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: AppConstants.smallPadding),
+                        Text(
+                          loc.loginSubtitle,
+                          style: textTheme.bodyMedium?.copyWith(
+                            color: Colors.grey[500],
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppConstants.largePadding * 2),
 
-                // Кнопка входа через Google.
-                GoogleSignInButton(
-                  onPressed: _onSignInPressed,
-                  isLoading: _isLoading,
-                ),
-              ],
+                  // Кнопка входа
+                  _animated(
+                    2,
+                    GoogleSignInButton(
+                      onPressed: _onSignInPressed,
+                      isLoading: _isLoading,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

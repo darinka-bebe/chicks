@@ -4,21 +4,20 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../l10n/generated/app_localizations.dart';
 
-/// Оболочка (Shell) для домашних вкладок.
+/// Оболочка (Shell) для домашних вкладок с анимированным BottomNavigationBar.
 ///
-/// Используется с [ShellRoute] из GoRouter.
-/// [ShellRoute] оборачивает дочерние роуты в общий layout —
-/// в нашем случае это [Scaffold] с [BottomNavigationBar].
-///
-/// [child] — это текущий экран вкладки (MainTab или ProfileTab),
+/// [child] — текущий экран вкладки (MainTab или ProfileTab),
 /// который GoRouter подставляет автоматически.
+///
+/// Улучшения:
+/// - NavigationBar (Material 3) вместо BottomNavigationBar.
+/// - Индикатор активной вкладки с анимацией.
+/// - Мгновенное переключение вкладок без анимации (лучший UX).
 class HomeShell extends StatelessWidget {
-  /// Текущий дочерний виджет (вкладка).
   final Widget child;
 
   const HomeShell({super.key, required this.child});
 
-  /// Определяем текущий индекс вкладки по URL.
   int _currentIndex(BuildContext context) {
     final String location = GoRouterState.of(context).uri.path;
     if (location.startsWith('/home/profile')) {
@@ -27,7 +26,6 @@ class HomeShell extends StatelessWidget {
     return AppConstants.mainTabIndex;
   }
 
-  /// Обработчик переключения вкладок.
   void _onTabTapped(BuildContext context, int index) {
     switch (index) {
       case AppConstants.mainTabIndex:
@@ -41,28 +39,37 @@ class HomeShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Получаем объект локализации для доступа к переведённым строкам.
-    // Теперь строки доступны как геттеры: loc.tabMain, loc.tabProfile и т.д.
     final loc = AppLocalizations.of(context);
     final int selectedIndex = _currentIndex(context);
 
     return Scaffold(
-      // Тело — текущая вкладка.
       body: child,
-
-      // Нижняя навигация.
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: selectedIndex,
-        onTap: (index) => _onTabTapped(context, index),
-        items: [
-          BottomNavigationBarItem(
+      // Используем NavigationBar (Material 3) — более современный вид
+      // с анимированным indicator под активной вкладкой.
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: selectedIndex,
+        onDestinationSelected: (index) => _onTabTapped(context, index),
+        backgroundColor: Colors.white,
+        indicatorColor: const Color(0xFFFFD6E8),
+        shadowColor: Colors.black12,
+        elevation: 8,
+        animationDuration: const Duration(milliseconds: 350),
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        destinations: [
+          NavigationDestination(
             icon: const Icon(Icons.home_outlined),
-            activeIcon: const Icon(Icons.home),
+            selectedIcon: const Icon(
+              Icons.home,
+              color: Color(0xFFFF4FA0),
+            ),
             label: loc.tabMain,
           ),
-          BottomNavigationBarItem(
+          NavigationDestination(
             icon: const Icon(Icons.person_outline),
-            activeIcon: const Icon(Icons.person),
+            selectedIcon: const Icon(
+              Icons.person,
+              color: Color(0xFFFF4FA0),
+            ),
             label: loc.tabProfile,
           ),
         ],
