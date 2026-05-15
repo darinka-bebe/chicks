@@ -1,37 +1,52 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../data/models/user_model.dart';
 import '../utils/logger.dart';
 import 'collection_names.dart';
 
-/// Обёртка над [FirebaseFirestore].
-///
-/// Предоставляет удобные методы для работы с документами
-/// в Firestore. Сейчас работает только с коллекцией `users`,
-/// но можно расширить для любых коллекций.
 class FirestoreService {
-  /// Экземпляр Firestore.
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // ── Пользователи ─────────────────────────────────────────────
+  CollectionReference<Map<String, dynamic>> get _usersCollection =>
+      _firestore.collection(CollectionNames.users);
 
-  /// Сохранить (или обновить) данные пользователя в Firestore.
-  ///
-  /// [uid] — уникальный идентификатор пользователя (из FirebaseAuth).
-  /// [data] — словарь с полями, которые нужно сохранить.
-  ///
-  /// `merge: true` — если документ уже существует, обновляются
-  /// только переданные поля (остальные не трогаются).
-  Future<void> saveUser(String uid, Map<String, dynamic> data) async {
+  Future<void> saveUser(UserModel user) async {
     try {
-      await _firestore
-          .collection(CollectionNames.users)
-          .doc(uid)
-          .set(data, SetOptions(merge: true));
+      final existingUser = await getUser(user.uid);
 
-      AppLogger.info('Firestore: пользователь $uid сохранён');
+      final updatedUser = user.copyWith(
+        createdAt: existingUser?.createdAt ?? DateTime.now(),
+        lastLoginAt: DateTime.now(),
+      );
+
+      await _usersCollection.doc(user.uid).set(
+            updatedUser.toJson(),
+            SetOptions(merge: true),
+          );
+
+      AppLogger.info('Firestore: user saved ${user.uid}');
     } catch (error, stackTrace) {
       AppLogger.error(
-        'Firestore: ошибка сохранения пользователя $uid',
+        'Firestore save user error',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      rethrow;
+       }
+  }
+
+  Future<UserModel?> getUser(String uid) async {
+    try {
+      final doc = await _usersCollection.doc(uid).get();
+
+      if (!doc.exists || doc.data() == null) {
+        return null;
+      }
+
+      return UserModel.fromJson(doc.data()!);
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'Firestore get user error',
         error: error,
         stackTrace: stackTrace,
       );
@@ -39,30 +54,30 @@ class FirestoreService {
     }
   }
 
-  /// Получить данные пользователя из Firestore.
-  ///
-  /// Возвращает `Map<String, dynamic>?` — `null`, если
-  /// документа не существует.
-  Future<Map<String, dynamic>?> getUser(String uid) async {
+  Future<void> updateUser(
+    String uid,
+    Map<String, dynamic> data,
+  ) async {
     try {
-      final DocumentSnapshot<Map<String, dynamic>> doc = await _firestore
-          .collection(CollectionNames.users)
-          .doc(uid)
-          .get();
+      await _usersCollection.doc(uid).update(data);
 
-      if (!doc.exists) {
-        AppLogger.warning('Firestore: пользователь $uid не найден');
-        return null;
-      }
-
-      return doc.data();
+      AppLogger.info('Firestore: user updated $uid');
     } catch (error, stackTrace) {
       AppLogger.error(
-        'Firestore: ошибка получения пользователя $uid',
+        'Firestore update user error',
         error: error,
         stackTrace: stackTrace,
       );
       rethrow;
+       }
+  }
+
+  Future<bool> userExists(String uid) async {
+    try {
+      final doc = await _usersCollection.doc(uid).get();
+      return doc.exists;
+    } catch (_) {
+      return false;
     }
   }
 }
