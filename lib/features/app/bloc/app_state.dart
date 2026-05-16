@@ -103,9 +103,9 @@ final List<Map<String, String>> kDailyTips = [
   {'emoji': '💄', 'text': 'Меньше деталей = больше стиля. Выбери 1 акцент в образе.'},
 ];
 
-// ─── AppState ─────────────────────────────────────────────────
+// ─── WardrobeState ────────────────────────────────────────────
 
-class AppState extends ChangeNotifier {
+class WardrobeState extends ChangeNotifier {
   UserProfile _profile = const UserProfile();
   List<WardrobeItem> _userItems = [];
   List<Outfit> _outfits = [];

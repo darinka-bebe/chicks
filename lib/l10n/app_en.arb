@@ -1,7 +1,7 @@
 {
   "@@locale": "en",
 
-  "appName": "Kumbel",
+  "appName": "Chicks",
   "@appName": {
     "description": "Название приложения, отображается в заголовке и на сплэш-экране"
   },

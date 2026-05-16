@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/router/route_names.dart';
 import '../../../features/app/bloc/app_bloc.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../widgets/user_avatar.dart';
@@ -51,16 +53,24 @@ class _MainTabState extends State<MainTab> with SingleTickerProviderStateMixin {
   }
 
   Widget _animated(int index, Widget child) {
-    return FadeTransition(
-      opacity: _cardAnims[index],
-      child: SlideTransition(
-        position: Tween<Offset>(
-          begin: const Offset(0, 0.12),
-          end: Offset.zero,
-        ).animate(_cardAnims[index]),
-        child: child,
-      ),
+    final animation = _cardAnims[index];
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, child) {
+        return Transform.translate(
+          offset: Offset(0, 12 * (1 - animation.value)),
+          child: Opacity(
+            opacity: animation.value.clamp(0.0, 1.0),
+            child: child,
+          ),
+        );
+      },
+      child: child,
     );
+  }
+
+  void _openStylistChat() {
+    context.pushNamed(RouteNames.chatName);
   }
 
   @override
@@ -137,7 +147,7 @@ class _MainTabState extends State<MainTab> with SingleTickerProviderStateMixin {
                 icon: Icons.chat_bubble_outline,
                 title: 'Чат со стилистом',
                 subtitle: 'ИИ-помощник ответит на все вопросы о моде',
-                onTap: () {},
+                onTap: _openStylistChat,
               ),
             ),
             const SizedBox(height: 12),
@@ -205,12 +215,13 @@ class _FeatureCardState extends State<_FeatureCard>
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTapDown: (_) => _pressController.reverse(),
-      onTapUp: (_) {
+      onTapCancel: () => _pressController.forward(),
+      onTap: () {
         _pressController.forward();
         widget.onTap();
       },
-      onTapCancel: () => _pressController.forward(),
       child: ScaleTransition(
         scale: _scaleAnim,
         child: Container(

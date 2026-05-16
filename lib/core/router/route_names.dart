@@ -6,6 +6,7 @@ class RouteNames {
 
   static const String main = '/home/main';
   static const String profile = '/home/profile';
+  static const String chat = '/chat';
 
   // Имена
   static const String splashName = 'splash';
@@ -14,4 +15,5 @@ class RouteNames {
 
   static const String mainName = 'main';
   static const String profileName = 'profile';
+  static const String chatName = 'chat';
 }

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/router/route_names.dart';
-import '../../home/ui/main_tab.dart';
 import '../../../ui_kit/ui_kit.dart';
 
 class RegistrationScreen extends StatefulWidget {
@@ -50,6 +49,10 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     );
 
     context.go(RouteNames.main);
+  }
+
+  void _onLoginTapped() {
+    context.go(RouteNames.login);
   }
 
   @override

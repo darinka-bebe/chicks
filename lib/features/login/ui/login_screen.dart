@@ -7,7 +7,7 @@ import '../../../core/router/route_names.dart';
 import '../../../core/utils/logger.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../features/app/bloc/app_bloc.dart';
-import '../../../features/app/bloc/app_state.dart';
+import '../../../features/app/bloc/auth_state.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../widgets/google_sign_in_button.dart';
 
@@ -52,7 +52,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final loc = AppLocalizations.of(context);
     final textTheme = Theme.of(context).textTheme;
 
-    return BlocListener<AppBloc, AppState>(
+    return BlocListener<AppBloc, AuthState>(
       listenWhen: (previous, current) => previous.status != current.status,
       listener: (context, state) {
         if (state.status == AppStatus.authenticated) {

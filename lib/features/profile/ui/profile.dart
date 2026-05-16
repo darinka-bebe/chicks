@@ -6,7 +6,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/router/route_names.dart';
 import '../../app/bloc/app_bloc.dart';
 import '../../app/bloc/app_event.dart';
-import '../../app/bloc/app_state.dart';
+import '../../app/bloc/auth_state.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../ui_kit/ui_kit.dart';
 import '../../../widgets/user_avatar.dart';
@@ -95,7 +95,7 @@ class _ProfileTabState extends State<ProfileTab>
     final user = appState.user;
     final textTheme = Theme.of(context).textTheme;
 
-    return BlocListener<AppBloc, AppState>(
+    return BlocListener<AppBloc, AuthState>(
       listenWhen: (previous, current) => previous.status != current.status,
       listener: (context, state) {
         if (state.status == AppStatus.unauthenticated) {

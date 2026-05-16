@@ -1,6 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:equatable/equatable.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class UserModel extends Equatable {
   final String uid;
@@ -32,25 +30,16 @@ class UserModel extends Equatable {
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
-      uid: json['uid'] ?? '',
-      displayName: json['displayName'] ?? '',
-      email: json['email'] ?? '',
-      photoUrl: json['photoUrl'] ?? '',
+      uid: json['uid'] as String? ?? '',
+      displayName: json['displayName'] as String? ?? '',
+      email: json['email'] as String? ?? '',
+      photoUrl: json['photoUrl'] as String? ?? '',
       createdAt: json['createdAt'] != null
-          ? (json['createdAt'] as Timestamp).toDate()
+          ? DateTime.tryParse(json['createdAt'] as String)
           : null,
       lastLoginAt: json['lastLoginAt'] != null
-          ? (json['lastLoginAt'] as Timestamp).toDate()
+          ? DateTime.tryParse(json['lastLoginAt'] as String)
           : null,
-    );
-  }
-
-  factory UserModel.fromFirebaseUser(User user) {
-    return UserModel(
-      uid: user.uid,
-      displayName: user.displayName ?? '',
-      email: user.email ?? '',
-      photoUrl: user.photoURL ?? '',
     );
   }
 
@@ -60,8 +49,8 @@ class UserModel extends Equatable {
       'displayName': displayName,
       'email': email,
       'photoUrl': photoUrl,
-      'createdAt': createdAt,
-      'lastLoginAt': lastLoginAt,
+      'createdAt': createdAt?.toIso8601String(),
+      'lastLoginAt': lastLoginAt?.toIso8601String(),
     };
   }
 
