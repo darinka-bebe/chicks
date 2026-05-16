@@ -25,6 +25,37 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
+  Future<void> _confirmClearChat(BuildContext context) async {
+    final cubit = context.read<ChatCubit>();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Очистить чат?'),
+        content: const Text(
+          'Вся переписка со стилистом будет удалена с этого устройства.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Отмена'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text(
+              'Очистить',
+              style: TextStyle(color: AppBrandColors.pink),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      await cubit.clearChat();
+    }
+  }
+
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scrollController.hasClients) return;
@@ -44,6 +75,7 @@ class _ChatScreenState extends State<ChatScreen> {
         listenWhen: (prev, curr) =>
             prev.messages.length != curr.messages.length ||
             prev.isLoading != curr.isLoading ||
+            prev.isRestoringHistory != curr.isRestoringHistory ||
             prev.error != curr.error,
         listener: (context, state) {
           _scrollToBottom();
@@ -65,6 +97,10 @@ class _ChatScreenState extends State<ChatScreen> {
           }
         },
         builder: (context, state) {
+          final canClear = state.messages.isNotEmpty &&
+              !state.isLoading &&
+              !state.isRestoringHistory;
+
           return Scaffold(
             backgroundColor: AppBrandColors.background,
             appBar: AppBar(
@@ -84,13 +120,30 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
               ),
               centerTitle: true,
+              actions: [
+                if (canClear)
+                  IconButton(
+                    tooltip: 'Очистить чат',
+                    icon: const Icon(
+                      Icons.delete_outline_rounded,
+                      color: AppBrandColors.pink,
+                    ),
+                    onPressed: () => _confirmClearChat(context),
+                  ),
+              ],
             ),
             body: Column(
               children: [
                 Expanded(
-                  child: state.messages.isEmpty && !state.isLoading
-                      ? _EmptyChatHint()
-                      : ListView.builder(
+                  child: state.isRestoringHistory
+                      ? const Center(
+                          child: CircularProgressIndicator(
+                            color: AppBrandColors.pink,
+                          ),
+                        )
+                      : state.messages.isEmpty && !state.isLoading
+                          ? _EmptyChatHint()
+                          : ListView.builder(
                           controller: _scrollController,
                           padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                           itemCount:
@@ -106,7 +159,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         ),
                 ),
                 ChatInputBar(
-                  enabled: !state.isLoading,
+                  enabled: !state.isLoading && !state.isRestoringHistory,
                   onSend: context.read<ChatCubit>().sendMessage,
                 ),
               ],
