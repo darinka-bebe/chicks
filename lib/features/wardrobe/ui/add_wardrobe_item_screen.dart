@@ -4,11 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../../../core/services/wardrobe_image_storage.dart';
+import '../../../core/services/gallery_image_picker_service.dart';
+import '../../../core/services/openai_chat_service.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/theme/app_brand_colors.dart';
 import '../../../core/theme/chicks_input_styles.dart';
+import '../../../data/models/clothing_vision_analysis.dart';
 import '../../../data/models/wardrobe_item.dart';
+import '../../../data/repositories/clothing_vision_repository.dart';
 import '../../../data/repositories/wardrobe_repository.dart';
 import '../../../core/constants/wardrobe_catalog.dart';
 import '../widgets/wardrobe_chip_selector.dart';
@@ -26,6 +29,7 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
   final _titleController = TextEditingController();
   final _colorController = TextEditingController();
   final _picker = ImagePicker();
+  final _visionRepository = ClothingVisionRepository();
 
   late final AnimationController _fadeController;
   late final Animation<double> _fadeAnimation;
@@ -38,6 +42,8 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
   List<String> _selectedSeason = [WardrobeCatalog.seasons.last];
   List<String> _selectedVibes = [];
   bool _isSaving = false;
+  bool _isAnalyzing = false;
+  bool _visionAnalysisFailed = false;
 
   @override
   void initState() {
@@ -61,39 +67,199 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
     super.dispose();
   }
 
+  Future<ImageImportMethod?> _askImportMethod() async {
+    return showModalBottomSheet<ImageImportMethod>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Добавить фото',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: AppBrandColors.title,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'На эмуляторе надёжнее «Файл» → Downloads',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: const Icon(Icons.photo_library_outlined,
+                    color: AppBrandColors.pink),
+                title: const Text('Галерея'),
+                subtitle: const Text('Системный выбор фото'),
+                onTap: () =>
+                    Navigator.pop(sheetContext, ImageImportMethod.gallery),
+              ),
+              ListTile(
+                leading: const Icon(Icons.folder_open_outlined,
+                    color: AppBrandColors.pink),
+                title: const Text('Файл'),
+                subtitle: const Text('Downloads, Documents, Files'),
+                onTap: () =>
+                    Navigator.pop(sheetContext, ImageImportMethod.files),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _applyPickedImage(String path) async {
+    setState(() {
+      _imagePath = path;
+      _visionAnalysisFailed = false;
+    });
+  }
+
   Future<void> _pickImage() async {
-    try {
-      final picked = await _picker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 85,
-        maxWidth: 2048,
-        maxHeight: 2048,
-      );
-      if (picked == null || !mounted) return;
+    final method = await _askImportMethod();
+    if (method == null || !mounted) return;
 
-      final savedPath = await WardrobeImageStorage.persistFromXFile(picked);
-      if (!mounted) return;
+    final result = switch (method) {
+      ImageImportMethod.gallery => await GalleryImagePickerService.pickFromGallery(
+          picker: _picker,
+        ),
+      ImageImportMethod.files => await GalleryImagePickerService.pickFromFiles(),
+    };
+    if (!mounted) return;
 
-      if (savedPath == null) {
-        _showMessage('Не удалось загрузить изображение');
-        return;
-      }
-
-      setState(() => _imagePath = savedPath);
-    } catch (_) {
-      if (mounted) {
-        _showMessage('Ошибка доступа к галерее');
-      }
+    switch (result.status) {
+      case GalleryPickStatus.success:
+        final path = result.localPath;
+        if (path == null || path.isEmpty) {
+          _showSnackBar(
+            result.message ?? 'Не удалось сохранить фото',
+            isError: true,
+          );
+          return;
+        }
+        await _applyPickedImage(path);
+        if (!mounted) return;
+        await precacheImage(FileImage(File(path)), context);
+        if (!mounted) return;
+        _showSnackBar(result.message ?? 'Фото добавлено', isError: false);
+        await _runVisionAnalysis(path);
+      case GalleryPickStatus.cancelled:
+        break;
+      case GalleryPickStatus.permissionDenied:
+        _showSnackBar(
+          result.message ?? 'Нет доступа к галерее',
+          isError: true,
+        );
+        await GalleryImagePickerService.openAppSettingsIfNeeded();
+      case GalleryPickStatus.failed:
+        _showSnackBar(
+          result.message ?? 'Ошибка при выборе фото',
+          isError: true,
+        );
     }
   }
 
-  void _showMessage(String text) {
+  Future<void> _runVisionAnalysis(String imagePath) async {
+    if (_isAnalyzing) return;
+
+    setState(() {
+      _isAnalyzing = true;
+      _visionAnalysisFailed = false;
+    });
+
+    try {
+      final analysis = await _visionRepository.analyzeImage(imagePath);
+      if (!mounted) return;
+      _applyVisionAnalysis(analysis);
+      _showSnackBar(
+        'AI заполнил поля — проверьте и отредактируйте при необходимости',
+        isError: false,
+      );
+    } on OpenAiChatException catch (e, stack) {
+      AppLogger.error(
+        'AddWardrobeItem: vision analysis failed',
+        error: e,
+        stackTrace: stack,
+      );
+      if (!mounted) return;
+      setState(() => _visionAnalysisFailed = true);
+      _showSnackBar(
+        '${e.message} Можно заполнить вручную или повторить анализ.',
+        isError: true,
+      );
+    } catch (e, stack) {
+      AppLogger.error(
+        'AddWardrobeItem: vision unexpected error',
+        error: e,
+        stackTrace: stack,
+      );
+      if (!mounted) return;
+      setState(() => _visionAnalysisFailed = true);
+      _showSnackBar(
+        'Не удалось распознать вещь. Заполните поля вручную или повторите.',
+        isError: true,
+      );
+    } finally {
+      if (mounted) setState(() => _isAnalyzing = false);
+    }
+  }
+
+  void _applyVisionAnalysis(ClothingVisionAnalysis analysis) {
+    setState(() {
+      if (analysis.title.isNotEmpty) {
+        _titleController.text = analysis.title;
+      }
+      if (analysis.color.isNotEmpty) {
+        _colorController.text = analysis.color;
+      }
+      if (WardrobeCatalog.categories.contains(analysis.category)) {
+        _category = analysis.category;
+      }
+      if (analysis.styles.isNotEmpty) {
+        _selectedStyles = List<String>.from(analysis.styles);
+      }
+      if (analysis.seasons.isNotEmpty) {
+        _selectedSeason = [analysis.seasons.first];
+      }
+      if (analysis.occasions.isNotEmpty) {
+        _selectedOccasions = List<String>.from(analysis.occasions);
+      }
+      if (analysis.vibes.isNotEmpty) {
+        _selectedVibes = List<String>.from(analysis.vibes);
+      }
+      if (analysis.fit.isNotEmpty) {
+        _selectedFit = [analysis.fit];
+      }
+    });
+  }
+
+  void _showSnackBar(String text, {required bool isError}) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
           content: Text(text),
           behavior: SnackBarBehavior.floating,
+          backgroundColor: isError ? Colors.redAccent : AppBrandColors.pink,
         ),
       );
   }
@@ -104,14 +270,14 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
 
     if (title.isEmpty) {
       AppLogger.debug('AddWardrobeItem: validation failed — empty title');
-      _showMessage('Введите название');
+      _showSnackBar('Введите название', isError: true);
       _formKey.currentState?.validate();
       return false;
     }
 
     if (category.isEmpty) {
       AppLogger.debug('AddWardrobeItem: validation failed — empty category');
-      _showMessage('Выберите категорию');
+      _showSnackBar('Выберите категорию', isError: true);
       return false;
     }
 
@@ -134,7 +300,7 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
     try {
       final colorRaw = _colorController.text.trim();
       final item = WardrobeItem(
-        id: DateTime.now().microsecondsSinceEpoch.toString(),
+        id: WardrobeRepository.generateItemId(),
         title: _titleController.text.trim(),
         category: _category,
         color: colorRaw.isEmpty ? 'Не указан' : colorRaw,
@@ -153,12 +319,14 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
         'title="${item.title}" category=${item.category}',
       );
 
-      await WardrobeRepository.instance.addItem(item);
+      final persisted = await WardrobeRepository.instance.addItem(item);
 
       if (!mounted) return;
 
-      AppLogger.info('AddWardrobeItem: saved, closing screen');
-      context.pop(item);
+      AppLogger.info(
+        'AddWardrobeItem: saved id=${persisted.id}, closing screen',
+      );
+      context.pop(persisted);
     } catch (error, stackTrace) {
       AppLogger.error(
         'AddWardrobeItem: save failed',
@@ -166,7 +334,7 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
         stackTrace: stackTrace,
       );
       if (!mounted) return;
-      _showMessage('Не удалось сохранить вещь');
+      _showSnackBar('Не удалось сохранить вещь', isError: true);
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -182,7 +350,7 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
         leading: IconButton(
           icon: const Icon(Icons.close_rounded),
           color: AppBrandColors.pink,
-          onPressed: _isSaving ? null : () => context.pop(),
+          onPressed: _isSaving || _isAnalyzing ? null : () => context.pop(),
         ),
         title: const Text(
           'Новая вещь',
@@ -204,13 +372,26 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
               opacity: _fadeAnimation,
               child: _ImagePickerCard(
                 imagePath: _imagePath,
-                onPick: _pickImage,
+                isAnalyzing: _isAnalyzing,
+                analysisFailed: _visionAnalysisFailed,
+                onPick: _isAnalyzing ? null : _pickImage,
               ),
             ),
+            if (_isAnalyzing) ...[
+              const SizedBox(height: 12),
+              const _VisionAnalyzingBanner(),
+            ],
+            if (_visionAnalysisFailed && !_isAnalyzing && _imagePath != null) ...[
+              const SizedBox(height: 12),
+              _VisionRetryBanner(
+                onRetry: () => _runVisionAnalysis(_imagePath!),
+              ),
+            ],
             const SizedBox(height: 20),
             _ChicksTextField(
               controller: _titleController,
               label: 'Название',
+              enabled: !_isAnalyzing,
               hint: 'Например, белая рубашка',
               textInputAction: TextInputAction.next,
               validator: (value) {
@@ -225,6 +406,7 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
               label: 'Категория',
               value: _category,
               items: WardrobeCatalog.categories,
+              enabled: !_isAnalyzing,
               onChanged: (value) {
                 if (value != null) setState(() => _category = value);
               },
@@ -235,6 +417,7 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
               label: 'Цвет',
               hint: 'Например, бежевый (необязательно)',
               textInputAction: TextInputAction.done,
+              enabled: !_isAnalyzing,
             ),
             const SizedBox(height: 24),
             const _SectionHeader(
@@ -249,6 +432,7 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
                   subtitle: 'Можно выбрать несколько',
                   options: WardrobeCatalog.styles,
                   selected: _selectedStyles,
+                  enabled: !_isAnalyzing,
                   onChanged: (value) => setState(() => _selectedStyles = value),
                 ),
                 const SizedBox(height: 18),
@@ -257,6 +441,7 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
                   subtitle: 'Можно выбрать несколько',
                   options: WardrobeCatalog.occasions,
                   selected: _selectedOccasions,
+                  enabled: !_isAnalyzing,
                   onChanged: (value) =>
                       setState(() => _selectedOccasions = value),
                 ),
@@ -266,6 +451,7 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
                   options: WardrobeCatalog.fits,
                   selected: _selectedFit,
                   allowMultiple: false,
+                  enabled: !_isAnalyzing,
                   onChanged: (value) => setState(() => _selectedFit = value),
                 ),
                 const SizedBox(height: 18),
@@ -274,6 +460,7 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
                   options: WardrobeCatalog.seasons,
                   selected: _selectedSeason,
                   allowMultiple: false,
+                  enabled: !_isAnalyzing,
                   onChanged: (value) => setState(() => _selectedSeason = value),
                 ),
                 const SizedBox(height: 18),
@@ -282,13 +469,14 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
                   subtitle: 'Можно выбрать несколько',
                   options: WardrobeCatalog.vibes,
                   selected: _selectedVibes,
+                  enabled: !_isAnalyzing,
                   onChanged: (value) => setState(() => _selectedVibes = value),
                 ),
               ],
             ),
             const SizedBox(height: 28),
             FilledButton(
-              onPressed: _isSaving ? null : () => _saveItem(),
+              onPressed: _isSaving || _isAnalyzing ? null : () => _saveItem(),
               style: FilledButton.styleFrom(
                 backgroundColor: AppBrandColors.pink,
                 foregroundColor: Colors.white,
@@ -381,14 +569,99 @@ class _MetadataPanel extends StatelessWidget {
   }
 }
 
+class _VisionAnalyzingBanner extends StatelessWidget {
+  const _VisionAnalyzingBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppBrandColors.iconBackground,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: AppBrandColors.pink.withValues(alpha: 0.2),
+        ),
+      ),
+      child: const Row(
+        children: [
+          SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AppBrandColors.pink,
+            ),
+          ),
+          SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'AI анализирует вещь...',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: AppBrandColors.title,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VisionRetryBanner extends StatelessWidget {
+  const _VisionRetryBanner({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onRetry,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              Icon(Icons.refresh_rounded, color: Colors.grey[700], size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'AI не смог распознать вещь. Заполните вручную или повторите.',
+                  style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                ),
+              ),
+              const Text(
+                'Повторить',
+                style: TextStyle(
+                  color: AppBrandColors.pink,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _ImagePickerCard extends StatelessWidget {
   const _ImagePickerCard({
     required this.imagePath,
     required this.onPick,
+    this.isAnalyzing = false,
+    this.analysisFailed = false,
   });
 
   final String? imagePath;
-  final VoidCallback onPick;
+  final VoidCallback? onPick;
+  final bool isAnalyzing;
+  final bool analysisFailed;
 
   @override
   Widget build(BuildContext context) {
@@ -398,7 +671,7 @@ class _ImagePickerCard extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: onPick,
+        onTap: isAnalyzing ? null : onPick,
         borderRadius: BorderRadius.circular(20),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 250),
@@ -429,11 +702,37 @@ class _ImagePickerCard extends StatelessWidget {
                         gaplessPlayback: true,
                         errorBuilder: (_, __, ___) => _placeholder(),
                       ),
-                      const Positioned(
-                        right: 12,
-                        bottom: 12,
-                        child: _PhotoBadge(label: 'Изменить фото'),
-                      ),
+                      if (isAnalyzing)
+                        Container(
+                          color: Colors.black.withValues(alpha: 0.35),
+                          alignment: Alignment.center,
+                          child: const Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              CircularProgressIndicator(
+                                color: Colors.white,
+                              ),
+                              SizedBox(height: 10),
+                              Text(
+                                'AI анализирует вещь...',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      if (!isAnalyzing)
+                        Positioned(
+                          right: 12,
+                          bottom: 12,
+                          child: _PhotoBadge(
+                            label: analysisFailed
+                                ? 'Изменить фото'
+                                : 'Изменить фото',
+                          ),
+                        ),
                     ],
                   )
                 : _placeholder(),
@@ -470,7 +769,7 @@ class _ImagePickerCard extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          'Из галереи',
+          'Галерея или файл',
           style: TextStyle(fontSize: 13, color: Colors.grey[500]),
         ),
       ],
@@ -506,6 +805,7 @@ class _ChicksTextField extends StatefulWidget {
     required this.hint,
     this.validator,
     this.textInputAction = TextInputAction.next,
+    this.enabled = true,
   });
 
   final TextEditingController controller;
@@ -513,6 +813,7 @@ class _ChicksTextField extends StatefulWidget {
   final String hint;
   final String? Function(String?)? validator;
   final TextInputAction textInputAction;
+  final bool enabled;
 
   @override
   State<_ChicksTextField> createState() => _ChicksTextFieldState();
@@ -550,7 +851,7 @@ class _ChicksTextFieldState extends State<_ChicksTextField> {
           controller: widget.controller,
           focusNode: _focusNode,
           validator: widget.validator,
-          enabled: true,
+          enabled: widget.enabled,
           readOnly: false,
           enableInteractiveSelection: true,
           keyboardType: TextInputType.text,
@@ -569,12 +870,14 @@ class _ChicksDropdownField extends StatelessWidget {
     required this.value,
     required this.items,
     required this.onChanged,
+    this.enabled = true,
   });
 
   final String label;
   final String value;
   final List<String> items;
   final ValueChanged<String?> onChanged;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
@@ -602,7 +905,7 @@ class _ChicksDropdownField extends StatelessWidget {
                 ),
               )
               .toList(),
-          onChanged: onChanged,
+          onChanged: enabled ? onChanged : null,
           decoration: ChicksInputStyles.filledShell(
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,

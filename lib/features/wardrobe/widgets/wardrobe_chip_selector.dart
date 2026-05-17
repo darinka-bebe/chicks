@@ -12,6 +12,7 @@ class WardrobeChipSelector extends StatelessWidget {
     required this.onChanged,
     this.allowMultiple = true,
     this.subtitle,
+    this.enabled = true,
   });
 
   final String label;
@@ -19,9 +20,11 @@ class WardrobeChipSelector extends StatelessWidget {
   final List<String> options;
   final List<String> selected;
   final bool allowMultiple;
+  final bool enabled;
   final ValueChanged<List<String>> onChanged;
 
   void _onTap(String value) {
+    if (!enabled) return;
     if (allowMultiple) {
       final next = List<String>.from(selected);
       if (next.contains(value)) {
@@ -74,7 +77,7 @@ class WardrobeChipSelector extends StatelessWidget {
                   label: Text(option),
                   selected: isSelected,
                   showCheckmark: false,
-                  onSelected: (_) => _onTap(option),
+                  onSelected: enabled ? (_) => _onTap(option) : null,
                   labelStyle: TextStyle(
                     fontSize: 13,
                     fontWeight:

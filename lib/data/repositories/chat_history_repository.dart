@@ -1,37 +1,54 @@
-import 'package:shared_preferences/shared_preferences.dart';
-
+import '../../core/storage/hive_json_list_codec.dart';
+import '../../core/storage/local_hive_storage.dart';
+import '../../core/utils/logger.dart';
 import '../models/chat_message.dart';
 
-/// Persists stylist chat messages locally as JSON.
+/// Persists stylist chat messages locally (Hive).
 class ChatHistoryRepository {
-  static const _storageKey = 'stylist_chat_history_v1';
+  ChatHistoryRepository._();
+
+  static final ChatHistoryRepository instance = ChatHistoryRepository._();
+
+  factory ChatHistoryRepository() => instance;
+
+  static const _messagesKey = LocalHiveStorage.chatMessagesKey;
 
   Future<List<ChatMessage>> loadMessages() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_storageKey);
-    if (raw == null || raw.trim().isEmpty) {
-      return [];
-    }
+    final maps = HiveJsonListCodec.decode(
+      LocalHiveStorage.chatBox.get(_messagesKey),
+    );
+    if (maps.isEmpty) return [];
 
     try {
-      return ChatMessage.listFromJsonString(raw);
-    } catch (_) {
-      await prefs.remove(_storageKey);
+      return maps
+          .map(ChatMessage.fromJson)
+          .where((message) => message.content.isNotEmpty)
+          .toList();
+    } catch (e, stack) {
+      AppLogger.error(
+        'ChatHistoryRepository.loadMessages: corrupt data',
+        error: e,
+        stackTrace: stack,
+      );
+      await LocalHiveStorage.chatBox.delete(_messagesKey);
       return [];
     }
   }
 
   Future<void> saveMessages(List<ChatMessage> messages) async {
-    final prefs = await SharedPreferences.getInstance();
-    if (messages.isEmpty) {
-      await prefs.remove(_storageKey);
-      return;
-    }
-    await prefs.setString(_storageKey, ChatMessage.listToJsonString(messages));
+    await HiveJsonListCodec.write(
+      LocalHiveStorage.chatBox,
+      _messagesKey,
+      messages.map((message) => message.toJson()).toList(),
+    );
   }
 
   Future<void> clear() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_storageKey);
+    await LocalHiveStorage.chatBox.delete(_messagesKey);
+  }
+
+  Future<int> countUserMessages() async {
+    final messages = await loadMessages();
+    return messages.where((message) => message.role == ChatRole.user).length;
   }
 }

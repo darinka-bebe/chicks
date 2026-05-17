@@ -1,8 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-
+import '../../../core/services/gallery_image_picker_service.dart';
 import '../../../core/theme/chicks_input_styles.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -39,10 +38,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
   ];
 
   Future<void> _pickPhoto() async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery);
-    if (picked != null) {
-      setState(() => _photo = File(picked.path));
+    final result = await GalleryImagePickerService.pickAndPersist();
+    if (!mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+
+    if (result.isSuccess && result.localPath != null) {
+      setState(() => _photo = File(result.localPath!));
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(result.message ?? 'Фото добавлено'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    if (result.status == GalleryPickStatus.cancelled) {
+      return;
+    }
+
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(result.message ?? 'Не удалось выбрать фото'),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: Colors.redAccent,
+      ),
+    );
+    if (result.status == GalleryPickStatus.permissionDenied) {
+      await GalleryImagePickerService.openAppSettingsIfNeeded();
     }
   }
 

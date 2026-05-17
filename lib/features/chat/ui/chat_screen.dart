@@ -2,12 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_brand_colors.dart';
+import '../../../data/models/chat_message.dart';
+import '../../favorites/favorites_controller.dart';
 import '../bloc/chat_cubit.dart';
 import '../bloc/chat_state.dart';
+import '../widgets/chat_empty_state.dart';
 import '../widgets/chat_input_bar.dart';
-import '../widgets/chat_message_bubble.dart';
-import '../widgets/chat_typing_indicator.dart';
+import '../widgets/chat_messages_list.dart';
+import '../widgets/chat_weather_banner.dart';
+import '../widgets/wardrobe_snapshot_scope.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -18,6 +23,7 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   final _scrollController = ScrollController();
+  final _inputBarKey = GlobalKey<ChatInputBarState>();
 
   @override
   void dispose() {
@@ -26,7 +32,6 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _confirmClearChat(BuildContext context) async {
-    final cubit = context.read<ChatCubit>();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -52,18 +57,57 @@ class _ChatScreenState extends State<ChatScreen> {
     );
 
     if (confirmed == true && context.mounted) {
-      await cubit.clearChat();
+      await context.read<ChatCubit>().clearChat();
+    }
+  }
+
+  Future<void> _toggleFavorite(
+    BuildContext context,
+    ChatMessage aiMessage,
+    String? userPrompt,
+  ) async {
+    final favorites = context.read<FavoritesController>();
+
+    try {
+      final nowSaved = await favorites.toggleRecommendation(
+        recommendation: aiMessage.content,
+        userPrompt: userPrompt,
+      );
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              nowSaved ? 'Образ сохранён' : 'Удалено из избранного',
+            ),
+            behavior: SnackBarBehavior.floating,
+            action: nowSaved
+                ? SnackBarAction(
+                    label: 'Открыть',
+                    textColor: Colors.white,
+                    onPressed: () =>
+                        context.pushNamed(RouteNames.favoritesName),
+                  )
+                : null,
+          ),
+        );
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Не удалось обновить избранное'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scrollController.hasClients) return;
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 280),
-        curve: Curves.easeOut,
-      );
+      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
     });
   }
 
@@ -71,15 +115,15 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => ChatCubit(),
-      child: BlocConsumer<ChatCubit, ChatState>(
+      child: BlocListener<ChatCubit, ChatState>(
         listenWhen: (prev, curr) =>
             prev.messages.length != curr.messages.length ||
-            prev.isLoading != curr.isLoading ||
-            prev.isRestoringHistory != curr.isRestoringHistory ||
-            prev.error != curr.error,
-        listener: (context, state) {
-          _scrollToBottom();
-          if (state.error != null) {
+            (prev.isLoading && !curr.isLoading),
+        listener: (_, __) => _scrollToBottom(),
+        child: BlocListener<ChatCubit, ChatState>(
+          listenWhen: (prev, curr) =>
+              prev.error != curr.error && curr.error != null,
+          listener: (context, state) {
             ScaffoldMessenger.of(context)
               ..hideCurrentSnackBar()
               ..showSnackBar(
@@ -94,128 +138,193 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
                 ),
               );
-          }
-        },
-        builder: (context, state) {
-          final canClear = state.messages.isNotEmpty &&
-              !state.isLoading &&
-              !state.isRestoringHistory;
-
-          return Scaffold(
+          },
+          child: Scaffold(
+            resizeToAvoidBottomInset: true,
             backgroundColor: AppBrandColors.background,
-            appBar: AppBar(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              leading: IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new_rounded),
-                color: AppBrandColors.pink,
-                onPressed: () => context.pop(),
-              ),
-              title: const Text(
-                'Чат со стилистом',
-                style: TextStyle(
-                  color: AppBrandColors.pink,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 18,
-                ),
-              ),
-              centerTitle: true,
-              actions: [
-                if (canClear)
-                  IconButton(
-                    tooltip: 'Очистить чат',
-                    icon: const Icon(
-                      Icons.delete_outline_rounded,
-                      color: AppBrandColors.pink,
-                    ),
-                    onPressed: () => _confirmClearChat(context),
-                  ),
-              ],
+            appBar: _ChatAppBar(
+              onClear: () => _confirmClearChat(context),
             ),
             body: Column(
               children: [
+                const _ChatWeatherStrip(),
                 Expanded(
-                  child: state.isRestoringHistory
-                      ? const Center(
-                          child: CircularProgressIndicator(
-                            color: AppBrandColors.pink,
-                          ),
-                        )
-                      : state.messages.isEmpty && !state.isLoading
-                          ? _EmptyChatHint()
-                          : ListView.builder(
-                          controller: _scrollController,
-                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                          itemCount:
-                              state.messages.length + (state.isLoading ? 1 : 0),
-                          itemBuilder: (context, index) {
-                            if (index < state.messages.length) {
-                              return ChatMessageBubble(
-                                message: state.messages[index],
-                              );
-                            }
-                            return const ChatTypingIndicator();
-                          },
-                        ),
+                  child: _ChatMessageArea(
+                    scrollController: _scrollController,
+                    inputBarKey: _inputBarKey,
+                    onToggleFavorite: _toggleFavorite,
+                  ),
                 ),
-                ChatInputBar(
-                  enabled: !state.isLoading && !state.isRestoringHistory,
-                  onSend: context.read<ChatCubit>().sendMessage,
+                BlocSelector<ChatCubit, ChatState, bool>(
+                  selector: (state) =>
+                      !state.isLoading && !state.isRestoringHistory,
+                  builder: (context, enabled) {
+                    return ChatInputBar(
+                      key: _inputBarKey,
+                      enabled: enabled,
+                      onSend: context.read<ChatCubit>().sendMessage,
+                    );
+                  },
                 ),
               ],
             ),
-          );
-        },
+          ),
+        ),
       ),
     );
   }
 }
 
-class _EmptyChatHint extends StatelessWidget {
+class _ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
+  const _ChatAppBar({required this.onClear});
+
+  final VoidCallback onClear;
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                color: AppBrandColors.iconBackground,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Icon(
-                Icons.chat_bubble_outline,
+    return BlocSelector<ChatCubit, ChatState, bool>(
+      selector: (state) =>
+          state.messages.isNotEmpty &&
+          !state.isLoading &&
+          !state.isRestoringHistory,
+      builder: (context, canClear) {
+        return AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded),
+            color: AppBrandColors.pink,
+            onPressed: () => context.pop(),
+          ),
+          title: const Text(
+            'Чат со стилистом',
+            style: TextStyle(
+              color: AppBrandColors.pink,
+              fontWeight: FontWeight.w600,
+              fontSize: 18,
+            ),
+          ),
+          centerTitle: true,
+          actions: [
+            IconButton(
+              tooltip: 'Избранные образы',
+              icon: const Icon(
+                Icons.favorite_rounded,
                 color: AppBrandColors.pink,
-                size: 36,
               ),
+              onPressed: () => context.pushNamed(RouteNames.favoritesName),
             ),
-            const SizedBox(height: 20),
-            const Text(
-              'Привет! Я твой ИИ-стилист 💗',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: AppBrandColors.title,
+            if (canClear)
+              IconButton(
+                tooltip: 'Очистить чат',
+                icon: const Icon(
+                  Icons.delete_outline_rounded,
+                  color: AppBrandColors.pink,
+                ),
+                onPressed: onClear,
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Выбери подсказку ниже или спроси про образ с учётом настроения, погоды и повода.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[500],
-                height: 1.4,
-              ),
-            ),
           ],
-        ),
-      ),
+        );
+      },
     );
   }
+}
+
+class _ChatWeatherStrip extends StatelessWidget {
+  const _ChatWeatherStrip();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocSelector<ChatCubit, ChatState, String?>(
+      selector: (state) {
+        if (state.isRestoringHistory) return null;
+        final weather = state.currentWeather;
+        if (weather == null || !weather.isAvailable) return null;
+        return weather.compactUiLabel;
+      },
+      builder: (context, label) {
+        if (label == null || label.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+          child: ChatWeatherBanner(label: label),
+        );
+      },
+    );
+  }
+}
+
+class _ChatMessageArea extends StatelessWidget {
+  const _ChatMessageArea({
+    required this.scrollController,
+    required this.inputBarKey,
+    required this.onToggleFavorite,
+  });
+
+  final ScrollController scrollController;
+  final GlobalKey<ChatInputBarState> inputBarKey;
+  final void Function(BuildContext, ChatMessage, String?) onToggleFavorite;
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocSelector<ChatCubit, ChatState, _ChatListData>(
+      selector: (state) => _ChatListData(
+        isRestoringHistory: state.isRestoringHistory,
+        messages: state.messages,
+        isLoading: state.isLoading,
+      ),
+      builder: (context, data) {
+        if (data.isRestoringHistory) {
+          return const Center(
+            child: CircularProgressIndicator(color: AppBrandColors.pink),
+          );
+        }
+
+        if (data.messages.isEmpty && !data.isLoading) {
+          return ChatEmptyState(
+            onSuggestionTap: (prompt) {
+              inputBarKey.currentState?.insertPrompt(prompt);
+            },
+          );
+        }
+
+        return WardrobeSnapshotLoader(
+          child: ChatMessagesList(
+            scrollController: scrollController,
+            messages: data.messages,
+            isLoading: data.isLoading,
+            onToggleFavorite: (message, userPrompt) =>
+                onToggleFavorite(context, message, userPrompt),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ChatListData {
+  const _ChatListData({
+    required this.isRestoringHistory,
+    required this.messages,
+    required this.isLoading,
+  });
+
+  final bool isRestoringHistory;
+  final List<ChatMessage> messages;
+  final bool isLoading;
+
+  @override
+  bool operator ==(Object other) {
+    return other is _ChatListData &&
+        other.isRestoringHistory == isRestoringHistory &&
+        other.isLoading == isLoading &&
+        identical(other.messages, messages);
+  }
+
+  @override
+  int get hashCode => Object.hash(isRestoringHistory, isLoading, messages);
 }

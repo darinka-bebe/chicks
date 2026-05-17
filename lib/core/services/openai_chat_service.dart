@@ -4,20 +4,30 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
 import '../../data/models/chat_message.dart';
-import '../../data/repositories/wardrobe_repository.dart';
+import '../models/stylist_response.dart';
 import '../utils/logger.dart';
 import 'stylist_context_parser.dart';
+import 'stylist_response_parser.dart';
+import '../models/weather_snapshot.dart';
+import 'wardrobe_ai_context.dart';
 import 'wardrobe_prompt_builder.dart';
+import 'wardrobe_recommendation_resolver.dart';
+import 'weather/weather_prompt_builder.dart';
+import 'weather/weather_repository.dart';
 
 /// Calls OpenAI Chat Completions API (GPT-4o-mini).
 class OpenAiChatService {
-  OpenAiChatService({WardrobeRepository? wardrobeRepository})
-      : _wardrobeRepository = wardrobeRepository ?? WardrobeRepository.instance;
+  OpenAiChatService({
+    WardrobeAiContext? wardrobeAiContext,
+    WeatherRepository? weatherRepository,
+  })  : _wardrobeAiContext = wardrobeAiContext ?? WardrobeAiContext.instance,
+        _weatherRepository = weatherRepository ?? WeatherRepository.instance;
 
   static const _endpoint = 'https://api.openai.com/v1/chat/completions';
   static const _model = 'gpt-4o-mini';
 
-  final WardrobeRepository _wardrobeRepository;
+  final WardrobeAiContext _wardrobeAiContext;
+  final WeatherRepository _weatherRepository;
 
   static const _baseSystemPrompt = '''
 Ты — персональный fashion-стилист приложения Chicks: умный ассистент по стилю, гардеробу и образам.
@@ -34,6 +44,15 @@ class OpenAiChatService {
 - Учитывай актуальные тренды, но предлагай носибельные и практичные варианты.
 - Давай конкретные советы по сочетаниям: цвета, фактуры, силуэты, обувь, аксессуары.
 - При нехватке данных задай 1 уточняющий вопрос вместо длинной лекции.
+
+Объясняй ПОЧЕМУ образ работает (обязательно):
+- Не ограничивайся списком вещей — после состава образа дай короткое стильное объяснение логики.
+- Цвета: почему оттенки гармонируют (например: «светлые нейтрали дают мягкий feminine-вайб», «контраст верха и низа стройнит силуэт»).
+- Силуэт и посадка: как вещи балансируют друг друга (например: «oversized пиджак уравновешивает slim джинсы», «relaxed свитер добавляет уют без лишнего объёма снизу»).
+- Настроение: как образ передаёт нужный вайб (romantic, comfy, elegant и т.д.) через фактуры, цвет и пропорции.
+- Погода и повод: почему выбор практичен для контекста (слои для холода, закрытая обувь для дождя, сдержанность для школы/офиса).
+- Пиши как живой стилист: тепло, уверенно, без канцелярита и шаблонов вроде «данный образ является» / «рекомендуется использовать».
+- 2–4 естественные фразы с «почему» достаточно — не превращай ответ в лекцию.
 
 Приоритет гардероба (критично):
 - В системных сообщениях передан актуальный гардероб и контекст запроса (настроение, погода, повод).
@@ -60,28 +79,68 @@ class OpenAiChatService {
   /// Builds system messages: persona, wardrobe, styling context.
   Future<List<Map<String, String>>> buildSystemMessages({
     required String latestUserMessage,
+    WeatherSnapshot? liveWeather,
   }) async {
-    final wardrobe = await _wardrobeRepository.loadItems();
+    final revision = _wardrobeAiContext.revision;
+    final wardrobe = await _wardrobeAiContext.loadForPrompt();
     final requestContext = StylistContextParser.parse(latestUserMessage);
 
+    WardrobePromptBuilder.logPromptWardrobe(
+      revision: revision,
+      items: wardrobe,
+    );
+
     AppLogger.debug(
-      'OpenAiChatService: wardrobe=${wardrobe.length} '
+      'OpenAiChatService: wardrobe=${wardrobe.length} rev=$revision '
       'mood=${requestContext.moods} weather=${requestContext.weather} '
       'occasion=${requestContext.occasions}',
     );
 
     final wardrobeSection = WardrobePromptBuilder.buildWardrobeSection(wardrobe);
+    final freshnessGuard = WardrobePromptBuilder.buildFreshnessGuard(
+      revision: revision,
+      items: wardrobe,
+    );
     final contextSection =
         WardrobePromptBuilder.buildStylingContextSection(requestContext);
 
-    return [
+    final weather = liveWeather ?? await _weatherRepository.getCurrent();
+    final weatherSection = WeatherPromptBuilder.buildSystemSection(
+      weather: weather,
+      userContext: requestContext,
+    );
+
+    if (weather.isAvailable) {
+      AppLogger.debug(
+        'OpenAiChatService: live weather → ${weather.compactUiLabel}',
+      );
+    }
+
+    final messages = <Map<String, String>>[
       {'role': 'system', 'content': _baseSystemPrompt.trim()},
       {'role': 'system', 'content': wardrobeSection},
-      {'role': 'system', 'content': contextSection},
+      {'role': 'system', 'content': freshnessGuard.trim()},
     ];
+
+    if (weatherSection != null) {
+      messages.add({'role': 'system', 'content': weatherSection});
+    }
+
+    messages.addAll([
+      {'role': 'system', 'content': contextSection},
+      {
+        'role': 'system',
+        'content': WardrobePromptBuilder.buildResponseFormatSection().trim(),
+      },
+    ]);
+
+    return messages;
   }
 
-  Future<String> completeConversation(List<ChatMessage> history) async {
+  Future<StylistResponse> completeConversation(
+    List<ChatMessage> history, {
+    WeatherSnapshot? liveWeather,
+  }) async {
     final apiKey = _apiKey;
     if (apiKey == null || apiKey.trim().isEmpty) {
       throw const OpenAiChatException(
@@ -96,6 +155,7 @@ class OpenAiChatService {
 
     final systemMessages = await buildSystemMessages(
       latestUserMessage: latestUser.content,
+      liveWeather: liveWeather,
     );
 
     final messages = <Map<String, String>>[
@@ -120,6 +180,7 @@ class OpenAiChatService {
       body: jsonEncode({
         'model': _model,
         'messages': messages,
+        'response_format': const {'type': 'json_object'},
       }),
     );
 
@@ -139,7 +200,22 @@ class OpenAiChatService {
       throw const OpenAiChatException('Не удалось получить текст ответа.');
     }
 
-    return content.trim();
+    final parsed = StylistResponseParser.parse(content.trim());
+    final wardrobe = await _wardrobeAiContext.loadForPrompt();
+    final validIds = WardrobeRecommendationResolver.filterValidIds(
+      requestedIds: parsed.recommendedItemIds,
+      wardrobe: wardrobe,
+    );
+
+    AppLogger.info(
+      'OpenAiChatService: stylist reply ids '
+      'raw=${parsed.recommendedItemIds.length} valid=${validIds.length}',
+    );
+
+    return StylistResponse(
+      message: parsed.message,
+      recommendedItemIds: validIds,
+    );
   }
 
   String _parseErrorMessage(http.Response response) {

@@ -16,18 +16,42 @@ class ChatInputBar extends StatefulWidget {
   });
 
   @override
-  State<ChatInputBar> createState() => _ChatInputBarState();
+  State<ChatInputBar> createState() => ChatInputBarState();
 }
 
-class _ChatInputBarState extends State<ChatInputBar> {
+class ChatInputBarState extends State<ChatInputBar> {
   final _controller = TextEditingController();
   final _focusNode = FocusNode();
+  bool _isFocused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode.addListener(_onFocusChange);
+  }
+
+  void _onFocusChange() {
+    setState(() => _isFocused = _focusNode.hasFocus);
+  }
 
   @override
   void dispose() {
+    _focusNode.removeListener(_onFocusChange);
     _controller.dispose();
     _focusNode.dispose();
     super.dispose();
+  }
+
+  /// Inserts a full prompt from empty-state suggestions.
+  void insertPrompt(String text) {
+    final next = text.trim();
+    if (next.isEmpty) return;
+
+    _controller.value = TextEditingValue(
+      text: next,
+      selection: TextSelection.collapsed(offset: next.length),
+    );
+    _focusNode.requestFocus();
   }
 
   void _insertChipPrompt(StylistSuggestionChip chip) {
@@ -45,11 +69,7 @@ class _ChatInputBarState extends State<ChatInputBar> {
       next = '$current. Подбери $snippet';
     }
 
-    _controller.value = TextEditingValue(
-      text: next,
-      selection: TextSelection.collapsed(offset: next.length),
-    );
-    _focusNode.requestFocus();
+    insertPrompt(next);
   }
 
   void _submit() {
@@ -57,78 +77,111 @@ class _ChatInputBarState extends State<ChatInputBar> {
     if (text.trim().isEmpty || !widget.enabled) return;
     widget.onSend(text);
     _controller.clear();
+    _focusNode.unfocus();
+  }
+
+  InputDecoration _inputDecoration() {
+    final base = ChicksInputStyles.chatDecoration(
+      hintText: 'Спроси о стиле, гардеробе или поводе…',
+    );
+
+    if (!_isFocused) return base;
+
+    return base.copyWith(
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(24),
+        borderSide: BorderSide(
+          color: AppBrandColors.pink.withValues(alpha: 0.55),
+          width: 1.4,
+        ),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(24),
+        borderSide: BorderSide(
+          color: AppBrandColors.pink.withValues(alpha: 0.25),
+          width: 1,
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(height: 10),
-          ChatSuggestionChips(
-            enabled: widget.enabled,
-            onChipTap: _insertChipPrompt,
-          ),
-          const SizedBox(height: 10),
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-              16,
-              0,
-              16,
-              12 + MediaQuery.paddingOf(context).bottom,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 12,
+              offset: const Offset(0, -2),
             ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    focusNode: _focusNode,
-                    enabled: widget.enabled,
-                    style: ChicksInputStyles.value,
-                    maxLines: 4,
-                    minLines: 1,
-                    textInputAction: TextInputAction.send,
-                    onSubmitted: widget.enabled ? (_) => _submit() : null,
-                    decoration: ChicksInputStyles.chatDecoration(
-                      hintText: 'Спроси о стиле...',
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 10),
+            ChatSuggestionChips(
+              enabled: widget.enabled,
+              onChipTap: _insertChipPrompt,
+            ),
+            const SizedBox(height: 10),
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                16,
+                0,
+                16,
+                12 + MediaQuery.paddingOf(context).bottom,
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _controller,
+                      focusNode: _focusNode,
+                      enabled: widget.enabled,
+                      style: ChicksInputStyles.value,
+                      maxLines: 4,
+                      minLines: 1,
+                      textInputAction: TextInputAction.send,
+                      onSubmitted: widget.enabled ? (_) => _submit() : null,
+                      decoration: _inputDecoration(),
                     ),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Material(
-                  color: widget.enabled
-                      ? AppBrandColors.pink
-                      : AppBrandColors.pink.withValues(alpha: 0.4),
-                  borderRadius: BorderRadius.circular(24),
-                  child: InkWell(
-                    onTap: widget.enabled ? _submit : null,
+                  const SizedBox(width: 10),
+                  Material(
+                    color: widget.enabled
+                        ? AppBrandColors.pink
+                        : AppBrandColors.pink.withValues(alpha: 0.35),
                     borderRadius: BorderRadius.circular(24),
-                    child: const SizedBox(
-                      width: 48,
-                      height: 48,
-                      child: Icon(
-                        Icons.send_rounded,
-                        color: Colors.white,
-                        size: 22,
+                    child: InkWell(
+                      onTap: widget.enabled ? _submit : null,
+                      borderRadius: BorderRadius.circular(24),
+                      child: SizedBox(
+                        width: 48,
+                        height: 48,
+                        child: widget.enabled
+                            ? const Icon(
+                                Icons.send_rounded,
+                                color: Colors.white,
+                                size: 22,
+                              )
+                            : const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
         ],
       ),
     );

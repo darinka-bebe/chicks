@@ -52,9 +52,15 @@ class WardrobeItem extends Equatable {
         'imagePath': imagePath,
       };
 
+  /// Hive / JSON may store ids as int (e.g. microsecond timestamps).
+  static String readIdFromJson(dynamic value) {
+    if (value == null) return '';
+    return value.toString().trim();
+  }
+
   factory WardrobeItem.fromJson(Map<String, dynamic> json) {
     return WardrobeItem(
-      id: json['id'] as String? ?? '',
+      id: readIdFromJson(json['id']),
       title: json['title'] as String? ?? '',
       category: json['category'] as String? ?? '',
       color: json['color'] as String? ?? '',
@@ -81,8 +87,8 @@ class WardrobeItem extends Equatable {
     if (decoded is! List<dynamic>) return [];
 
     return decoded
-        .whereType<Map<String, dynamic>>()
-        .map(WardrobeItem.fromJson)
+        .whereType<Map>()
+        .map((entry) => WardrobeItem.fromJson(Map<String, dynamic>.from(entry)))
         .where((item) => item.title.isNotEmpty)
         .toList();
   }

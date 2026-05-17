@@ -77,6 +77,10 @@ class _MainTabState extends State<MainTab> with SingleTickerProviderStateMixin {
     context.pushNamed(RouteNames.wardrobeName);
   }
 
+  void _openFavorites() {
+    context.pushNamed(RouteNames.favoritesName);
+  }
+
   @override
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context);
@@ -156,14 +160,14 @@ class _MainTabState extends State<MainTab> with SingleTickerProviderStateMixin {
             ),
             const SizedBox(height: 12),
 
-            // Карточка — Стиль
+            // Карточка — Избранные образы
             _animated(
               3,
               _FeatureCard(
-                icon: Icons.auto_awesome_outlined,
-                title: 'Твой стиль',
-                subtitle: 'Узнай свой тип и подбери образы по душе',
-                onTap: () {},
+                icon: Icons.favorite_rounded,
+                title: 'Избранные образы',
+                subtitle: 'Сохранённые рекомендации стилиста в одном месте',
+                onTap: _openFavorites,
               ),
             ),
             const SizedBox(height: 32),

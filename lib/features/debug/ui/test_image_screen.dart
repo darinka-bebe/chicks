@@ -5,12 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/services/gallery_image_picker_service.dart';
 import '../../../core/theme/app_brand_colors.dart';
 import '../../../core/utils/logger.dart';
 
-/// Isolated image_picker test — no wardrobe, no persistence.
+/// Isolated image_picker test — no wardrobe model persistence.
 ///
-/// Open via Profile → "Image Picker Test" or route `/debug/test-image`.
+/// Open via route `/debug/test-image`.
 class TestImageScreen extends StatefulWidget {
   const TestImageScreen({super.key});
 
@@ -22,11 +23,9 @@ class _TestImageScreenState extends State<TestImageScreen> {
   final ImagePicker _picker = ImagePicker();
 
   bool _isPicking = false;
-  Uint8List? _previewBytes;
-  String _log = 'Tap "Pick Image" to start.\n';
-  String? _xFilePath;
   String? _savedPath;
   String? _lastError;
+  String _log = 'Tap "Pick Image" to start.\n';
 
   void _appendLog(String message) {
     final line = '[${DateTime.now().toIso8601String()}] $message';
@@ -36,95 +35,78 @@ class _TestImageScreenState extends State<TestImageScreen> {
     });
   }
 
-  void _showError(String message, {Object? error, StackTrace? stack}) {
-    AppLogger.error(
-      'TestImageScreen: $message',
-      error: error,
-      stackTrace: stack,
-    );
+  void _showSnackBar(String message, {required bool isError}) {
     if (!mounted) return;
-    setState(() => _lastError = message);
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
           content: Text(message),
-          backgroundColor: Colors.redAccent,
+          backgroundColor: isError ? Colors.redAccent : AppBrandColors.pink,
           behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 5),
+          duration: Duration(seconds: isError ? 5 : 3),
         ),
       );
   }
 
-  Future<void> _pickImage() async {
+  Future<void> _pickImage(ImageImportMethod method) async {
     if (_isPicking) return;
 
     setState(() {
       _isPicking = true;
       _lastError = null;
-      _previewBytes = null;
-      _xFilePath = null;
       _savedPath = null;
     });
 
-    _appendLog('STEP 1: pickImage(gallery) started');
+    _appendLog('import started: $method');
 
     try {
-      final XFile? picked = await _picker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 85,
-        maxWidth: 2048,
-        maxHeight: 2048,
-      );
+      final result = switch (method) {
+        ImageImportMethod.gallery =>
+          await GalleryImagePickerService.pickFromGallery(picker: _picker),
+        ImageImportMethod.files =>
+          await GalleryImagePickerService.pickFromFiles(),
+      };
 
       if (!mounted) return;
 
-      if (picked == null) {
-        _appendLog('STEP 2: user cancelled — no image selected');
-        return;
-      }
+      _appendLog('status: ${result.status} path: ${result.localPath}');
 
-      _appendLog('STEP 2: XFile received');
-      _appendLog('  name: ${picked.name}');
-      _appendLog('  path: ${picked.path}');
-      _appendLog('  mimeType: ${picked.mimeType ?? "null"}');
-
-      setState(() => _xFilePath = picked.path);
-
-      _appendLog('STEP 3: readAsBytes()');
-      final bytes = await picked.readAsBytes();
-      _appendLog('  bytes length: ${bytes.length}');
-
-      if (bytes.isEmpty) {
-        _showError('readAsBytes returned empty (0 bytes)');
-        return;
-      }
-
-      String? fileExistsNote;
-      try {
-        final path = picked.path;
-        if (path.isNotEmpty) {
-          final file = File(path);
-          final exists = file.existsSync();
-          final length = exists ? file.lengthSync() : 0;
-          fileExistsNote = 'File("$path") exists=$exists length=$length';
-          _appendLog('STEP 4: $fileExistsNote');
+      switch (result.status) {
+        case GalleryPickStatus.success:
+          final path = result.localPath;
+          if (path == null || path.isEmpty) {
+            _lastError = 'Success but path is null';
+            _showSnackBar('Путь к файлу пустой', isError: true);
+            break;
+          }
           setState(() => _savedPath = path);
-        } else {
-          _appendLog('STEP 4: XFile.path is empty (content URI only)');
-        }
-      } catch (e, st) {
-        _appendLog('STEP 4: File(path) check failed: $e');
-        AppLogger.error('File check failed', error: e, stackTrace: st);
+          _showSnackBar(result.message ?? 'Фото сохранено', isError: false);
+          _appendLog('preview path: $path');
+        case GalleryPickStatus.cancelled:
+          _showSnackBar(
+            result.message ?? 'Фото не выбрано',
+            isError: false,
+          );
+        case GalleryPickStatus.permissionDenied:
+          _lastError = result.message;
+          _showSnackBar(
+            result.message ?? 'Нет доступа к галерее',
+            isError: true,
+          );
+          await GalleryImagePickerService.openAppSettingsIfNeeded();
+        case GalleryPickStatus.failed:
+          _lastError = result.message;
+          _showSnackBar(
+            result.message ?? 'Ошибка при выборе фото',
+            isError: true,
+          );
       }
-
-      _appendLog('STEP 5: setState — preview via Image.memory');
-      setState(() => _previewBytes = bytes);
-      _appendLog('STEP 6: done — preview should be visible');
     } catch (e, st) {
-      _appendLog('CRASH POINT: exception in _pickImage');
-      _appendLog('  $e');
-      _showError('Pick failed: $e', error: e, stack: st);
+      _appendLog('exception: $e');
+      AppLogger.error('TestImageScreen._pickImage', error: e, stackTrace: st);
+      _lastError = e.toString();
+      _showSnackBar('Pick failed: $e', isError: true);
     } finally {
       if (mounted) setState(() => _isPicking = false);
     }
@@ -132,6 +114,8 @@ class _TestImageScreenState extends State<TestImageScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final savedPath = _savedPath;
+
     return Scaffold(
       backgroundColor: AppBrandColors.background,
       appBar: AppBar(
@@ -160,7 +144,9 @@ class _TestImageScreenState extends State<TestImageScreen> {
             ),
           const SizedBox(height: 8),
           FilledButton.icon(
-            onPressed: _isPicking ? null : _pickImage,
+            onPressed: _isPicking
+                ? null
+                : () => _pickImage(ImageImportMethod.gallery),
             icon: _isPicking
                 ? const SizedBox(
                     width: 18,
@@ -171,10 +157,22 @@ class _TestImageScreenState extends State<TestImageScreen> {
                     ),
                   )
                 : const Icon(Icons.photo_library_outlined),
-            label: Text(_isPicking ? 'Picking…' : 'Pick Image'),
+            label: Text(_isPicking ? 'Picking…' : 'Gallery'),
             style: FilledButton.styleFrom(
               backgroundColor: AppBrandColors.pink,
               foregroundColor: Colors.white,
+              minimumSize: const Size.fromHeight(48),
+            ),
+          ),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed: _isPicking
+                ? null
+                : () => _pickImage(ImageImportMethod.files),
+            icon: const Icon(Icons.folder_open_outlined),
+            label: const Text('File (Downloads / SAF)'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppBrandColors.pink,
               minimumSize: const Size.fromHeight(48),
             ),
           ),
@@ -186,53 +184,32 @@ class _TestImageScreenState extends State<TestImageScreen> {
             ),
           ],
           const SizedBox(height: 16),
-          if (_previewBytes != null) ...[
+          if (savedPath != null && savedPath.isNotEmpty) ...[
             const Text(
-              'Preview (Image.memory — bytes)',
-              style: TextStyle(fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 8),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: Image.memory(
-                _previewBytes!,
-                height: 220,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (_, error, __) {
-                  AppLogger.error('Image.memory error', error: error);
-                  return _previewError('Image.memory failed: $error');
-                },
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
-          if (_savedPath != null && _savedPath!.isNotEmpty) ...[
-            const Text(
-              'Preview (Image.file — path)',
+              'Preview (saved in app storage)',
               style: TextStyle(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
               child: Image.file(
-                File(_savedPath!),
+                File(savedPath),
                 height: 220,
                 width: double.infinity,
                 fit: BoxFit.cover,
                 errorBuilder: (_, error, __) {
-                  AppLogger.error('Image.file error', error: error);
-                  return _previewError('Image.file failed: $error');
+                  AppLogger.error('Image.file preview error', error: error);
+                  return _previewError('Preview failed: $error');
                 },
               ),
             ),
+            const SizedBox(height: 8),
+            Text(
+              'Path: $savedPath',
+              style: const TextStyle(fontSize: 12),
+            ),
             const SizedBox(height: 16),
           ],
-          Text(
-            'XFile.path: ${_xFilePath ?? "—"}',
-            style: const TextStyle(fontSize: 12),
-          ),
-          const SizedBox(height: 16),
           const Text(
             'Debug log',
             style: TextStyle(fontWeight: FontWeight.w600),

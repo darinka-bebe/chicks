@@ -10,12 +10,16 @@ class ChatMessage extends Equatable {
   final ChatRole role;
   final String content;
   final DateTime createdAt;
+  final List<String> recommendedItemIds;
+  final String? weatherLabel;
 
   const ChatMessage({
     required this.id,
     required this.role,
     required this.content,
     required this.createdAt,
+    this.recommendedItemIds = const [],
+    this.weatherLabel,
   });
 
   factory ChatMessage.user(String content) {
@@ -27,12 +31,18 @@ class ChatMessage extends Equatable {
     );
   }
 
-  factory ChatMessage.assistant(String content) {
+  factory ChatMessage.assistant(
+    String content, {
+    List<String> recommendedItemIds = const [],
+    String? weatherLabel,
+  }) {
     return ChatMessage(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
       role: ChatRole.assistant,
       content: content,
       createdAt: DateTime.now(),
+      recommendedItemIds: recommendedItemIds,
+      weatherLabel: weatherLabel,
     );
   }
 
@@ -41,6 +51,10 @@ class ChatMessage extends Equatable {
         'role': role.name,
         'content': content,
         'createdAt': createdAt.toIso8601String(),
+        if (recommendedItemIds.isNotEmpty)
+          'recommendedItemIds': recommendedItemIds,
+        if (weatherLabel != null && weatherLabel!.isNotEmpty)
+          'weatherLabel': weatherLabel,
       };
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
@@ -56,7 +70,20 @@ class ChatMessage extends Equatable {
       content: json['content'] as String? ?? '',
       createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ??
           DateTime.now(),
+      recommendedItemIds: _parseIdList(json['recommendedItemIds']) ??
+          _parseIdList(json['recommendedItems']) ??
+          const [],
+      weatherLabel: json['weatherLabel'] as String?,
     );
+  }
+
+  static List<String>? _parseIdList(dynamic value) {
+    if (value is! List<dynamic>) return null;
+    final ids = value
+        .map((e) => e?.toString().trim() ?? '')
+        .where((id) => id.isNotEmpty)
+        .toList();
+    return ids;
   }
 
   static List<ChatMessage> listFromJsonString(String jsonString) {
@@ -77,5 +104,6 @@ class ChatMessage extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, role, content, createdAt];
+  List<Object?> get props =>
+      [id, role, content, createdAt, recommendedItemIds, weatherLabel];
 }

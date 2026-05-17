@@ -3,7 +3,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/debug/ui/test_image_screen.dart';
 import '../../features/chat/ui/chat_screen.dart';
+import '../../data/models/favorite_outfit.dart';
 import '../../data/models/wardrobe_item.dart';
+import '../../features/favorites/ui/favorite_outfit_details_screen.dart';
+import '../../features/favorites/ui/favorites_screen.dart';
 import '../../features/wardrobe/ui/add_wardrobe_item_screen.dart';
 import '../../features/wardrobe/ui/wardrobe_item_details_screen.dart';
 import '../../features/wardrobe/ui/wardrobe_screen.dart';
@@ -12,6 +15,7 @@ import '../../features/home/ui/main_tab.dart';
 import '../../features/profile/ui/profile.dart';
 import '../../features/app/ui/registration_screen.dart';
 import '../../features/login/ui/login_screen.dart';
+import '../../features/onboarding/ui/onboarding_screen.dart';
 import '../../features/splash/ui/splash_screen.dart';
 import 'route_names.dart';
 
@@ -34,6 +38,11 @@ class AppRouter {
         name: RouteNames.splashName,
         path: RouteNames.splash,
         builder: (context, state) => const SplashScreen(),
+      ),
+      GoRoute(
+        name: RouteNames.onboardingName,
+        path: RouteNames.onboarding,
+        builder: (context, state) => const OnboardingScreen(),
       ),
       GoRoute(
         name: RouteNames.loginName,
@@ -66,6 +75,28 @@ class AppRouter {
         path: RouteNames.chat,
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const ChatScreen(),
+      ),
+      GoRoute(
+        name: RouteNames.favoritesName,
+        path: RouteNames.favorites,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const FavoritesScreen(),
+        routes: [
+          GoRoute(
+            name: RouteNames.favoriteOutfitDetailsName,
+            path: 'item',
+            parentNavigatorKey: rootNavigatorKey,
+            builder: (context, state) {
+              final outfit = state.extra as FavoriteOutfit?;
+              if (outfit == null) {
+                return const Scaffold(
+                  body: Center(child: Text('Образ не найден')),
+                );
+              }
+              return FavoriteOutfitDetailsScreen(outfit: outfit);
+            },
+          ),
+        ],
       ),
       GoRoute(
         name: RouteNames.testImageName,

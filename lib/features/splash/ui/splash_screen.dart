@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/router/route_names.dart';
 import '../../../data/repositories/auth_repository.dart';
+import '../../../data/repositories/onboarding_repository.dart';
 import '../../../l10n/generated/app_localizations.dart';
 
 /// Сплэш-экран с логотипом-анимацией и плавным исчезновением.
@@ -61,7 +62,16 @@ class _SplashScreenState extends State<SplashScreen>
       Duration(seconds: AppConstants.splashDelaySeconds),
     );
     if (!mounted) return;
-    final bool isLoggedIn = AuthRepository.instance.isLoggedIn;
+
+    final onboardingDone = await OnboardingRepository.instance.isCompleted();
+    if (!mounted) return;
+
+    if (!onboardingDone) {
+      context.go(RouteNames.onboarding);
+      return;
+    }
+
+    final isLoggedIn = AuthRepository.instance.isLoggedIn;
     if (isLoggedIn) {
       context.go(RouteNames.main);
     } else {

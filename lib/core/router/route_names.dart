@@ -1,6 +1,7 @@
 class RouteNames {
   // Пути
   static const String splash = '/';
+  static const String onboarding = '/onboarding';
   static const String login = '/login';
   static const String registration = '/registration';
 
@@ -11,9 +12,12 @@ class RouteNames {
   static const String addWardrobeItem = '/wardrobe/add';
   static const String wardrobeItemDetails = '/wardrobe/item';
   static const String testImage = '/debug/test-image';
+  static const String favorites = '/favorites';
+  static const String favoriteOutfitDetails = '/favorites/item';
 
   // Имена
   static const String splashName = 'splash';
+  static const String onboardingName = 'onboarding';
   static const String loginName = 'login';
   static const String registrationName = 'registration';
 
@@ -24,4 +28,6 @@ class RouteNames {
   static const String addWardrobeItemName = 'wardrobeAdd';
   static const String wardrobeItemDetailsName = 'wardrobeItemDetails';
   static const String testImageName = 'testImage';
+  static const String favoritesName = 'favorites';
+  static const String favoriteOutfitDetailsName = 'favoriteOutfitDetails';
 }

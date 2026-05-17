@@ -2,47 +2,174 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_brand_colors.dart';
 import '../../../data/models/chat_message.dart';
+import 'chat_ai_message_content.dart';
+import 'chat_weather_banner.dart';
+import 'outfit_preview_metrics.dart';
+import 'outfit_recommendation_row.dart';
 
 class ChatMessageBubble extends StatelessWidget {
-  final ChatMessage message;
+  const ChatMessageBubble({
+    super.key,
+    required this.message,
+    this.isFavorite = false,
+    this.onToggleFavorite,
+  });
 
-  const ChatMessageBubble({super.key, required this.message});
+  final ChatMessage message;
+  final bool isFavorite;
+  final VoidCallback? onToggleFavorite;
 
   bool get _isUser => message.role == ChatRole.user;
 
+  static double _maxBubbleWidth(BuildContext context) =>
+      MediaQuery.sizeOf(context).width * 0.84;
+
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: _isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.sizeOf(context).width * 0.78,
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: _isUser ? AppBrandColors.userBubble : AppBrandColors.aiBubble,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(20),
-            topRight: const Radius.circular(20),
-            bottomLeft: Radius.circular(_isUser ? 20 : 4),
-            bottomRight: Radius.circular(_isUser ? 4 : 20),
+    final maxWidth = _maxBubbleWidth(context);
+
+    return RepaintBoundary(
+      child: Align(
+        alignment: _isUser ? Alignment.centerRight : Alignment.centerLeft,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          constraints: BoxConstraints(maxWidth: maxWidth),
+          clipBehavior: _isUser ? Clip.none : Clip.antiAlias,
+          padding: EdgeInsets.symmetric(
+            horizontal: _isUser ? 16 : 0,
+            vertical: _isUser ? 12 : 14,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+          decoration: BoxDecoration(
+            color:
+                _isUser ? AppBrandColors.userBubble : AppBrandColors.aiBubble,
+            borderRadius: BorderRadius.only(
+              topLeft: const Radius.circular(20),
+              topRight: const Radius.circular(20),
+              bottomLeft: Radius.circular(_isUser ? 20 : 6),
+              bottomRight: Radius.circular(_isUser ? 6 : 20),
             ),
-          ],
-        ),
-        child: Text(
-          message.content,
-          style: TextStyle(
-            fontSize: 15,
-            height: 1.35,
-            color: _isUser ? Colors.white : AppBrandColors.title,
+            border: _isUser
+                ? null
+                : Border.all(
+                    color: AppBrandColors.pink.withValues(alpha: 0.08),
+                  ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: _isUser ? 0.06 : 0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
+          child: _isUser ? _buildUserText() : _buildAiContent(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUserText() {
+    return Text(
+      message.content,
+      style: const TextStyle(
+        fontSize: 15,
+        height: 1.45,
+        fontWeight: FontWeight.w500,
+        color: Colors.white,
+      ),
+    );
+  }
+
+  Widget _buildAiContent() {
+    const contentPadding = EdgeInsets.symmetric(
+      horizontal: OutfitPreviewMetrics.chatBubbleHorizontalPadding,
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: contentPadding,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 26,
+                    height: 26,
+                    decoration: BoxDecoration(
+                      color: AppBrandColors.iconBackground,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.auto_awesome_rounded,
+                      size: 15,
+                      color: AppBrandColors.pink,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Стилист Chicks',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey[600],
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                  ),
+                  if (onToggleFavorite != null)
+                    _FavoriteToggleButton(
+                      isFavorite: isFavorite,
+                      onPressed: onToggleFavorite!,
+                    ),
+                ],
+              ),
+              if (message.weatherLabel != null &&
+                  message.weatherLabel!.isNotEmpty)
+                ChatWeatherBanner(
+                  label: message.weatherLabel,
+                  compact: true,
+                ),
+              const SizedBox(height: 10),
+              ChatAiMessageContent(content: message.content),
+            ],
+          ),
+        ),
+        if (message.recommendedItemIds.isNotEmpty)
+          OutfitRecommendationRow(
+            key: ValueKey('outfit-${message.id}'),
+            recommendedItemIds: message.recommendedItemIds,
+          ),
+      ],
+    );
+  }
+}
+
+class _FavoriteToggleButton extends StatelessWidget {
+  const _FavoriteToggleButton({
+    required this.isFavorite,
+    required this.onPressed,
+  });
+
+  final bool isFavorite;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: isFavorite ? 'Удалить из избранного' : 'Сохранить образ',
+      child: IconButton(
+        onPressed: onPressed,
+        padding: const EdgeInsets.all(6),
+        constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+        tooltip: isFavorite ? 'Удалить из избранного' : 'Сохранить образ',
+        icon: Icon(
+          isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+          size: 22,
+          color: AppBrandColors.pink,
         ),
       ),
     );
