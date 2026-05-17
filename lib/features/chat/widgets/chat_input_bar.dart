@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/constants/stylist_suggestion_chips.dart';
 import '../../../core/theme/app_brand_colors.dart';
+import '../../../core/theme/chicks_input_styles.dart';
+import 'chat_suggestion_chips.dart';
 
 class ChatInputBar extends StatefulWidget {
   final bool enabled;
@@ -27,6 +30,28 @@ class _ChatInputBarState extends State<ChatInputBar> {
     super.dispose();
   }
 
+  void _insertChipPrompt(StylistSuggestionChip chip) {
+    final snippet = chip.promptSnippet.toLowerCase();
+    final current = _controller.text.trim();
+
+    String next;
+    if (current.isEmpty) {
+      next = 'Подбери $snippet';
+    } else if (current.toLowerCase().contains(snippet)) {
+      next = current;
+    } else if (current.toLowerCase().startsWith('подбери')) {
+      next = '$current, $snippet';
+    } else {
+      next = '$current. Подбери $snippet';
+    }
+
+    _controller.value = TextEditingValue(
+      text: next,
+      selection: TextSelection.collapsed(offset: next.length),
+    );
+    _focusNode.requestFocus();
+  }
+
   void _submit() {
     final text = _controller.text;
     if (text.trim().isEmpty || !widget.enabled) return;
@@ -37,12 +62,6 @@ class _ChatInputBarState extends State<ChatInputBar> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.fromLTRB(
-        16,
-        12,
-        16,
-        12 + MediaQuery.paddingOf(context).bottom,
-      ),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
@@ -53,48 +72,61 @@ class _ChatInputBarState extends State<ChatInputBar> {
           ),
         ],
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: TextField(
-              controller: _controller,
-              focusNode: _focusNode,
-              enabled: widget.enabled,
-              maxLines: 4,
-              minLines: 1,
-              textInputAction: TextInputAction.send,
-              onSubmitted: widget.enabled ? (_) => _submit() : null,
-              decoration: InputDecoration(
-                hintText: 'Спроси о стиле...',
-                hintStyle: TextStyle(color: Colors.grey[400]),
-                filled: true,
-                fillColor: AppBrandColors.background,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 18,
-                  vertical: 12,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
+          const SizedBox(height: 10),
+          ChatSuggestionChips(
+            enabled: widget.enabled,
+            onChipTap: _insertChipPrompt,
           ),
-          const SizedBox(width: 10),
-          Material(
-            color: widget.enabled
-                ? AppBrandColors.pink
-                : AppBrandColors.pink.withValues(alpha: 0.4),
-            borderRadius: BorderRadius.circular(24),
-            child: InkWell(
-              onTap: widget.enabled ? _submit : null,
-              borderRadius: BorderRadius.circular(24),
-              child: const SizedBox(
-                width: 48,
-                height: 48,
-                child: Icon(Icons.send_rounded, color: Colors.white, size: 22),
-              ),
+          const SizedBox(height: 10),
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              16,
+              0,
+              16,
+              12 + MediaQuery.paddingOf(context).bottom,
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    focusNode: _focusNode,
+                    enabled: widget.enabled,
+                    style: ChicksInputStyles.value,
+                    maxLines: 4,
+                    minLines: 1,
+                    textInputAction: TextInputAction.send,
+                    onSubmitted: widget.enabled ? (_) => _submit() : null,
+                    decoration: ChicksInputStyles.chatDecoration(
+                      hintText: 'Спроси о стиле...',
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Material(
+                  color: widget.enabled
+                      ? AppBrandColors.pink
+                      : AppBrandColors.pink.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(24),
+                  child: InkWell(
+                    onTap: widget.enabled ? _submit : null,
+                    borderRadius: BorderRadius.circular(24),
+                    child: const SizedBox(
+                      width: 48,
+                      height: 48,
+                      child: Icon(
+                        Icons.send_rounded,
+                        color: Colors.white,
+                        size: 22,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],

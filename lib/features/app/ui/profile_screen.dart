@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
+
+import '../../../core/theme/chicks_input_styles.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -337,20 +340,8 @@ class _ProfileField extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextField(
       controller: controller,
-      style: const TextStyle(fontSize: 13),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(fontSize: 13, color: Colors.grey),
-        filled: true,
-        fillColor: const Color(0xFFFFF0F5),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(30),
-          borderSide: BorderSide.none,
-        ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        isDense: true,
-      ),
+      style: ChicksInputStyles.valueDense,
+      decoration: ChicksInputStyles.profileDecoration(hintText: hint),
     );
   }
 }
@@ -379,8 +370,7 @@ class _ProfileDropdown extends StatelessWidget {
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: value,
-          hint: Text(hint,
-              style: const TextStyle(fontSize: 13, color: Colors.grey)),
+          hint: Text(hint, style: ChicksInputStyles.hint.copyWith(fontSize: 14)),
           isExpanded: true,
           isDense: true,
           items: items

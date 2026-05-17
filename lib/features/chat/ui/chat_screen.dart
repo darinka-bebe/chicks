@@ -205,7 +205,7 @@ class _EmptyChatHint extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Спроси про образ, цвета или гардероб — помогу подобрать стиль.',
+              'Выбери подсказку ниже или спроси про образ с учётом настроения, погоды и повода.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 14,

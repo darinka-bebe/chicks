@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/debug/ui/test_image_screen.dart';
 import '../../features/chat/ui/chat_screen.dart';
+import '../../data/models/wardrobe_item.dart';
+import '../../features/wardrobe/ui/add_wardrobe_item_screen.dart';
+import '../../features/wardrobe/ui/wardrobe_item_details_screen.dart';
+import '../../features/wardrobe/ui/wardrobe_screen.dart';
 import '../../features/home/ui/home_shell.dart';
 import '../../features/home/ui/main_tab.dart';
 import '../../features/profile/ui/profile.dart';
@@ -61,6 +66,61 @@ class AppRouter {
         path: RouteNames.chat,
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const ChatScreen(),
+      ),
+      GoRoute(
+        name: RouteNames.testImageName,
+        path: RouteNames.testImage,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const TestImageScreen(),
+      ),
+      GoRoute(
+        name: RouteNames.wardrobeName,
+        path: RouteNames.wardrobe,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const WardrobeScreen(),
+        routes: [
+          GoRoute(
+            name: RouteNames.addWardrobeItemName,
+            path: 'add',
+            parentNavigatorKey: rootNavigatorKey,
+            builder: (context, state) => const AddWardrobeItemScreen(),
+          ),
+          GoRoute(
+            name: RouteNames.wardrobeItemDetailsName,
+            path: 'item',
+            parentNavigatorKey: rootNavigatorKey,
+            pageBuilder: (context, state) {
+              final item = state.extra as WardrobeItem?;
+              if (item == null) {
+                return const MaterialPage(
+                  child: Scaffold(
+                    body: Center(child: Text('Вещь не найдена')),
+                  ),
+                );
+              }
+              return CustomTransitionPage<void>(
+                key: state.pageKey,
+                child: WardrobeItemDetailsScreen(item: item),
+                transitionsBuilder:
+                    (context, animation, secondaryAnimation, child) {
+                  final slide = Tween<Offset>(
+                    begin: const Offset(0, 0.06),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeOutCubic,
+                    ),
+                  );
+                  return SlideTransition(
+                    position: slide,
+                    child: FadeTransition(opacity: animation, child: child),
+                  );
+                },
+              );
+            },
+          ),
+        ],
       ),
     ],
     errorBuilder: (context, state) => Scaffold(

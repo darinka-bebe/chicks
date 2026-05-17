@@ -1,8 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/theme/app_brand_colors.dart';
 import '../../../core/router/route_names.dart';
 import '../../app/bloc/app_bloc.dart';
 import '../../app/bloc/app_event.dart';
@@ -179,6 +181,20 @@ class _ProfileTabState extends State<ProfileTab>
                       text: loc.signOut,
                       onPressed: () => _confirmSignOut(context),
                     ),
+                    if (kDebugMode) ...[
+                      const SizedBox(height: 16),
+                      TextButton(
+                        onPressed: () =>
+                            context.pushNamed(RouteNames.testImageName),
+                        child: const Text(
+                          'Image Picker Test (debug)',
+                          style: TextStyle(
+                            color: AppBrandColors.pink,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

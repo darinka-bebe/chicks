@@ -73,6 +73,10 @@ class _MainTabState extends State<MainTab> with SingleTickerProviderStateMixin {
     context.pushNamed(RouteNames.chatName);
   }
 
+  void _openWardrobe() {
+    context.pushNamed(RouteNames.wardrobeName);
+  }
+
   @override
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context);
@@ -135,7 +139,7 @@ class _MainTabState extends State<MainTab> with SingleTickerProviderStateMixin {
                 icon: Icons.shopping_bag_outlined,
                 title: 'Твой гардероб',
                 subtitle: 'Создай цифровой гардероб и получай рекомендации',
-                onTap: () {},
+                onTap: _openWardrobe,
               ),
             ),
             const SizedBox(height: 12),

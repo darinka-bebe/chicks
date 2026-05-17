@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/router/route_names.dart';
+import '../../../core/theme/chicks_input_styles.dart';
 import '../../../ui_kit/ui_kit.dart';
 
 class RegistrationScreen extends StatefulWidget {
@@ -214,12 +215,11 @@ class _AuthTextField extends StatelessWidget {
       keyboardType: keyboardType,
       obscureText: obscureText,
       validator: validator,
-      decoration: InputDecoration(
+      style: ChicksInputStyles.value,
+      decoration: ChicksInputStyles.decoration(
         hintText: hintText,
+        borderRadius: 12,
         suffixIcon: suffixIcon,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
       ),
     );
   }

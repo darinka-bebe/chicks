@@ -57,6 +57,8 @@ class ChatCubit extends Cubit<ChatState> {
     await _persistMessages(withUserMessage);
 
     try {
+      // Wardrobe context is loaded fresh from local storage on each request
+      // inside OpenAiChatService.buildSystemMessages().
       final reply = await _service.completeConversation(withUserMessage);
       final withAssistant = [...withUserMessage, ChatMessage.assistant(reply)];
 

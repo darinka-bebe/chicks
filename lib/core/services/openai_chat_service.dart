@@ -4,13 +4,22 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
 import '../../data/models/chat_message.dart';
+import '../../data/repositories/wardrobe_repository.dart';
+import '../utils/logger.dart';
+import 'stylist_context_parser.dart';
+import 'wardrobe_prompt_builder.dart';
 
 /// Calls OpenAI Chat Completions API (GPT-4o-mini).
 class OpenAiChatService {
+  OpenAiChatService({WardrobeRepository? wardrobeRepository})
+      : _wardrobeRepository = wardrobeRepository ?? WardrobeRepository.instance;
+
   static const _endpoint = 'https://api.openai.com/v1/chat/completions';
   static const _model = 'gpt-4o-mini';
 
-  static const _systemPrompt = '''
+  final WardrobeRepository _wardrobeRepository;
+
+  static const _baseSystemPrompt = '''
 Ты — персональный fashion-стилист приложения Chicks: умный ассистент по стилю, гардеробу и образам.
 
 Роль и тон:
@@ -26,16 +35,51 @@ class OpenAiChatService {
 - Давай конкретные советы по сочетаниям: цвета, фактуры, силуэты, обувь, аксессуары.
 - При нехватке данных задай 1 уточняющий вопрос вместо длинной лекции.
 
+Приоритет гардероба (критично):
+- В системных сообщениях передан актуальный гардероб и контекст запроса (настроение, погода, повод).
+- Сначала используй вещи из гардероба; только потом нейтральную докупку, если элемента нет в списке.
+- Не выдумывай вещи и не подменяй названия — только формулировки из гардероба.
+- Комбинируй: гардероб + настроение + погода + повод в одном связном образе.
+
+Контекст образа:
+- Настроение / вайб: comfy, feminine, confident, cozy, romantic, soft girl, elegant, dark academia и др.
+- Погода: hot, cold, rainy, windy (жара, холод, дождь, ветер).
+- Повод: school, date, office, walk, party (школа, свидание, офис, прогулка, вечеринка).
+- Если пользователь комбинирует несколько сигналов — учти все (например comfy + school + cold).
+
 Темы:
 - Подбор образов, капсульный гардероб, dress code, сезон, тип фигуры, цветотип (осторожно, без категоричности).
 - Что с чем сочетать, как обновить базовый гардероб, что докупить к имеющим вещам.
 
 Ограничения:
-- Не выдумывай факты о гардеробе пользователя — опирайся на то, что он написал.
 - Не давай медицинских и правовых советов. Не обсуждай темы вне моды и стиля.
 ''';
 
   String? get _apiKey => dotenv.env['OPENAI_API_KEY'];
+
+  /// Builds system messages: persona, wardrobe, styling context.
+  Future<List<Map<String, String>>> buildSystemMessages({
+    required String latestUserMessage,
+  }) async {
+    final wardrobe = await _wardrobeRepository.loadItems();
+    final requestContext = StylistContextParser.parse(latestUserMessage);
+
+    AppLogger.debug(
+      'OpenAiChatService: wardrobe=${wardrobe.length} '
+      'mood=${requestContext.moods} weather=${requestContext.weather} '
+      'occasion=${requestContext.occasions}',
+    );
+
+    final wardrobeSection = WardrobePromptBuilder.buildWardrobeSection(wardrobe);
+    final contextSection =
+        WardrobePromptBuilder.buildStylingContextSection(requestContext);
+
+    return [
+      {'role': 'system', 'content': _baseSystemPrompt.trim()},
+      {'role': 'system', 'content': wardrobeSection},
+      {'role': 'system', 'content': contextSection},
+    ];
+  }
 
   Future<String> completeConversation(List<ChatMessage> history) async {
     final apiKey = _apiKey;
@@ -45,14 +89,27 @@ class OpenAiChatService {
       );
     }
 
+    final latestUser = history.lastWhere(
+      (message) => message.role == ChatRole.user,
+      orElse: () => ChatMessage.user(''),
+    );
+
+    final systemMessages = await buildSystemMessages(
+      latestUserMessage: latestUser.content,
+    );
+
     final messages = <Map<String, String>>[
-      {'role': 'system', 'content': _systemPrompt},
+      ...systemMessages,
       for (final message in history)
         {
           'role': message.role == ChatRole.user ? 'user' : 'assistant',
           'content': message.content,
         },
     ];
+
+    AppLogger.debug(
+      'OpenAiChatService: sending ${messages.length} message(s) to OpenAI',
+    );
 
     final response = await http.post(
       Uri.parse(_endpoint),

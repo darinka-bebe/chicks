@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'app_colors.dart';
 import 'app_text_styles.dart';
+import 'chicks_input_styles.dart';
 
 /// Тема приложения (пока только светлая).
 ///
@@ -64,6 +65,25 @@ class AppTheme {
       ),
 
       dividerColor: AppColors.divider,
+
+      inputDecorationTheme: InputDecorationTheme(
+        hintStyle: ChicksInputStyles.hint,
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.2),
+        ),
+      ),
     );
   }
 }
