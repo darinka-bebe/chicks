@@ -3,10 +3,14 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/debug/ui/test_image_screen.dart';
 import '../../features/chat/ui/chat_screen.dart';
+import '../../features/chat/widgets/wardrobe_snapshot_scope.dart';
 import '../../data/models/favorite_outfit.dart';
+import '../../data/models/outfit_history_entry.dart';
 import '../../data/models/wardrobe_item.dart';
 import '../../features/favorites/ui/favorite_outfit_details_screen.dart';
 import '../../features/favorites/ui/favorites_screen.dart';
+import '../../features/outfit_history/ui/outfit_history_details_screen.dart';
+import '../../features/outfit_history/ui/outfit_history_screen.dart';
 import '../../features/wardrobe/ui/add_wardrobe_item_screen.dart';
 import '../../features/wardrobe/ui/wardrobe_item_details_screen.dart';
 import '../../features/wardrobe/ui/wardrobe_screen.dart';
@@ -74,7 +78,34 @@ class AppRouter {
         name: RouteNames.chatName,
         path: RouteNames.chat,
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const ChatScreen(),
+        builder: (context, state) {
+          final restoreEntry = state.extra as OutfitHistoryEntry?;
+          return ChatScreen(restoreEntry: restoreEntry);
+        },
+      ),
+      GoRoute(
+        name: RouteNames.outfitHistoryName,
+        path: RouteNames.outfitHistory,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const OutfitHistoryScreen(),
+        routes: [
+          GoRoute(
+            name: RouteNames.outfitHistoryDetailsName,
+            path: 'item',
+            parentNavigatorKey: rootNavigatorKey,
+            builder: (context, state) {
+              final entry = state.extra as OutfitHistoryEntry?;
+              if (entry == null) {
+                return const Scaffold(
+                  body: Center(child: Text('Образ не найден')),
+                );
+              }
+              return WardrobeSnapshotLoader(
+                child: OutfitHistoryDetailsScreen(entry: entry),
+              );
+            },
+          ),
+        ],
       ),
       GoRoute(
         name: RouteNames.favoritesName,

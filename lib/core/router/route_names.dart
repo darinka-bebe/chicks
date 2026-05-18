@@ -14,6 +14,8 @@ class RouteNames {
   static const String testImage = '/debug/test-image';
   static const String favorites = '/favorites';
   static const String favoriteOutfitDetails = '/favorites/item';
+  static const String outfitHistory = '/outfit-history';
+  static const String outfitHistoryDetails = '/outfit-history/item';
 
   // Имена
   static const String splashName = 'splash';
@@ -30,4 +32,6 @@ class RouteNames {
   static const String testImageName = 'testImage';
   static const String favoritesName = 'favorites';
   static const String favoriteOutfitDetailsName = 'favoriteOutfitDetails';
+  static const String outfitHistoryName = 'outfitHistory';
+  static const String outfitHistoryDetailsName = 'outfitHistoryDetails';
 }

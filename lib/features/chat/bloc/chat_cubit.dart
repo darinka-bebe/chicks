@@ -5,7 +5,10 @@ import '../../../core/services/weather/weather_repository.dart';
 import '../../../core/services/wardrobe_ai_context.dart';
 import '../../../core/utils/logger.dart';
 import '../../../data/models/chat_message.dart';
+import '../../../core/services/outfit_history_factory.dart';
+import '../../../data/models/outfit_history_entry.dart';
 import '../../../data/repositories/chat_history_repository.dart';
+import '../../../data/repositories/outfit_history_repository.dart';
 import 'chat_state.dart';
 
 class ChatCubit extends Cubit<ChatState> {
@@ -13,9 +16,12 @@ class ChatCubit extends Cubit<ChatState> {
     OpenAiChatService? service,
     ChatHistoryRepository? historyRepository,
     WeatherRepository? weatherRepository,
+    OutfitHistoryRepository? outfitHistoryRepository,
   })  : _service = service ?? OpenAiChatService(),
         _historyRepository = historyRepository ?? ChatHistoryRepository(),
         _weatherRepository = weatherRepository ?? WeatherRepository.instance,
+        _outfitHistoryRepository =
+            outfitHistoryRepository ?? OutfitHistoryRepository.instance,
         super(const ChatState(isRestoringHistory: true)) {
     _restoreHistory();
   }
@@ -23,6 +29,7 @@ class ChatCubit extends Cubit<ChatState> {
   final OpenAiChatService _service;
   final ChatHistoryRepository _historyRepository;
   final WeatherRepository _weatherRepository;
+  final OutfitHistoryRepository _outfitHistoryRepository;
 
   Future<void> _restoreHistory() async {
     try {
@@ -101,14 +108,13 @@ class ChatCubit extends Cubit<ChatState> {
       final weatherLabel =
           weather.isAvailable ? weather.compactUiLabel : null;
 
-      final withAssistant = [
-        ...withUserMessage,
-        ChatMessage.assistant(
-          reply.message,
-          recommendedItemIds: reply.recommendedItemIds,
-          weatherLabel: weatherLabel,
-        ),
-      ];
+      final assistantMessage = ChatMessage.assistant(
+        reply.message,
+        recommendedItemIds: reply.recommendedItemIds,
+        weatherLabel: weatherLabel,
+      );
+
+      final withAssistant = [...withUserMessage, assistantMessage];
 
       if (isClosed) return;
       emit(
@@ -119,6 +125,13 @@ class ChatCubit extends Cubit<ChatState> {
         ),
       );
       await _persistMessages(withAssistant);
+
+      if (reply.hasRecommendations) {
+        await _recordOutfitHistory(
+          userPrompt: trimmed,
+          assistantMessage: assistantMessage,
+        );
+      }
     } on OpenAiChatException catch (e) {
       if (isClosed) return;
       emit(state.copyWith(isLoading: false, error: e.message));
@@ -131,6 +144,60 @@ class ChatCubit extends Cubit<ChatState> {
         ),
       );
     }
+  }
+
+  Future<void> _recordOutfitHistory({
+    required String userPrompt,
+    required ChatMessage assistantMessage,
+  }) async {
+    try {
+      final entry = OutfitHistoryFactory.fromStylistExchange(
+        assistantMessageId: assistantMessage.id,
+        userPrompt: userPrompt,
+        aiResponseText: assistantMessage.content,
+        recommendedItemIds: assistantMessage.recommendedItemIds,
+        weatherLabel: assistantMessage.weatherLabel,
+        createdAt: assistantMessage.createdAt,
+      );
+      await _outfitHistoryRepository.addEntry(entry);
+    } catch (e, stack) {
+      AppLogger.error(
+        'ChatCubit: failed to save outfit history',
+        error: e,
+        stackTrace: stack,
+      );
+    }
+  }
+
+  /// Appends a history exchange to the active chat (or focuses if present).
+  Future<void> openOutfitFromHistory(OutfitHistoryEntry entry) async {
+    if (state.isRestoringHistory) return;
+
+    final hasAssistant =
+        state.messages.any((message) => message.id == entry.id);
+    if (hasAssistant) return;
+
+    final userMessage = ChatMessage(
+      id: '${entry.id}_user',
+      role: ChatRole.user,
+      content: entry.userPrompt.isNotEmpty
+          ? entry.userPrompt
+          : 'Покажи этот образ снова',
+      createdAt: entry.createdAt.subtract(const Duration(milliseconds: 1)),
+    );
+
+    final assistantMessage = ChatMessage(
+      id: entry.id,
+      role: ChatRole.assistant,
+      content: entry.aiResponseText,
+      createdAt: entry.createdAt,
+      recommendedItemIds: entry.recommendedItemIds,
+      weatherLabel: entry.weatherLabel,
+    );
+
+    final updated = [...state.messages, userMessage, assistantMessage];
+    emit(state.copyWith(messages: updated, clearError: true));
+    await _persistMessages(updated);
   }
 
   Future<void> clearChat() async {

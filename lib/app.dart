@@ -8,6 +8,7 @@ import 'core/theme/app_theme.dart';
 import 'data/repositories/auth_repository.dart';
 import 'features/app/bloc/app_bloc.dart';
 import 'features/favorites/favorites_controller.dart';
+import 'features/outfit_history/outfit_history_controller.dart';
 import 'features/wardrobe/wardrobe_controller.dart';
 import 'l10n/generated/app_localizations.dart';
 
@@ -23,6 +24,9 @@ class App extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: (_) => FavoritesController()..ensureLoaded(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => OutfitHistoryController()..ensureLoaded(),
         ),
         ChangeNotifierProvider(
           create: (_) => WardrobeController(),

@@ -202,6 +202,8 @@ class _ProfileTabState extends State<ProfileTab> {
                     onWardrobe: () => context.pushNamed(RouteNames.wardrobeName),
                     onFavorites: () =>
                         context.pushNamed(RouteNames.favoritesName),
+                    onHistory: () =>
+                        context.pushNamed(RouteNames.outfitHistoryName),
                     onStyle: _showStylePreferences,
                     onSettings: _showSettings,
                   );
@@ -276,12 +278,14 @@ class _ProfileActionsBlock extends StatelessWidget {
   const _ProfileActionsBlock({
     required this.onWardrobe,
     required this.onFavorites,
+    required this.onHistory,
     required this.onStyle,
     required this.onSettings,
   });
 
   final VoidCallback onWardrobe;
   final VoidCallback onFavorites;
+  final VoidCallback onHistory;
   final VoidCallback onStyle;
   final VoidCallback onSettings;
 
@@ -301,6 +305,13 @@ class _ProfileActionsBlock extends StatelessWidget {
           title: 'Избранные образы',
           subtitle: 'Сохранённые рекомендации стилиста',
           onTap: onFavorites,
+        ),
+        const SizedBox(height: 10),
+        ProfileActionTile(
+          icon: Icons.history_rounded,
+          title: 'История образов',
+          subtitle: 'Все AI-рекомендации с вещами из гардероба',
+          onTap: onHistory,
         ),
         const SizedBox(height: 10),
         ProfileActionTile(

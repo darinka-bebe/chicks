@@ -5,7 +5,9 @@ import 'package:go_router/go_router.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_brand_colors.dart';
 import '../../../data/models/chat_message.dart';
+import '../../../data/models/outfit_history_entry.dart';
 import '../../favorites/favorites_controller.dart';
+import '../../outfit_history/outfit_history_controller.dart';
 import '../bloc/chat_cubit.dart';
 import '../bloc/chat_state.dart';
 import '../widgets/chat_empty_state.dart';
@@ -15,7 +17,9 @@ import '../widgets/chat_weather_banner.dart';
 import '../widgets/wardrobe_snapshot_scope.dart';
 
 class ChatScreen extends StatefulWidget {
-  const ChatScreen({super.key});
+  const ChatScreen({super.key, this.restoreEntry});
+
+  final OutfitHistoryEntry? restoreEntry;
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -24,6 +28,7 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final _scrollController = ScrollController();
   final _inputBarKey = GlobalKey<ChatInputBarState>();
+  bool _historyRestoreDone = false;
 
   @override
   void dispose() {
@@ -117,10 +122,29 @@ class _ChatScreenState extends State<ChatScreen> {
       create: (_) => ChatCubit(),
       child: BlocListener<ChatCubit, ChatState>(
         listenWhen: (prev, curr) =>
-            prev.messages.length != curr.messages.length ||
-            (prev.isLoading && !curr.isLoading),
-        listener: (_, __) => _scrollToBottom(),
+            prev.isRestoringHistory && !curr.isRestoringHistory,
+        listener: (context, state) async {
+          final entry = widget.restoreEntry;
+          if (entry == null || _historyRestoreDone) return;
+          _historyRestoreDone = true;
+          await context.read<ChatCubit>().openOutfitFromHistory(entry);
+          if (mounted) _scrollToBottom();
+        },
         child: BlocListener<ChatCubit, ChatState>(
+          listenWhen: (prev, curr) =>
+              prev.messages.length != curr.messages.length ||
+              (prev.isLoading && !curr.isLoading),
+          listener: (context, state) {
+            _scrollToBottom();
+            final last = state.messages.isNotEmpty ? state.messages.last : null;
+            if (last != null &&
+                last.role == ChatRole.assistant &&
+                last.recommendedItemIds.isNotEmpty &&
+                !state.isLoading) {
+              context.read<OutfitHistoryController>().refresh();
+            }
+          },
+          child: BlocListener<ChatCubit, ChatState>(
           listenWhen: (prev, curr) =>
               prev.error != curr.error && curr.error != null,
           listener: (context, state) {
@@ -169,6 +193,7 @@ class _ChatScreenState extends State<ChatScreen> {
               ],
             ),
           ),
+        ),
         ),
       ),
     );
