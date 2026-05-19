@@ -1,4 +1,4 @@
-import '../../core/services/wardrobe_ai_context.dart';
+import '../../core/services/wardrobe_sync_service.dart';
 import '../../core/services/wardrobe_image_storage.dart';
 import '../../core/storage/hive_json_list_codec.dart';
 import '../../core/storage/local_hive_storage.dart';
@@ -67,7 +67,10 @@ class WardrobeRepository {
     }
   }
 
-  Future<void> saveItems(List<WardrobeItem> items) async {
+  Future<void> saveItems(
+    List<WardrobeItem> items, {
+    String? deletedItemId,
+  }) async {
     final normalized = _ensureUniqueIds(items);
     await HiveJsonListCodec.write(
       LocalHiveStorage.wardrobeBox,
@@ -77,8 +80,9 @@ class WardrobeRepository {
     AppLogger.debug(
       'WardrobeRepository.saveItems: wrote ${normalized.length} item(s)',
     );
-    WardrobeAiContext.instance.invalidate(
-      reason: 'saveItems(${normalized.length})',
+    await WardrobeSyncService.afterWardrobeMutation(
+      reason: deletedItemId != null ? 'deleteItem' : 'saveItems',
+      deletedItemId: deletedItemId,
     );
   }
 
@@ -156,7 +160,7 @@ class WardrobeRepository {
 
     final updated =
         items.where((item) => !_idEquals(item.id, target!.id)).toList();
-    await saveItems(updated);
+    await saveItems(updated, deletedItemId: target.id);
     AppLogger.info(
       'WardrobeRepository.deleteItem: removed "${target.title}" (${updated.length} left)',
     );

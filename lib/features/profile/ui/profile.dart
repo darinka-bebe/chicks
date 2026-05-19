@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_brand_colors.dart';
+import '../../../core/models/seasonal_color_type.dart';
 import '../../../data/models/user_model.dart';
+import '../../../data/repositories/user_profile_repository.dart';
 import '../../../features/favorites/favorites_controller.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../widgets/user_avatar.dart';
@@ -12,6 +14,7 @@ import '../../app/bloc/app_bloc.dart';
 import '../../app/bloc/app_event.dart';
 import '../../app/bloc/auth_state.dart';
 import '../data/profile_stats_loader.dart';
+import '../widgets/profile_color_type_card.dart';
 import '../widgets/profile_action_tile.dart';
 import '../widgets/profile_card_decoration.dart';
 import '../widgets/profile_stat_card.dart';
@@ -27,7 +30,21 @@ class _ProfileTabState extends State<ProfileTab> {
   final GlobalKey<_ProfileStatsPanelState> _statsPanelKey =
       GlobalKey<_ProfileStatsPanelState>();
 
-  static const int _listItemCount = 9;
+  SeasonalColorType? _colorType;
+
+  static const int _listItemCount = 11;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadColorType();
+  }
+
+  Future<void> _loadColorType() async {
+    final type = await UserProfileRepository.instance.getColorType();
+    if (!mounted) return;
+    setState(() => _colorType = type);
+  }
 
   Future<void> _confirmSignOut() async {
     final confirmed = await showDialog<bool>(
@@ -141,7 +158,10 @@ class _ProfileTabState extends State<ProfileTab> {
   }
 
   Future<void> _refreshStats() async {
-    await _statsPanelKey.currentState?.reload();
+    await Future.wait([
+      _statsPanelKey.currentState?.reload() ?? Future<void>.value(),
+      _loadColorType(),
+    ]);
   }
 
   @override
@@ -188,16 +208,23 @@ class _ProfileTabState extends State<ProfileTab> {
                     ),
                   );
                 case 1:
-                  return const SizedBox(height: 20);
+                  return const SizedBox(height: 16);
                 case 2:
-                  return _ProfileStatsPanel(key: _statsPanelKey);
+                  return ProfileColorTypeCard(
+                    colorType: _colorType,
+                    onUpdated: _loadColorType,
+                  );
                 case 3:
-                  return const SizedBox(height: 24);
+                  return const SizedBox(height: 20);
                 case 4:
-                  return const _SectionTitle(title: 'Быстрые действия');
+                  return _ProfileStatsPanel(key: _statsPanelKey);
                 case 5:
-                  return const SizedBox(height: 12);
+                  return const SizedBox(height: 24);
                 case 6:
+                  return const _SectionTitle(title: 'Быстрые действия');
+                case 7:
+                  return const SizedBox(height: 12);
+                case 8:
                   return _ProfileActionsBlock(
                     onWardrobe: () => context.pushNamed(RouteNames.wardrobeName),
                     onFavorites: () =>
@@ -207,9 +234,9 @@ class _ProfileTabState extends State<ProfileTab> {
                     onStyle: _showStylePreferences,
                     onSettings: _showSettings,
                   );
-                case 7:
+                case 9:
                   return const SizedBox(height: 28);
-                case 8:
+                case 10:
                   return _SignOutButton(
                     label: loc.signOut,
                     onPressed: _confirmSignOut,

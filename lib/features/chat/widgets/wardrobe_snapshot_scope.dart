@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import '../../../core/services/wardrobe_ai_context.dart';
+import '../../../core/services/wardrobe_sync_service.dart';
 import '../../../data/models/wardrobe_item.dart';
 
 /// Single wardrobe load for the chat screen — avoids N× Hive reads while scrolling.
@@ -74,12 +75,11 @@ class _WardrobeSnapshotLoaderState extends State<WardrobeSnapshotLoader> {
   }
 
   Future<void> _load() async {
-    final revision = WardrobeAiContext.instance.revision;
-    final items = await WardrobeAiContext.instance.loadForPrompt();
+    final items = await WardrobeSyncService.loadFreshWardrobeForAi();
     if (!mounted) return;
     setState(() {
       _items = items;
-      _revision = revision;
+      _revision = WardrobeAiContext.instance.revision;
     });
   }
 

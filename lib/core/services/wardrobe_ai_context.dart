@@ -41,12 +41,31 @@ class WardrobeAiContext extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Updates in-memory cache from a direct Hive read (AI / sync path).
+  void publishRepositorySnapshot(List<WardrobeItem> items) {
+    _memoryCache = List<WardrobeItem>.from(items);
+    _cacheRevision = _revision;
+    AppLogger.info(
+      'WardrobeAiContext: repository snapshot rev=$_revision count=${items.length}',
+    );
+    if (items.isEmpty) {
+      AppLogger.debug('WardrobeAiContext: repository ids=(empty)');
+    } else {
+      AppLogger.debug(
+        'WardrobeAiContext: repository ids=${items.map((i) => i.id).join(", ")}',
+      );
+    }
+  }
+
   /// Loads from Hive; coalesces concurrent calls and reuses cache per revision.
   Future<List<WardrobeItem>> loadForPrompt({bool forceReload = false}) async {
     if (!forceReload &&
         _memoryCache != null &&
         _cacheRevision == _revision) {
-      return _memoryCache!;
+      AppLogger.debug(
+        'WardrobeAiContext: cache hit rev=$_revision count=${_memoryCache!.length}',
+      );
+      return List<WardrobeItem>.from(_memoryCache!);
     }
 
     final inFlight = _inFlightLoad;
@@ -66,13 +85,23 @@ class WardrobeAiContext extends ChangeNotifier {
   }
 
   Future<List<WardrobeItem>> _loadFromStorage() async {
+    final loadRevision = _revision;
+
     final items = await _repository.loadItems();
-    _memoryCache = items;
+
+    if (loadRevision != _revision) {
+      AppLogger.warning(
+        'WardrobeAiContext: discarded stale load (started rev=$loadRevision '
+        'current rev=$_revision) — reloading',
+      );
+      return loadForPrompt(forceReload: true);
+    }
+
+    _memoryCache = List<WardrobeItem>.from(items);
     _cacheRevision = _revision;
 
     AppLogger.info(
-      'WardrobeAiContext: loadForPrompt rev=$_revision '
-      'count=${items.length}',
+      'WardrobeAiContext: loadForPrompt rev=$_revision count=${items.length}',
     );
 
     if (items.isEmpty) {
@@ -82,8 +111,11 @@ class WardrobeAiContext extends ChangeNotifier {
       AppLogger.debug(
         'WardrobeAiContext: prompt titles=${titles.join(' | ')}',
       );
+      AppLogger.debug(
+        'WardrobeAiContext: prompt ids=${items.map((i) => i.id).join(", ")}',
+      );
     }
 
-    return items;
+    return List<WardrobeItem>.from(items);
   }
 }

@@ -12,6 +12,7 @@ abstract final class StylistContextParser {
     'soft girl': ['soft girl', 'софт гёрл', 'софт girl'],
     'elegant': ['elegant', 'элегант', 'изыскан'],
     'dark academia': ['dark academia', 'дарк академ', 'тёмн академ'],
+    'streetwear': ['streetwear', 'стритвир', 'стрит', 'urban'],
   };
 
   static final _weatherKeywords = <String, List<String>>{

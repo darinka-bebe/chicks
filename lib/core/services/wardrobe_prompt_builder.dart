@@ -1,6 +1,9 @@
 import '../../core/utils/logger.dart';
 import '../../data/models/wardrobe_item.dart';
 import '../models/stylist_request_context.dart';
+import '../models/wardrobe_outfit_slot.dart';
+import 'stylist_pipeline_safety.dart';
+import 'wardrobe_slot_classifier.dart';
 
 /// Builds readable wardrobe and styling context for the AI stylist system prompt.
 abstract final class WardrobePromptBuilder {
@@ -16,10 +19,17 @@ abstract final class WardrobePromptBuilder {
       AppLogger.debug('WardrobePromptBuilder: titles in prompt=(empty)');
       return;
     }
-    AppLogger.debug(
-      'WardrobePromptBuilder: titles in prompt='
-      '${items.map((i) => i.title).join(' | ')}',
-    );
+    final grouped = StylistPipelineSafety.safeGroup(items);
+    final summary = WardrobeOutfitSlotX.outfitOrder
+        .where(
+          (slot) => StylistPipelineSafety.itemsForSlot(grouped, slot).isNotEmpty,
+        )
+        .map(
+          (slot) =>
+              '${slot.name}=${StylistPipelineSafety.itemsForSlot(grouped, slot).length}',
+        )
+        .join(', ');
+    AppLogger.debug('WardrobePromptBuilder: slots → $summary');
   }
 
   /// Tells the model to ignore wardrobe names from older chat turns.
@@ -37,86 +47,136 @@ abstract final class WardrobePromptBuilder {
 
     return '''
 АКТУАЛЬНОСТЬ ГАРДЕРОБА (ревизия $revision):
-Список вещей в предыдущем системном сообщении — единственный источник правды.
-Игнорируй любые названия вещей из прошлых реплик user/assistant, которых НЕТ в этом списке
-(пользователь мог удалить или добавить вещи).
-Допустимые названия сейчас: $titles.
+Список вещей в системных сообщениях — единственный источник правды.
+Игнорируй любые названия вещей из прошлых реплик user/assistant, которых НЕТ в гардеробе сейчас.
+Допустимые названия: $titles.
 Не предлагай и не упоминай удалённые вещи.''';
   }
 
-  /// Full wardrobe block for OpenAI `system` message.
+  /// Full wardrobe block grouped by outfit slots for the OpenAI system message.
   static String buildWardrobeSection(List<WardrobeItem> items) {
-    if (items.isEmpty) {
-      return _emptyWardrobePrompt;
-    }
+    try {
+      final safeItems = StylistPipelineSafety.sanitizeWardrobe(items);
+      if (safeItems.isEmpty) {
+        return _emptyWardrobePrompt;
+      }
 
-    final sorted = List<WardrobeItem>.from(items)
-      ..sort((a, b) => a.category.compareTo(b.category));
+      final grouped = StylistPipelineSafety.safeGroup(safeItems);
+      final buffer = StringBuffer()
+        ..writeln(
+          'ГАРДЕРОБ ПОЛЬЗОВАТЕЛЯ (${safeItems.length} вещей, по слотам образа)',
+        )
+        ..writeln()
+        ..writeln(_outfitSlotRules)
+        ..writeln();
 
-    final buffer = StringBuffer()
-      ..writeln('ГАРДЕРОБ ПОЛЬЗОВАТЕЛЯ (${sorted.length} вещей)')
-      ..writeln()
-      ..writeln(
-        'Названия вещей (в ответе используй ТОЧНО эти формулировки в кавычках «…»):',
+      var slotsWithItems = 0;
+      for (final slot in WardrobeOutfitSlotX.outfitOrder) {
+        final slotItems = StylistPipelineSafety.itemsForSlot(grouped, slot);
+        if (slotItems.isEmpty) continue;
+        slotsWithItems++;
+
+        buffer
+          ..writeln('── ${slot.sectionTitleRu} (${slotItems.length}) ──')
+          ..writeln('Слот: ${slot.promptLabelRu}');
+
+        for (final item in slotItems) {
+          buffer.writeln('• ${formatItemLine(item)}');
+        }
+        buffer.writeln();
+      }
+
+      if (slotsWithItems == 0) {
+        buffer.writeln(
+          'В гардеробе нет вещей с распознанными слотами — используй список ID ниже.',
+        );
+      }
+
+      final unknown =
+          StylistPipelineSafety.itemsForSlot(grouped, WardrobeOutfitSlot.unknown);
+      if (unknown.isNotEmpty) {
+        buffer
+          ..writeln('── ${WardrobeOutfitSlot.unknown.sectionTitleRu} ──')
+          ..writeln(
+            'Классифицируй по смыслу в один из слотов образа; не дублируй категории.',
+          );
+        for (final item in unknown) {
+          final hint = WardrobeSlotClassifier.classify(item);
+          buffer.writeln(
+            '• ${formatItemLine(item)} (вероятный слот: ${hint.name})',
+          );
+        }
+        buffer.writeln();
+      }
+
+      buffer.writeln('ID для recommendedItemIds (только эти строки):');
+      for (final item in safeItems) {
+        buffer.writeln(
+          '- "${item.id}" → «${item.title}» [${item.category}]',
+        );
+      }
+
+      buffer.writeln(_stylistCompositionGuide);
+      buffer.writeln(_wardrobeRecommendationRules);
+      return buffer.toString().trim();
+    } catch (e, stack) {
+      AppLogger.error(
+        'WardrobePromptBuilder.buildWardrobeSection failed — using fallback',
+        error: e,
+        stackTrace: stack,
       );
-
-    for (final item in sorted) {
-      buffer.writeln('- ${item.title}');
+      return StylistPipelineSafety.emptyWardrobeSection;
     }
-
-    buffer
-      ..writeln()
-      ..writeln('Детали по каждой вещи:');
-
-    buffer
-      ..writeln()
-      ..writeln('ID вещей (используй в recommendedItemIds):');
-    for (final item in sorted) {
-      buffer.writeln('- id="${item.id}" → «${item.title}»');
-    }
-
-    for (var i = 0; i < sorted.length; i++) {
-      buffer.writeln('${i + 1}. ${formatItemLine(sorted[i])}');
-    }
-
-    buffer.writeln(_wardrobeRecommendationRules);
-    return buffer.toString().trim();
   }
 
   /// JSON output contract for OpenAI structured replies.
-  static String buildResponseFormatSection() {
+  static String buildResponseFormatSection({bool hasColorType = false}) {
+    final colorTypeHint = hasColorType
+        ? '- В «Почему это работает» обязательно 1 пункт про цветотип пользователя '
+            '(почему оттенки образа подходят именно ему).\n'
+        : '';
+
     return '''
 ФОРМАТ ОТВЕТА (строго JSON, без markdown-обёртки):
-Верни один JSON-объект:
 {
-  "message": "текст ответа пользователю на русском (markdown допустим: списки, **жирный**, «названия вещей»)",
-  "recommendedItemIds": ["id1", "id2"]
+  "message": "текст ответа пользователю на русском",
+  "recommendedItemIds": ["id1", "id2", "id3"]
 }
 
-Правила:
-- "message" — полный стилистический ответ (советы, состав образа, почему работает).
-- "recommendedItemIds" — массив строковых id вещей из гардероба, которые ты рекомендуешь в этом ответе (порядок = порядок в образе).
-- Если образ не из гардероба или вещей нет — "recommendedItemIds": [].
-- Только id из списка «ID вещей» выше; не выдумывай id.
-- Не дублируй id. Максимум 8 вещей в одном ответе.''';
+Правила JSON:
+- "message" — ответ профессионального стилиста: связный ОБРАЗ, не случайный набор вещей.
+- Структура message (рекомендуется):
+  1) «Состав образа» — перечисли вещи «…» по слотам (верх/низ или платье, верхняя одежда, обувь, аксессуар).
+  2) «Почему это работает» — 3–5 коротких пунктов: запрос пользователя, погода, цвета, силуэт, настроение/повод.
+$colorTypeHint  3) При необходимости — 1 практичный совет (слой, обувь, аксессуар).
+- "recommendedItemIds" — id из гардероба в порядке сборки образа.
+- СТРОГО не более ОДНОЙ вещи на слот:
+  • максимум 1 верх ИЛИ 1 платье (платье заменяет верх+низ)
+  • максимум 1 низ (только если нет платья)
+  • максимум 1 верхняя одежда
+  • максимум 1 обувь
+  • максимум 1 аксессуар
+- НИКОГДА не указывай два худи, две рубашки, две пары обуви и т.п.
+- Если в слоте нет подходящей вещи — пропусти слот, не дублируй другую категорию.
+- Только существующие id; не выдумывай. Без дубликатов id. Обычно 3–5 вещей в образе.''';
   }
 
   /// Mood / weather / occasion guidance for the current user message.
   static String buildStylingContextSection(StylistRequestContext context) {
     final buffer = StringBuffer()
-      ..writeln('КОНТЕКСТ ЗАПРОСА (настроение / погода / повод):');
+      ..writeln('КОНТЕКСТ ЗАПРОСА ПОЛЬЗОВАТЕЛЯ:');
 
     if (context.isEmpty) {
       buffer.writeln(
-        'Явные теги в сообщении не распознаны — выведи настроение, погоду и повод '
-        'из формулировки пользователя и сопоставь с тегами вещей в гардеробе.',
+        'Явные теги не распознаны — внимательно прочитай сообщение user: '
+        'повод, настроение, погоду и стиль (school, romantic, comfy, rainy, streetwear и т.д.).',
       );
     } else {
       if (context.moods.isNotEmpty) {
         buffer.writeln('- Настроение / вайб: ${context.moods.join(', ')}');
       }
       if (context.weather.isNotEmpty) {
-        buffer.writeln('- Погода: ${context.weather.join(', ')}');
+        buffer.writeln('- Погода (из запроса): ${context.weather.join(', ')}');
       }
       if (context.occasions.isNotEmpty) {
         buffer.writeln('- Повод: ${context.occasions.join(', ')}');
@@ -124,17 +184,57 @@ abstract final class WardrobePromptBuilder {
     }
 
     buffer.writeln(_contextMatchingGuide);
+    buffer.writeln(buildOccasionPlaybook(context));
     return buffer.toString().trim();
   }
 
+  /// Targeted styling playbooks for common user prompts.
+  static String buildOccasionPlaybook(StylistRequestContext context) {
+    final keys = <String>{
+      ...context.moods.map((e) => e.toLowerCase()),
+      ...context.weather.map((e) => e.toLowerCase()),
+      ...context.occasions.map((e) => e.toLowerCase()),
+    };
+
+    final sections = <String>[];
+
+    if (keys.contains('school')) {
+      sections.add(_playbookSchool);
+    }
+    if (keys.contains('romantic')) {
+      sections.add(_playbookRomantic);
+    }
+    if (keys.contains('comfy') || keys.contains('cozy')) {
+      sections.add(_playbookComfy);
+    }
+    if (keys.contains('rainy')) {
+      sections.add(_playbookRainy);
+    }
+    if (_impliesStreetwear(keys)) {
+      sections.add(_playbookStreetwear);
+    }
+
+    if (sections.isEmpty) return '';
+
+    return '''
+
+СЦЕНАРИЙ ЗАПРОСА (примени к гардеробу):
+${sections.join('\n\n')}''';
+  }
+
+  static bool _impliesStreetwear(Set<String> keys) =>
+      keys.contains('streetwear');
+
   /// Single-line wardrobe entry for the prompt.
   static String formatItemLine(WardrobeItem item) {
+    final slot = WardrobeSlotClassifier.classify(item);
     final parts = <String>[
-      'id="${item.id}"',
-      '«${item.title}»',
-      'категория: ${item.category}',
-      'цвет: ${item.color}',
-      'сезон: ${item.season}',
+      'id="${item.id.trim()}"',
+      '«${item.title.trim()}»',
+      'слот: ${slot.name}',
+      'категория: ${item.category.trim().isEmpty ? "—" : item.category.trim()}',
+      'цвет: ${item.color.trim().isEmpty ? "—" : item.color.trim()}',
+      'сезон: ${item.season.trim().isEmpty ? "—" : item.season.trim()}',
     ];
 
     if (item.fit.isNotEmpty) {
@@ -155,38 +255,74 @@ abstract final class WardrobePromptBuilder {
 
   static const _emptyWardrobePrompt = '''
 ГАРДЕРОБ ПОЛЬЗОВАТЕЛЯ:
-Список вещей пуст. Дай универсальные советы по стилю и мягко предложи добавить вещи в раздел «Твой гардероб» в приложении.
-Не называй конкретные вещи пользователя, которых нет в данных.''';
+Список вещей пуст. Дай универсальные советы по стилю и мягко предложи добавить вещи в раздел «Твой гардероб».
+Не называй конкретные вещи пользователя. recommendedItemIds: [].''';
+
+  static const _outfitSlotRules = '''
+ПРАВИЛА СБОРКИ ОБРАЗА (критично — как у профессионального стилиста):
+Собирай ЦЕЛОСТНЫЙ лук из гардероба, а не случайный список.
+• 1 слот = максимум 1 вещь. Запрещено: 2 верха, 2 низа, 2 пары обуви.
+• Платье = самостоятельная база (не добавляй отдельный верх и низ к платью).
+• Если слота нет в гардеробе — пропусти, не заменяй другой категорией.
+• Сочетай цвета осознанно: нейтральная база + 1 акцент ИЛИ тон-в-тон.
+• Не смешивай конфликтующие стили (например sporty + romantic) без явного запроса.
+• Учитывай сезон и посадку: slim низ + oversized верх — баланс; не дублируй объём.''';
+
+  static const _stylistCompositionGuide = '''
+
+КАК ДУМАТЬ КАК СТИЛИСТ (перед выбором id):
+1) Пойми запрос: повод, настроение, погода, dress code.
+2) Выбери БАЗУ: платье ИЛИ (верх + низ) — одна логичная пара по цвету и силуэту.
+3) Добавь верхнюю одежду только если холод / дождь / ветер.
+4) Подбери ОДНУ обувь под повод и погоду.
+5) Один аксессуар — если усиливает образ, не перегружай.
+6) В message объясни ПОЧЕМУ: (а) под запрос, (б) под погоду, (в) почему цвета/стили сочетаются.''';
 
   static const _wardrobeRecommendationRules = '''
 
-Правила персональных рекомендаций:
-- Собирай образы ТОЛЬКО из списка выше. В ответе обязательно называй вещи точными названиями в кавычках «…».
-- Сочетай гардероб с настроением, погодой и поводом из контекста запроса (следующее системное сообщение).
-- Сначала подбери максимум вещей из гардероба; докупку предлагай только если элемента нет в списке.
-- Учитывай теги «повод», «стиль», «сезон», «посадка», «вайб» на каждой вещи.
-- После состава образа объясни ПОЧЕМУ он работает: цвета, силуэт/посадка, настроение, погода и повод — коротко и по-человечески.
-- Отвечай на русском, живо и по делу (2–4 абзаца или список + блок «Почему это сработает»).''';
+Персональные рекомендации:
+- Только вещи из гардероба выше; названия в кавычках «…» точно как в списке.
+- Приоритет: запрос пользователя → живая погода → теги вещей (стиль, повод, сезон, вайб).
+- Не предлагай визуально конфликтующие вещи (спортивные кроссовки + вечернее платье без запроса).
+- Докупку упоминай только если критичного слота нет в гардеробе.
+- Русский язык, тепло и уверенно, без канцелярита.''';
 
   static const _contextMatchingGuide = '''
 
-Как сопоставлять контекст с гардеробом:
-- Настроение (comfy, feminine, confident, cozy, romantic, soft girl, elegant, dark academia):
-  ищи вещи с похожими тегами «стиль» / «вайб»; для romantic/elegant — более утончённые сочетания.
-- Погода:
-  • hot — лёгкие ткани, сезон «Лето» / «Весна»;
-  • cold — слои, «Зима» / «Осень», верхняя одежда;
-  • rainy — закрытая обувь, плащ/тренч, не холодные открытые сандалии;
-  • windy — устойчивые силуэты, не слишком объёмные юбки без слоёв.
-- Повод:
-  • school — повод «школа», casual/clean girl, без слишком яркого party-лукa;
-  • date — romantic/feminine, аккуратные сочетания;
-  • office — office в тегах, сдержанные цвета;
-  • walk — прогулка, comfy/casual;
-  • party — ярче, смелее, но из гардероба.
+Сопоставление контекста с гардеробом:
+- comfy / cozy → мягкие фактуры, relaxed/oversized, уютные вайбы, слои.
+- romantic / feminine / soft girl → нежные оттенки, аккуратный силуэт, минимум грубого sport.
+- confident / streetwear → чёткий силуэт, streetwear/casual в стилях, уместная обувь.
+- elegant / dark academia → сдержанная палитра, структурные вещи.
+- hot / cold / rainy / windy — согласуй с сезоном вещи и обувью (см. блок погоды).''';
 
-Пример хорошего ответа:
-Запрос: «Подбери comfy образ в школу на холодную погоду»
-Состав: «Белая рубашка» + «Джинсы straight» + «Кашемировый свитер» + «Кроссовки» из гардероба.
-Почему: слой свитера поверх рубашки даёт уют в холод (cozy/comfy); нейтральные светлые тона выглядят аккуратно для школы; straight-джинсы держат силуэт собранным, а кроссовки — практичный финал для долгого дня.''';
+  static const _playbookSchool = '''【school / школа】
+База: 1 верх + 1 низ (или платье), без party-перегруза.
+Цвета: нейтральные, аккуратные; избегай слишком яркого total look.
+Обувь: кроссовки/лоферы из гардероба — практично для долгого дня.
+Слои: лёгкий верхний слой при холоде; не двойной верх.''';
+
+  static const _playbookRomantic = '''【romantic / романтичный】
+База: платье ИЛИ блуза/топ + юбка/брюки с мягкой линией.
+Цвета: пастель, кремовый, нежно-розовый, молочный; избегай агрессивного спорт-стиля.
+Обувь: изящнее (лоферы, ботильоны) — если есть в гардеробе.
+Аксессуар: один деликатный (сумка, шарф) — не перегружай.''';
+
+  static const _playbookComfy = '''【comfy / уютный】
+База: мягкий верх (худи, свитер) + comfortable низ.
+Посадка: relaxed / oversized сверху + straight/relaxed снизу — баланс объёма.
+Ткани: тёплые, тактильные; цвета спокойные.
+Обувь: кроссовки или мягкая закрытая обувь.''';
+
+  static const _playbookRainy = '''【rainy / дождь】
+Обязательно: верхняя одежда (плащ/тренч/куртка) если есть в гардеробе.
+Обувь: закрытая, не открытые сандалии.
+Цвета: можно чуть темнее низ, чтобы образ выглядел собранно.
+Не дублируй верх — один защитный слой достаточно.''';
+
+  static const _playbookStreetwear = '''【streetwear】
+База: statement верх или худи + straight/cargo низ.
+Силуэт: баланс oversized сверху и более прямого низа.
+Обувь: кроссовки из гардероба — ключевой элемент.
+Цвета: нейтраль + один акцент; избегай слишком romantic-вайба без запроса.''';
 }

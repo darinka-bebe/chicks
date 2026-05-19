@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../../core/services/wardrobe_sync_service.dart';
 import '../../core/utils/logger.dart';
 import '../../data/models/wardrobe_item.dart';
 import '../../data/repositories/wardrobe_repository.dart';
@@ -70,10 +71,26 @@ class WardrobeController extends ChangeNotifier {
   }
 
   /// Call after item was removed from Hive (e.g. details screen).
-  void onItemDeleted(String id) {
+  Future<void> onItemDeleted(String id) async {
     AppLogger.info('WardrobeController.onItemDeleted: id=$id');
     _items =
         _items.where((i) => !WardrobeRepository.idEquals(i.id, id)).toList();
+    _isLoaded = true;
     notifyListeners();
+
+    // Repository.deleteItem already syncs AI cache; reload UI + verify Hive.
+    await reloadFromStorage();
+    try {
+      final fresh = await WardrobeSyncService.loadFreshWardrobeForAi();
+      AppLogger.info(
+        'WardrobeController.onItemDeleted: verified wardrobeCount=${fresh.length}',
+      );
+    } catch (e, stack) {
+      AppLogger.error(
+        'WardrobeController.onItemDeleted: wardrobe sync verify failed',
+        error: e,
+        stackTrace: stack,
+      );
+    }
   }
 }

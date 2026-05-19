@@ -185,7 +185,7 @@ class _WardrobeScreenState extends State<WardrobeScreen>
     await _deleteController!.forward();
     if (!mounted) return;
 
-    context.read<WardrobeController>().onItemDeleted(itemId);
+    await context.read<WardrobeController>().onItemDeleted(itemId);
 
     setState(() {
       _deletingItemId = null;

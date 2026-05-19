@@ -2,6 +2,7 @@ class RouteNames {
   // Пути
   static const String splash = '/';
   static const String onboarding = '/onboarding';
+  static const String colorTypeQuiz = '/onboarding/color-type';
   static const String login = '/login';
   static const String registration = '/registration';
 
@@ -20,6 +21,7 @@ class RouteNames {
   // Имена
   static const String splashName = 'splash';
   static const String onboardingName = 'onboarding';
+  static const String colorTypeQuizName = 'colorTypeQuiz';
   static const String loginName = 'login';
   static const String registrationName = 'registration';
 

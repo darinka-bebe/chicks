@@ -1,6 +1,9 @@
 import '../../data/models/wardrobe_item.dart';
 import '../../data/repositories/wardrobe_repository.dart';
+import '../models/stylist_request_context.dart';
+import '../models/weather_snapshot.dart';
 import '../utils/logger.dart';
+import 'outfit_recommendation_curator.dart';
 
 /// Resolves AI-referenced wardrobe ids against the current in-storage wardrobe.
 abstract final class WardrobeRecommendationResolver {
@@ -49,13 +52,20 @@ abstract final class WardrobeRecommendationResolver {
     return resolved;
   }
 
-  /// Filters id list to those still in wardrobe (for persistence sanitization).
+  /// Filters and curates ids (one item per outfit slot, stylist order).
   static List<String> filterValidIds({
     required List<String> requestedIds,
     required List<WardrobeItem> wardrobe,
+    StylistRequestContext context = StylistRequestContext.empty,
+    WeatherSnapshot? weather,
   }) {
-    return resolveItems(requestedIds: requestedIds, wardrobe: wardrobe)
-        .map((item) => item.id)
-        .toList();
+    if (requestedIds.isEmpty || wardrobe.isEmpty) return const [];
+
+    return OutfitRecommendationCurator.curateIds(
+      requestedIds: requestedIds,
+      wardrobe: wardrobe,
+      context: context,
+      weather: weather,
+    );
   }
 }

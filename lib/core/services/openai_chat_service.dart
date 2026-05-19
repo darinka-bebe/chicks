@@ -1,16 +1,26 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
 import '../../data/models/chat_message.dart';
+import '../../data/models/wardrobe_item.dart';
+import '../models/stylist_request_context.dart';
 import '../models/stylist_response.dart';
 import '../utils/logger.dart';
 import 'stylist_context_parser.dart';
 import 'stylist_response_parser.dart';
 import '../models/weather_snapshot.dart';
+import '../../data/repositories/user_profile_repository.dart';
+import 'color_type_prompt_builder.dart';
 import 'wardrobe_ai_context.dart';
+import 'wardrobe_sync_service.dart';
 import 'wardrobe_prompt_builder.dart';
+import 'outfit_recommendation_curator.dart';
+import 'stylist_pipeline_logger.dart';
+import 'stylist_pipeline_safety.dart';
 import 'wardrobe_recommendation_resolver.dart';
 import 'weather/weather_prompt_builder.dart';
 import 'weather/weather_repository.dart';
@@ -25,6 +35,7 @@ class OpenAiChatService {
 
   static const _endpoint = 'https://api.openai.com/v1/chat/completions';
   static const _model = 'gpt-4o-mini';
+  static const _requestTimeout = Duration(seconds: 90);
 
   final WardrobeAiContext _wardrobeAiContext;
   final WeatherRepository _weatherRepository;
@@ -47,28 +58,18 @@ class OpenAiChatService {
 
 Объясняй ПОЧЕМУ образ работает (обязательно):
 - Не ограничивайся списком вещей — после состава образа дай короткое стильное объяснение логики.
-- Цвета: почему оттенки гармонируют (например: «светлые нейтрали дают мягкий feminine-вайб», «контраст верха и низа стройнит силуэт»).
-- Силуэт и посадка: как вещи балансируют друг друга (например: «oversized пиджак уравновешивает slim джинсы», «relaxed свитер добавляет уют без лишнего объёма снизу»).
-- Настроение: как образ передаёт нужный вайб (romantic, comfy, elegant и т.д.) через фактуры, цвет и пропорции.
-- Погода и повод: почему выбор практичен для контекста (слои для холода, закрытая обувь для дождя, сдержанность для школы/офиса).
-- Пиши как живой стилист: тепло, уверенно, без канцелярита и шаблонов вроде «данный образ является» / «рекомендуется использовать».
-- 2–4 естественные фразы с «почему» достаточно — не превращай ответ в лекцию.
+- Цвета: почему оттенки гармонируют.
+- Силуэт и посадка: как вещи балансируют друг друга.
+- Настроение: как образ передаёт нужный вайб.
+- Погода и повод: почему выбор практичен для контекста.
+- 2–4 естественные фразы с «почему» достаточно.
 
 Приоритет гардероба (критично):
-- В системных сообщениях передан актуальный гардероб и контекст запроса (настроение, погода, повод).
-- Сначала используй вещи из гардероба; только потом нейтральную докупку, если элемента нет в списке.
-- Не выдумывай вещи и не подменяй названия — только формулировки из гардероба.
-- Комбинируй: гардероб + настроение + погода + повод в одном связном образе.
-
-Контекст образа:
-- Настроение / вайб: comfy, feminine, confident, cozy, romantic, soft girl, elegant, dark academia и др.
-- Погода: hot, cold, rainy, windy (жара, холод, дождь, ветер).
-- Повод: school, date, office, walk, party (школа, свидание, офис, прогулка, вечеринка).
-- Если пользователь комбинирует несколько сигналов — учти все (например comfy + school + cold).
-
-Темы:
-- Подбор образов, капсульный гардероб, dress code, сезон, тип фигуры, цветотип (осторожно, без категоричности).
-- Что с чем сочетать, как обновить базовый гардероб, что докупить к имеющим вещам.
+- В системных сообщениях передан актуальный гардероб, сгруппированный по слотам образа.
+- Собирай ЦЕЛОСТНЫЙ лук: максимум 1 вещь на слот (верх ИЛИ платье, низ, верхняя одежда, обувь, аксессуар).
+- НИКОГДА не рекомендуй две вещи одной категории.
+- Если слота нет — пропусти, не подставляй дубликат.
+- Не выдумывай вещи — только id из списка.
 
 Ограничения:
 - Не давай медицинских и правовых советов. Не обсуждай темы вне моды и стиля.
@@ -76,65 +77,120 @@ class OpenAiChatService {
 
   String? get _apiKey => dotenv.env['OPENAI_API_KEY'];
 
-  /// Builds system messages: persona, wardrobe, styling context.
+  /// Builds system messages: persona, wardrobe, styling context. Never throws.
   Future<List<Map<String, String>>> buildSystemMessages({
     required String latestUserMessage,
     WeatherSnapshot? liveWeather,
+    List<WardrobeItem>? wardrobeSnapshot,
   }) async {
-    final revision = _wardrobeAiContext.revision;
-    final wardrobe = await _wardrobeAiContext.loadForPrompt();
-    final requestContext = StylistContextParser.parse(latestUserMessage);
+    try {
+      List<WardrobeItem> wardrobe;
+      try {
+        if (wardrobeSnapshot != null) {
+          wardrobe = StylistPipelineSafety.sanitizeWardrobe(wardrobeSnapshot);
+        } else {
+          wardrobe = StylistPipelineSafety.sanitizeWardrobe(
+            await WardrobeSyncService.loadFreshWardrobeForAi(),
+          );
+        }
+      } catch (e, stack) {
+        StylistPipelineLogger.logFailure('loadWardrobe', e, stack);
+        wardrobe = const [];
+      }
 
-    WardrobePromptBuilder.logPromptWardrobe(
-      revision: revision,
-      items: wardrobe,
-    );
+      final revision = _wardrobeAiContext.revision;
 
-    AppLogger.debug(
-      'OpenAiChatService: wardrobe=${wardrobe.length} rev=$revision '
-      'mood=${requestContext.moods} weather=${requestContext.weather} '
-      'occasion=${requestContext.occasions}',
-    );
+      final requestContext =
+          StylistContextParser.parse(latestUserMessage.trim());
 
-    final wardrobeSection = WardrobePromptBuilder.buildWardrobeSection(wardrobe);
-    final freshnessGuard = WardrobePromptBuilder.buildFreshnessGuard(
-      revision: revision,
-      items: wardrobe,
-    );
-    final contextSection =
-        WardrobePromptBuilder.buildStylingContextSection(requestContext);
-
-    final weather = liveWeather ?? await _weatherRepository.getCurrent();
-    final weatherSection = WeatherPromptBuilder.buildSystemSection(
-      weather: weather,
-      userContext: requestContext,
-    );
-
-    if (weather.isAvailable) {
-      AppLogger.debug(
-        'OpenAiChatService: live weather → ${weather.compactUiLabel}',
+      WardrobePromptBuilder.logPromptWardrobe(
+        revision: revision,
+        items: wardrobe,
       );
+      StylistPipelineLogger.logCategorizedWardrobe(wardrobe);
+
+      final weather = StylistPipelineSafety.safeWeather(
+        liveWeather ?? await _weatherRepository.getCurrent(),
+      );
+
+      final wardrobeSection = WardrobePromptBuilder.buildWardrobeSection(wardrobe);
+
+      String freshnessGuard;
+      try {
+        freshnessGuard = WardrobePromptBuilder.buildFreshnessGuard(
+          revision: revision,
+          items: wardrobe,
+        );
+      } catch (e, stack) {
+        StylistPipelineLogger.logFailure('freshnessGuard', e, stack);
+        freshnessGuard =
+            'АКТУАЛЬНОСТЬ ГАРДЕРОБА (ревизия $revision): используй только текущий список вещей.';
+      }
+
+      String contextSection;
+      try {
+        contextSection =
+            WardrobePromptBuilder.buildStylingContextSection(requestContext);
+      } catch (e, stack) {
+        StylistPipelineLogger.logFailure('stylingContext', e, stack);
+        contextSection = 'КОНТЕКСТ ЗАПРОСА: учти сообщение пользователя и гардероб.';
+      }
+
+      String? weatherSection;
+      try {
+        weatherSection = WeatherPromptBuilder.buildSystemSection(
+          weather: weather,
+          userContext: requestContext,
+        );
+      } catch (e, stack) {
+        StylistPipelineLogger.logFailure('weatherSection', e, stack);
+        weatherSection = null;
+      }
+
+      if (weather.isAvailable) {
+        AppLogger.debug(
+          'OpenAiChatService: live weather → ${weather.compactUiLabel}',
+        );
+      }
+
+      final colorType = await UserProfileRepository.instance.getColorType();
+      final colorTypeSection = colorType != null
+          ? ColorTypePromptBuilder.buildSystemSection(colorType)
+          : null;
+
+      final messages = <Map<String, String>>[
+        {'role': 'system', 'content': _baseSystemPrompt.trim()},
+        {'role': 'system', 'content': wardrobeSection},
+        {'role': 'system', 'content': freshnessGuard.trim()},
+      ];
+
+      if (colorTypeSection != null && colorTypeSection.trim().isNotEmpty) {
+        messages.add({'role': 'system', 'content': colorTypeSection.trim()});
+      }
+
+      if (weatherSection != null && weatherSection.trim().isNotEmpty) {
+        messages.add({'role': 'system', 'content': weatherSection});
+      }
+
+      messages.addAll([
+        {'role': 'system', 'content': contextSection},
+        {
+          'role': 'system',
+          'content': WardrobePromptBuilder.buildResponseFormatSection(
+            hasColorType: colorType != null,
+          ).trim(),
+        },
+      ]);
+
+      final safe = StylistPipelineSafety.sanitizeApiMessages(messages);
+      StylistPipelineLogger.logSystemMessages(safe);
+      StylistPipelineLogger.logWardrobeItems(wardrobe);
+
+      return safe;
+    } catch (e, stack) {
+      StylistPipelineLogger.logFailure('buildSystemMessages', e, stack);
+      return _minimalSystemMessages();
     }
-
-    final messages = <Map<String, String>>[
-      {'role': 'system', 'content': _baseSystemPrompt.trim()},
-      {'role': 'system', 'content': wardrobeSection},
-      {'role': 'system', 'content': freshnessGuard.trim()},
-    ];
-
-    if (weatherSection != null) {
-      messages.add({'role': 'system', 'content': weatherSection});
-    }
-
-    messages.addAll([
-      {'role': 'system', 'content': contextSection},
-      {
-        'role': 'system',
-        'content': WardrobePromptBuilder.buildResponseFormatSection().trim(),
-      },
-    ]);
-
-    return messages;
   }
 
   Future<StylistResponse> completeConversation(
@@ -148,77 +204,233 @@ class OpenAiChatService {
       );
     }
 
+    if (history.isEmpty) {
+      return StylistPipelineSafety.fallbackResponse();
+    }
+
     final latestUser = history.lastWhere(
       (message) => message.role == ChatRole.user,
       orElse: () => ChatMessage.user(''),
     );
 
-    final systemMessages = await buildSystemMessages(
-      latestUserMessage: latestUser.content,
-      liveWeather: liveWeather,
+    WeatherSnapshot weather;
+    try {
+      weather = StylistPipelineSafety.safeWeather(
+        liveWeather ?? await _weatherRepository.getCurrent(),
+      );
+    } catch (e, stack) {
+      StylistPipelineLogger.logFailure('getWeather', e, stack);
+      weather = WeatherSnapshot.unavailable;
+    }
+
+    final requestContext =
+        StylistContextParser.parse(latestUser.content.trim());
+
+    List<WardrobeItem> wardrobe = const [];
+    try {
+      wardrobe = StylistPipelineSafety.sanitizeWardrobe(
+        await WardrobeSyncService.loadFreshWardrobeForAi(),
+      );
+    } catch (e, stack) {
+      StylistPipelineLogger.logFailure('loadWardrobe', e, stack);
+    }
+
+    StylistPipelineLogger.logRequestStart(
+      userMessage: latestUser.content,
+      context: requestContext,
+      weather: weather,
+      wardrobeCount: wardrobe.length,
+      historyLength: history.length,
     );
+    StylistPipelineLogger.logCategorizedWardrobe(wardrobe);
 
-    final messages = <Map<String, String>>[
-      ...systemMessages,
-      for (final message in history)
-        {
-          'role': message.role == ChatRole.user ? 'user' : 'assistant',
-          'content': message.content,
-        },
-    ];
+    try {
+      final systemMessages = await buildSystemMessages(
+        latestUserMessage: latestUser.content,
+        liveWeather: weather,
+        wardrobeSnapshot: wardrobe,
+      );
 
-    AppLogger.debug(
-      'OpenAiChatService: sending ${messages.length} message(s) to OpenAI',
-    );
+      final messages = StylistPipelineSafety.sanitizeApiMessages([
+        ...systemMessages,
+        for (final message in history)
+          {
+            'role': message.role == ChatRole.user ? 'user' : 'assistant',
+            'content': message.content,
+          },
+      ]);
 
-    final response = await http.post(
-      Uri.parse(_endpoint),
-      headers: {
-        'Authorization': 'Bearer $apiKey',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({
+      if (messages.isEmpty) {
+        throw const OpenAiChatException('Не удалось собрать сообщения для API.');
+      }
+
+      final requestBody = jsonEncode({
         'model': _model,
         'messages': messages,
         'response_format': const {'type': 'json_object'},
-      }),
-    );
+      });
 
-    if (response.statusCode != 200) {
-      throw OpenAiChatException(_parseErrorMessage(response));
+      StylistPipelineLogger.logApiRequest(
+        messageCount: messages.length,
+        bodyBytes: requestBody.length,
+        model: _model,
+      );
+
+      final response = await http
+          .post(
+            Uri.parse(_endpoint),
+            headers: {
+              'Authorization': 'Bearer $apiKey',
+              'Content-Type': 'application/json',
+            },
+            body: requestBody,
+          )
+          .timeout(_requestTimeout);
+
+      StylistPipelineLogger.logApiResponse(
+        statusCode: response.statusCode,
+        bodyBytes: response.bodyBytes.length,
+      );
+
+      if (response.statusCode != 200) {
+        AppLogger.debug(
+          'StylistPipeline: error body=${_preview(response.body)}',
+        );
+        throw OpenAiChatException(_parseErrorMessage(response));
+      }
+
+      final parsed = _parseApiContent(response.body);
+
+      // Re-read Hive after the API round-trip so curation never uses stale data.
+      List<WardrobeItem> wardrobeForCuration;
+      try {
+        wardrobeForCuration = StylistPipelineSafety.sanitizeWardrobe(
+          await WardrobeSyncService.loadFreshWardrobeForAi(),
+        );
+      } catch (e, stack) {
+        StylistPipelineLogger.logFailure('reloadWardrobePostApi', e, stack);
+        wardrobeForCuration = wardrobe;
+      }
+
+      final curatedIds = await _curateRecommendations(
+        rawIds: parsed.recommendedItemIds,
+        wardrobe: wardrobeForCuration,
+        context: requestContext,
+        weather: weather,
+      );
+
+      StylistPipelineLogger.logRecommendationSource(
+        sourceIds: parsed.recommendedItemIds,
+        resultIds: curatedIds,
+        wardrobeCount: wardrobeForCuration.length,
+      );
+      StylistPipelineLogger.logParsedResponse(
+        messageLength: parsed.message.length,
+        rawIds: parsed.recommendedItemIds,
+        curatedIds: curatedIds,
+      );
+
+      return StylistResponse(
+        message: parsed.message.isNotEmpty
+            ? parsed.message
+            : StylistPipelineSafety.fallbackAssistantMessage,
+        recommendedItemIds: curatedIds,
+      );
+    } on OpenAiChatException {
+      rethrow;
+    } on TimeoutException catch (e, stack) {
+      StylistPipelineLogger.logFailure('httpTimeout', e, stack);
+      throw const OpenAiChatException(
+        'Стилист не ответил вовремя. Попробуйте ещё раз.',
+      );
+    } on SocketException catch (e, stack) {
+      StylistPipelineLogger.logFailure('socket', e, stack);
+      throw const OpenAiChatException(
+        'Нет соединения с интернетом. Проверьте сеть и попробуйте снова.',
+      );
+    } catch (e, stack) {
+      StylistPipelineLogger.logFailure('completeConversation', e, stack);
+      AppLogger.warning(
+        'OpenAiChatService: returning in-app fallback (${e.runtimeType})',
+      );
+      return StylistPipelineSafety.fallbackResponse();
     }
-
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
-    final choices = body['choices'] as List<dynamic>?;
-    if (choices == null || choices.isEmpty) {
-      throw const OpenAiChatException('Пустой ответ от OpenAI.');
-    }
-
-    final message = choices.first['message'] as Map<String, dynamic>?;
-    final content = message?['content'] as String?;
-    if (content == null || content.trim().isEmpty) {
-      throw const OpenAiChatException('Не удалось получить текст ответа.');
-    }
-
-    final parsed = StylistResponseParser.parse(content.trim());
-    final wardrobe = await _wardrobeAiContext.loadForPrompt();
-    final validIds = WardrobeRecommendationResolver.filterValidIds(
-      requestedIds: parsed.recommendedItemIds,
-      wardrobe: wardrobe,
-    );
-
-    AppLogger.info(
-      'OpenAiChatService: stylist reply ids '
-      'raw=${parsed.recommendedItemIds.length} valid=${validIds.length}',
-    );
-
-    return StylistResponse(
-      message: parsed.message,
-      recommendedItemIds: validIds,
-    );
   }
 
-  String _parseErrorMessage(http.Response response) {
+  static List<Map<String, String>> _minimalSystemMessages() {
+    return StylistPipelineSafety.sanitizeApiMessages([
+      {'role': 'system', 'content': _baseSystemPrompt.trim()},
+      {'role': 'system', 'content': StylistPipelineSafety.emptyWardrobeSection},
+      {
+        'role': 'system',
+        'content': WardrobePromptBuilder.buildResponseFormatSection().trim(),
+      },
+    ]);
+  }
+
+  static StylistResponse _parseApiContent(String responseBody) {
+    try {
+      final body = jsonDecode(responseBody) as Map<String, dynamic>;
+      final choices = body['choices'] as List<dynamic>?;
+      if (choices == null || choices.isEmpty) {
+        throw const OpenAiChatException('Пустой ответ от OpenAI.');
+      }
+
+      final message = choices.first['message'] as Map<String, dynamic>?;
+      final content = message?['content'] as String?;
+      if (content == null || content.trim().isEmpty) {
+        throw const OpenAiChatException('Не удалось получить текст ответа.');
+      }
+
+      return StylistResponseParser.parse(content.trim());
+    } catch (e) {
+      if (e is OpenAiChatException) rethrow;
+      throw OpenAiChatException('Ошибка разбора ответа: ${e.runtimeType}');
+    }
+  }
+
+  static Future<List<String>> _curateRecommendations({
+    required List<String> rawIds,
+    required List<WardrobeItem> wardrobe,
+    required StylistRequestContext context,
+    required WeatherSnapshot weather,
+  }) async {
+    if (rawIds.isEmpty || wardrobe.isEmpty) return const [];
+
+    final colorType = await UserProfileRepository.instance.getColorType();
+
+    try {
+      return OutfitRecommendationCurator.curateIds(
+        requestedIds: rawIds,
+        wardrobe: wardrobe,
+        context: context,
+        weather: weather.isAvailable ? weather : null,
+        colorType: colorType,
+      );
+    } catch (e, stack) {
+      StylistPipelineLogger.logFailure('curateRecommendations', e, stack);
+      AppLogger.warning(
+        'OpenAiChatService: curator failed — using resolved ids',
+      );
+      try {
+        return WardrobeRecommendationResolver.resolveItems(
+          requestedIds: rawIds,
+          wardrobe: wardrobe,
+        ).map((item) => item.id).toList();
+      } catch (e2, stack2) {
+        StylistPipelineLogger.logFailure('resolveFallback', e2, stack2);
+        return const [];
+      }
+    }
+  }
+
+  static String _preview(String text) {
+    final normalized = text.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (normalized.length <= 300) return normalized;
+    return '${normalized.substring(0, 300)}…';
+  }
+
+  static String _parseErrorMessage(http.Response response) {
     try {
       final body = jsonDecode(response.body) as Map<String, dynamic>;
       final error = body['error'] as Map<String, dynamic>?;

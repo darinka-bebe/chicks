@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_brand_colors.dart';
-import '../../../data/repositories/auth_repository.dart';
 import '../../../data/repositories/onboarding_repository.dart';
 import '../data/onboarding_pages.dart';
 
@@ -29,11 +28,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Future<void> _finish() async {
     await OnboardingRepository.instance.setCompleted();
     if (!mounted) return;
-
-    final destination = AuthRepository.instance.isLoggedIn
-        ? RouteNames.main
-        : RouteNames.login;
-    context.go(destination);
+    context.go(RouteNames.colorTypeQuiz);
   }
 
   void _onNext() {

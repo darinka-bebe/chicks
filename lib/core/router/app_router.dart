@@ -19,6 +19,7 @@ import '../../features/home/ui/main_tab.dart';
 import '../../features/profile/ui/profile.dart';
 import '../../features/app/ui/registration_screen.dart';
 import '../../features/login/ui/login_screen.dart';
+import '../../features/onboarding/ui/color_type_quiz_screen.dart';
 import '../../features/onboarding/ui/onboarding_screen.dart';
 import '../../features/splash/ui/splash_screen.dart';
 import 'route_names.dart';
@@ -47,6 +48,14 @@ class AppRouter {
         name: RouteNames.onboardingName,
         path: RouteNames.onboarding,
         builder: (context, state) => const OnboardingScreen(),
+      ),
+      GoRoute(
+        name: RouteNames.colorTypeQuizName,
+        path: RouteNames.colorTypeQuiz,
+        builder: (context, state) {
+          final fromProfile = state.uri.queryParameters['from'] == 'profile';
+          return ColorTypeQuizScreen(fromProfile: fromProfile);
+        },
       ),
       GoRoute(
         name: RouteNames.loginName,
