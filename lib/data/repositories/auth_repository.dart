@@ -1,102 +1,102 @@
-import 'dart:async';
+import 'package:firebase_auth/firebase_auth.dart';
 
-import 'package:shared_preferences/shared_preferences.dart';
-
+import '../../core/services/firebase_auth_service.dart';
+import '../../core/services/firestore_service.dart';
 import '../../core/utils/logger.dart';
 import '../models/user_model.dart';
 
-/// Репозиторий авторизации (локальная реализация для запуска без Firebase).
+/// Репозиторий авторизации — координирует работу сервисов.
+///
+/// Это **синглтон**: один экземпляр на всё приложение.
+/// Доступ через [AuthRepository.instance].
+///
+/// Зачем репозиторий, если есть сервисы?
+/// Сервис знает только про свой источник (Auth или Firestore).
+/// Репозиторий **координирует** несколько сервисов:
+///   1. Входит через Google (FirebaseAuthService).
+///   2. Сохраняет профиль в Firestore (FirestoreService).
+///   3. Возвращает единую модель [UserModel].
 class AuthRepository {
+  // ── Синглтон ─────────────────────────────────────────────────
+
+  /// Приватный конструктор — нельзя создать снаружи.
   AuthRepository._();
 
+  /// Единственный экземпляр репозитория.
   static final AuthRepository instance = AuthRepository._();
 
-  static const _loggedInKey = 'isLoggedIn';
-  static const _nameKey = 'name';
-  static const _emailKey = 'email';
-  static const _photoUrlKey = 'photoUrl';
+  // ── Сервисы ──────────────────────────────────────────────────
 
-  final StreamController<UserModel> _authController =
-      StreamController<UserModel>.broadcast();
+  final FirebaseAuthService _authService = FirebaseAuthService();
+  final FirestoreService _firestoreService = FirestoreService();
 
-  UserModel _currentUser = UserModel.empty;
-  bool _initialized = false;
+  // ── Геттеры ──────────────────────────────────────────────────
 
-  UserModel get currentUser => _currentUser;
-
-  bool get isLoggedIn => _currentUser.isNotEmpty;
-
-  Stream<UserModel> get authStateChanges => _authController.stream;
-
-  Future<void> initialize() async {
-    if (_initialized) return;
-
-    final prefs = await SharedPreferences.getInstance();
-    final loggedIn = prefs.getBool(_loggedInKey) ?? false;
-
-    if (loggedIn) {
-      _currentUser = UserModel(
-        uid: 'local',
-        displayName: prefs.getString(_nameKey) ?? 'User',
-        email: prefs.getString(_emailKey) ?? '',
-        photoUrl: prefs.getString(_photoUrlKey) ?? '',
-      );
-    } else {
-      _currentUser = UserModel.empty;
-    }
-
-    _authController.add(_currentUser);
-    _initialized = true;
+  /// Текущий пользователь как [UserModel].
+  /// Если не авторизован — возвращает [UserModel.empty].
+  UserModel get currentUser {
+    final User? firebaseUser = _authService.currentUser;
+    if (firebaseUser == null) return UserModel.empty;
+    return UserModel.fromFirebaseUser(firebaseUser);
   }
 
+  /// Авторизован ли пользователь?
+  bool get isLoggedIn => _authService.currentUser != null;
+
+  /// Стрим изменений авторизации.
+  ///
+  /// Каждый раз, когда пользователь входит/выходит,
+  /// стрим отправляет новый [UserModel].
+  Stream<UserModel> get authStateChanges {
+    return _authService.authStateChanges.map((User? firebaseUser) {
+      if (firebaseUser == null) return UserModel.empty;
+      return UserModel.fromFirebaseUser(firebaseUser);
+    });
+  }
+
+  // ── Действия ─────────────────────────────────────────────────
+
+  /// Вход через Google + сохранение профиля в Firestore.
   Future<UserModel> signInWithGoogle() async {
-    final prefs = await SharedPreferences.getInstance();
-    final email = prefs.getString(_emailKey) ?? 'guest@chicks.app';
-    final name = prefs.getString(_nameKey) ?? 'Guest';
+    try {
+      // 1. Вход через Google.
+      final UserCredential? credential =
+          await _authService.signInWithGoogle();
 
-    await prefs.setBool(_loggedInKey, true);
-    await prefs.setString(_emailKey, email);
-    await prefs.setString(_nameKey, name);
+      // Пользователь отменил вход.
+      if (credential?.user == null) return UserModel.empty;
 
-    _currentUser = UserModel(
-      uid: 'local',
-      displayName: name,
-      email: email,
-      photoUrl: prefs.getString(_photoUrlKey) ?? '',
-    );
+      // 2. Формируем модель.
+      final UserModel user = UserModel.fromFirebaseUser(credential!.user!);
 
-    _authController.add(_currentUser);
-    AppLogger.info('AuthRepository sign in success $email');
-    return _currentUser;
-  }
+      // 3. Сохраняем/обновляем профиль в Firestore.
+      await _firestoreService.saveUser(user.uid, user.toJson());
 
-  Future<void> signOut() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_loggedInKey, false);
-    _currentUser = UserModel.empty;
-    _authController.add(_currentUser);
-  }
-
-  Future<UserModel?> getCurrentFirestoreUser() async {
-    return isLoggedIn ? _currentUser : null;
-  }
-
-  Future<void> updateProfile({
-    required String displayName,
-    required String photoUrl,
-  }) async {
-    if (!isLoggedIn) {
-      throw Exception('User not authorized');
+      AppLogger.info('AuthRepository: вход выполнен — ${user.email}');
+      return user;
+    } catch (error, stackTrace) {
+      print('e $error');
+      AppLogger.error(
+        'AuthRepository: ошибка входа через Google',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      rethrow;
     }
+  }
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_nameKey, displayName);
-    await prefs.setString(_photoUrlKey, photoUrl);
-
-    _currentUser = _currentUser.copyWith(
-      displayName: displayName,
-      photoUrl: photoUrl,
-    );
-    _authController.add(_currentUser);
+  /// Выход из аккаунта.
+  Future<void> signOut() async {
+    try {
+      await _authService.signOut();
+      AppLogger.info('AuthRepository: пользователь вышел');
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'AuthRepository: ошибка выхода',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      rethrow;
+    }
   }
 }

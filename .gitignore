@@ -2,6 +2,14 @@
 # Flutter / Dart
 # ============================================================
 
+# Local Flutter SDK install (not part of the project)
+flutter/
+flutter_*.zip
+
+# Local Gradle config backups
+android/чикс*
+android/app/чикс*
+
 # Dart tool generated files
 .dart_tool/
 .packages
