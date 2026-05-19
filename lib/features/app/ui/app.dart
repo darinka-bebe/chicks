@@ -1,5 +1,8 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../../../core/platform/platform_info.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/router/app_router.dart';
@@ -38,6 +41,19 @@ class App extends StatelessWidget {
 
         // Убираем баннер «DEBUG» в правом верхнем углу.
         debugShowCheckedModeBanner: false,
+
+        scrollBehavior: const MaterialScrollBehavior().copyWith(
+          physics: PlatformInfo.isIOS
+              ? const BouncingScrollPhysics(
+                  parent: AlwaysScrollableScrollPhysics(),
+                )
+              : const ClampingScrollPhysics(),
+          dragDevices: {
+            PointerDeviceKind.touch,
+            PointerDeviceKind.mouse,
+            PointerDeviceKind.trackpad,
+          },
+        ),
 
         // ── Тема ─────────────────────────────────────────────
         theme: AppTheme.light,

@@ -75,7 +75,9 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       },
       child: Scaffold(
-        body: Center(
+        resizeToAvoidBottomInset: true,
+        body: SafeArea(
+          child: Center(
           child: Padding(
             padding: const EdgeInsets.symmetric(
               horizontal: AppConstants.largePadding,
@@ -105,6 +107,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ],
             ),
           ),
+        ),
         ),
       ),
     );

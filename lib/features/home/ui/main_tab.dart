@@ -30,7 +30,8 @@ class MainTab extends StatelessWidget {
       appBar: AppBar(
         title: Text(loc.tabMain),
       ),
-      body: Center(
+      body: SafeArea(
+        child: Center(
         child: Padding(
           padding: const EdgeInsets.all(AppConstants.largePadding),
           child: Column(
@@ -55,6 +56,7 @@ class MainTab extends StatelessWidget {
               ),
             ],
           ),
+        ),
         ),
       ),
     );

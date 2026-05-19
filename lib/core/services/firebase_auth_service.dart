@@ -4,6 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+import '../../firebase_options.dart';
+import '../platform/platform_info.dart';
 import '../utils/logger.dart';
 
 /// Обёртка над [FirebaseAuth] и [GoogleSignIn].
@@ -26,8 +28,30 @@ class FirebaseAuthService {
 
   Future<void> initialize({required String serverClientId}) async {
     if (_initialized) return;
-    await _googleSignIn.initialize(serverClientId: serverClientId);
+
+    final String? iosClientId = _resolveIosClientId();
+    if (PlatformInfo.isIOS && iosClientId != null) {
+      await _googleSignIn.initialize(
+        serverClientId: serverClientId,
+        clientId: iosClientId,
+      );
+    } else {
+      await _googleSignIn.initialize(serverClientId: serverClientId);
+    }
+
     _initialized = true;
+  }
+
+  String? _resolveIosClientId() {
+    final fromEnv = dotenv.env['IOS_CLIENT_ID'];
+    if (fromEnv != null && fromEnv.isNotEmpty) return fromEnv;
+
+    final fromFirebase = DefaultFirebaseOptions.ios.iosClientId;
+    if (fromFirebase != null &&
+        !fromFirebase.startsWith('YOUR_IOS_CLIENT_ID')) {
+      return fromFirebase;
+    }
+    return null;
   }
 
   /// Запускает флоу входа через Google (v7 event-based API).

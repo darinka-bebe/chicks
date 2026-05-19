@@ -1,8 +1,11 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/platform/platform_info.dart';
 import '../../../l10n/generated/app_localizations.dart';
+import '../../../widgets/adaptive_bottom_navigation.dart';
 
 /// Оболочка (Shell) для домашних вкладок.
 ///
@@ -46,26 +49,38 @@ class HomeShell extends StatelessWidget {
     final loc = AppLocalizations.of(context);
     final int selectedIndex = _currentIndex(context);
 
-    return Scaffold(
-      // Тело — текущая вкладка.
-      body: child,
+    final navItems = [
+      AdaptiveNavItem(
+        icon: PlatformInfo.isCupertino
+            ? CupertinoIcons.house
+            : Icons.home_outlined,
+        activeIcon: PlatformInfo.isCupertino
+            ? CupertinoIcons.house_fill
+            : Icons.home,
+        label: loc.tabMain,
+      ),
+      AdaptiveNavItem(
+        icon: PlatformInfo.isCupertino
+            ? CupertinoIcons.person
+            : Icons.person_outline,
+        activeIcon: PlatformInfo.isCupertino
+            ? CupertinoIcons.person_fill
+            : Icons.person,
+        label: loc.tabProfile,
+      ),
+    ];
 
-      // Нижняя навигация.
-      bottomNavigationBar: BottomNavigationBar(
+    return Scaffold(
+      resizeToAvoidBottomInset: true,
+      body: SafeArea(
+        top: true,
+        bottom: false,
+        child: child,
+      ),
+      bottomNavigationBar: AdaptiveBottomNavigation(
         currentIndex: selectedIndex,
         onTap: (index) => _onTabTapped(context, index),
-        items: [
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.home_outlined),
-            activeIcon: const Icon(Icons.home),
-            label: loc.tabMain,
-          ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.person_outline),
-            activeIcon: const Icon(Icons.person),
-            label: loc.tabProfile,
-          ),
-        ],
+        items: navItems,
       ),
     );
   }

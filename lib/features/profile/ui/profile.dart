@@ -41,10 +41,12 @@ class ProfileTab extends StatelessWidget {
         }
       },
       child: Scaffold(
+        resizeToAvoidBottomInset: true,
         appBar: AppBar(
           title: Text(loc.profileTitle),
         ),
-        body: Center(
+        body: SafeArea(
+          child: Center(
           child: Padding(
             padding: const EdgeInsets.all(AppConstants.largePadding),
             child: Column(
@@ -80,6 +82,7 @@ class ProfileTab extends StatelessWidget {
               ],
             ),
           ),
+        ),
         ),
       ),
     );

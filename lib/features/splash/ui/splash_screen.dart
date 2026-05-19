@@ -62,7 +62,8 @@ class _SplashScreenState extends State<SplashScreen> {
     final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
-      body: Center(
+      body: SafeArea(
+        child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -84,6 +85,7 @@ class _SplashScreenState extends State<SplashScreen> {
               style: textTheme.bodySmall,
             ),
           ],
+        ),
         ),
       ),
     );

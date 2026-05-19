@@ -1,5 +1,7 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
+import '../platform/platform_info.dart';
 import 'app_colors.dart';
 import 'app_text_styles.dart';
 
@@ -11,8 +13,24 @@ import 'app_text_styles.dart';
 class AppTheme {
   /// Светлая тема.
   static ThemeData get light {
+    final platform =
+        PlatformInfo.isIOS ? TargetPlatform.iOS : TargetPlatform.android;
+
     return ThemeData(
       useMaterial3: true,
+      platform: platform,
+      cupertinoOverrideTheme: PlatformInfo.isCupertino
+          ? const CupertinoThemeData(
+              primaryColor: AppColors.primary,
+              barBackgroundColor: AppColors.surface,
+            )
+          : null,
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.android: ZoomPageTransitionsBuilder(),
+        },
+      ),
 
       // ── Цветовая схема ───────────────────────────────────────
       colorScheme: const ColorScheme.light(
@@ -32,6 +50,7 @@ class AppTheme {
         foregroundColor: AppColors.onPrimary,
         centerTitle: true,
         elevation: 0,
+        scrolledUnderElevation: 0,
       ),
 
       // ── Кнопки ───────────────────────────────────────────────
