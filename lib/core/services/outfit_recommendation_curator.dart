@@ -1,5 +1,6 @@
 import '../../data/models/wardrobe_item.dart';
 import '../models/body_profile.dart';
+import '../models/outfit_preference_profile.dart';
 import '../models/seasonal_color_type.dart';
 import '../models/stylist_request_context.dart';
 import 'silhouette_balancer.dart';
@@ -22,6 +23,7 @@ abstract final class OutfitRecommendationCurator {
     WeatherSnapshot? weather,
     SeasonalColorType? colorType,
     BodyProfile? bodyProfile,
+    OutfitPreferenceProfile preferenceProfile = OutfitPreferenceProfile.empty,
   }) {
     return curateItems(
       requestedIds: requestedIds,
@@ -30,6 +32,7 @@ abstract final class OutfitRecommendationCurator {
       weather: weather,
       colorType: colorType,
       bodyProfile: bodyProfile,
+      preferenceProfile: preferenceProfile,
     ).map((item) => item.id).toList();
   }
 
@@ -40,6 +43,7 @@ abstract final class OutfitRecommendationCurator {
     WeatherSnapshot? weather,
     SeasonalColorType? colorType,
     BodyProfile? bodyProfile,
+    OutfitPreferenceProfile preferenceProfile = OutfitPreferenceProfile.empty,
   }) {
     if (requestedIds.isEmpty || wardrobe.isEmpty) return const [];
 
@@ -51,6 +55,7 @@ abstract final class OutfitRecommendationCurator {
         weather: weather,
         colorType: colorType,
         bodyProfile: bodyProfile,
+        preferenceProfile: preferenceProfile,
       );
     } catch (e, stack) {
       AppLogger.error(
@@ -72,6 +77,7 @@ abstract final class OutfitRecommendationCurator {
     WeatherSnapshot? weather,
     SeasonalColorType? colorType,
     BodyProfile? bodyProfile,
+    OutfitPreferenceProfile preferenceProfile = OutfitPreferenceProfile.empty,
   }) {
     final resolved = WardrobeRecommendationResolver.resolveItems(
       requestedIds: requestedIds,
@@ -110,6 +116,7 @@ abstract final class OutfitRecommendationCurator {
               colorType: colorType,
               bodyProfile: bodyProfile,
               coSelected: picked,
+              preferenceProfile: preferenceProfile,
             );
     }
 
@@ -128,6 +135,7 @@ abstract final class OutfitRecommendationCurator {
               colorType: colorType,
               bodyProfile: bodyProfile,
               coSelected: picked,
+              preferenceProfile: preferenceProfile,
             );
     }
 
@@ -163,6 +171,7 @@ abstract final class OutfitRecommendationCurator {
     SeasonalColorType? colorType,
     BodyProfile? bodyProfile,
     Map<WardrobeOutfitSlot, WardrobeItem>? coSelected,
+    OutfitPreferenceProfile preferenceProfile = OutfitPreferenceProfile.empty,
   }) {
     WardrobeItem? best;
     var bestScore = double.negativeInfinity;
@@ -175,6 +184,7 @@ abstract final class OutfitRecommendationCurator {
         colorType: colorType,
         bodyProfile: bodyProfile,
         coSelected: coSelected,
+        preferenceProfile: preferenceProfile,
       );
       if (score > bestScore) {
         bestScore = score;

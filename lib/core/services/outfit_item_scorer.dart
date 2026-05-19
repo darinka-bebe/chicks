@@ -1,9 +1,11 @@
 import '../../data/models/wardrobe_item.dart';
 import '../models/body_profile.dart';
+import '../models/outfit_preference_profile.dart';
 import '../models/seasonal_color_type.dart';
 import '../models/stylist_request_context.dart';
 import '../models/wardrobe_outfit_slot.dart';
 import 'silhouette_balancer.dart';
+import 'outfit_trait_extractor.dart';
 import 'wardrobe_slot_classifier.dart';
 import '../models/weather_snapshot.dart';
 import '../models/weather_condition.dart';
@@ -17,6 +19,7 @@ abstract final class OutfitItemScorer {
     SeasonalColorType? colorType,
     BodyProfile? bodyProfile,
     Map<WardrobeOutfitSlot, WardrobeItem>? coSelected,
+    OutfitPreferenceProfile preferenceProfile = OutfitPreferenceProfile.empty,
   }) {
     var total = 0.0;
 
@@ -41,7 +44,48 @@ abstract final class OutfitItemScorer {
               12;
     }
 
-    return total;
+    total -= _scoreDislikePenalty(item, coSelected, preferenceProfile);
+
+    return total.clamp(0.0, 120.0);
+  }
+
+  static double _scoreDislikePenalty(
+    WardrobeItem item,
+    Map<WardrobeOutfitSlot, WardrobeItem>? coSelected,
+    OutfitPreferenceProfile profile,
+  ) {
+    if (!profile.hasSignals) return 0;
+
+    final itemTraits = OutfitTraitExtractor.extract(
+      items: [item],
+      recommendationText: '',
+    );
+
+    var penalty = profile.dislikePenalty(
+      styles: itemTraits.styles,
+      colors: itemTraits.colors,
+      silhouettes: itemTraits.silhouettes,
+    );
+
+    if (coSelected != null && coSelected.isNotEmpty) {
+      final comboItems = coSelected.values.toList();
+      final comboTraits = OutfitTraitExtractor.extract(
+        items: comboItems,
+        recommendationText: '',
+      );
+      final combinationKey = OutfitTraitExtractor.combinationKeyFrom(
+        itemIds: comboItems.map((i) => i.id).toList(),
+        styles: {...comboTraits.styles, ...itemTraits.styles},
+      );
+      penalty += profile.dislikePenalty(
+        styles: comboTraits.styles,
+        colors: comboTraits.colors,
+        silhouettes: comboTraits.silhouettes,
+        combinationKey: combinationKey,
+      );
+    }
+
+    return penalty;
   }
 
   static double _scoreBodyProfile(WardrobeItem item, BodyProfile? profile) {

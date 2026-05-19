@@ -12,12 +12,16 @@ class ChatMessageBubble extends StatelessWidget {
     super.key,
     required this.message,
     this.isFavorite = false,
+    this.isDisliked = false,
     this.onToggleFavorite,
+    this.onToggleDislike,
   });
 
   final ChatMessage message;
   final bool isFavorite;
+  final bool isDisliked;
   final VoidCallback? onToggleFavorite;
+  final VoidCallback? onToggleDislike;
 
   bool get _isUser => message.role == ChatRole.user;
 
@@ -119,11 +123,18 @@ class ChatMessageBubble extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (onToggleFavorite != null)
+                  if (onToggleDislike != null)
+                    _DislikeToggleButton(
+                      isDisliked: isDisliked,
+                      onPressed: onToggleDislike!,
+                    ),
+                  if (onToggleFavorite != null) ...[
+                    if (onToggleDislike != null) const SizedBox(width: 2),
                     _FavoriteToggleButton(
                       isFavorite: isFavorite,
                       onPressed: onToggleFavorite!,
                     ),
+                  ],
                 ],
               ),
               if (message.weatherLabel != null &&
@@ -143,6 +154,35 @@ class ChatMessageBubble extends StatelessWidget {
             recommendedItemIds: message.recommendedItemIds,
           ),
       ],
+    );
+  }
+}
+
+class _DislikeToggleButton extends StatelessWidget {
+  const _DislikeToggleButton({
+    required this.isDisliked,
+    required this.onPressed,
+  });
+
+  final bool isDisliked;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: isDisliked ? 'Убрать дизлайк' : 'Не мой стиль',
+      child: IconButton(
+        onPressed: onPressed,
+        padding: const EdgeInsets.all(6),
+        constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+        tooltip: isDisliked ? 'Убрать дизлайк' : 'Не мой стиль',
+        icon: Icon(
+          isDisliked ? Icons.thumb_down : Icons.thumb_down_outlined,
+          size: 21,
+          color: isDisliked ? Colors.grey[700] : Colors.grey[500],
+        ),
+      ),
     );
   }
 }

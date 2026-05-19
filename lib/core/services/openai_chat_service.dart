@@ -19,7 +19,9 @@ import 'user_style_profile_loader.dart';
 import 'wardrobe_ai_context.dart';
 import 'wardrobe_sync_service.dart';
 import 'wardrobe_prompt_builder.dart';
+import 'outfit_preference_prompt_builder.dart';
 import 'outfit_recommendation_curator.dart';
+import '../../data/repositories/outfit_dislike_repository.dart';
 import 'stylist_pipeline_logger.dart';
 import 'stylist_pipeline_safety.dart';
 import 'wardrobe_recommendation_resolver.dart';
@@ -155,6 +157,7 @@ class OpenAiChatService {
       }
 
       final styleProfile = await UserStyleProfileLoader.load();
+      final dislikeProfile = await OutfitDislikeRepository.instance.loadProfile();
       final colorTypeSection = styleProfile.colorType != null
           ? ColorTypePromptBuilder.buildSystemSection(styleProfile.colorType!)
           : null;
@@ -174,6 +177,12 @@ class OpenAiChatService {
 
       if (bodyTypeSection != null && bodyTypeSection.trim().isNotEmpty) {
         messages.add({'role': 'system', 'content': bodyTypeSection.trim()});
+      }
+
+      final dislikeSection =
+          OutfitPreferencePromptBuilder.buildSystemSection(dislikeProfile);
+      if (dislikeSection.isNotEmpty) {
+        messages.add({'role': 'system', 'content': dislikeSection});
       }
 
       if (weatherSection != null && weatherSection.trim().isNotEmpty) {
@@ -407,6 +416,7 @@ class OpenAiChatService {
     if (rawIds.isEmpty || wardrobe.isEmpty) return const [];
 
     final styleProfile = await UserStyleProfileLoader.load();
+    final dislikeProfile = await OutfitDislikeRepository.instance.loadProfile();
 
     try {
       return OutfitRecommendationCurator.curateIds(
@@ -416,6 +426,7 @@ class OpenAiChatService {
         weather: weather.isAvailable ? weather : null,
         colorType: styleProfile.colorType,
         bodyProfile: styleProfile.bodyProfile,
+        preferenceProfile: dislikeProfile,
       );
     } catch (e, stack) {
       StylistPipelineLogger.logFailure('curateRecommendations', e, stack);

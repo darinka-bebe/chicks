@@ -9,12 +9,14 @@ abstract final class LocalHiveStorage {
   static const favoritesBoxName = 'chicks_favorites_v1';
   static const chatBoxName = 'chicks_chat_v1';
   static const outfitHistoryBoxName = 'chicks_outfit_history_v1';
+  static const outfitDislikesBoxName = 'chicks_outfit_dislikes_v1';
   static const metaBoxName = 'chicks_meta_v1';
 
   static const wardrobeItemsKey = 'items';
   static const favoritesItemsKey = 'items';
   static const chatMessagesKey = 'messages';
   static const outfitHistoryItemsKey = 'items';
+  static const outfitDislikesItemsKey = 'items';
   static const migrationDoneKey = 'hive_data_migrated_v1';
 
   static const _legacyWardrobeKey = 'wardrobe_items_v1';
@@ -32,6 +34,7 @@ abstract final class LocalHiveStorage {
       Hive.openBox(favoritesBoxName),
       Hive.openBox(chatBoxName),
       Hive.openBox(outfitHistoryBoxName),
+      Hive.openBox(outfitDislikesBoxName),
       Hive.openBox(metaBoxName),
     ]);
 
@@ -44,6 +47,7 @@ abstract final class LocalHiveStorage {
   static Box<dynamic> get favoritesBox => Hive.box(favoritesBoxName);
   static Box<dynamic> get chatBox => Hive.box(chatBoxName);
   static Box<dynamic> get outfitHistoryBox => Hive.box(outfitHistoryBoxName);
+  static Box<dynamic> get outfitDislikesBox => Hive.box(outfitDislikesBoxName);
   static Box<dynamic> get metaBox => Hive.box(metaBoxName);
 
   static Future<void> _migrateFromSharedPreferences() async {

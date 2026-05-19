@@ -8,13 +8,14 @@ import '../../../data/models/chat_message.dart';
 import '../../../data/models/outfit_history_entry.dart';
 import '../../favorites/favorites_controller.dart';
 import '../../outfit_history/outfit_history_controller.dart';
+import '../../preferences/outfit_preferences_controller.dart';
+import '../widgets/wardrobe_snapshot_scope.dart';
 import '../bloc/chat_cubit.dart';
 import '../bloc/chat_state.dart';
 import '../widgets/chat_empty_state.dart';
 import '../widgets/chat_input_bar.dart';
 import '../widgets/chat_messages_list.dart';
 import '../widgets/chat_weather_banner.dart';
-import '../widgets/wardrobe_snapshot_scope.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key, this.restoreEntry});
@@ -72,12 +73,16 @@ class _ChatScreenState extends State<ChatScreen> {
     String? userPrompt,
   ) async {
     final favorites = context.read<FavoritesController>();
+    final preferences = context.read<OutfitPreferencesController>();
 
     try {
       final nowSaved = await favorites.toggleRecommendation(
         recommendation: aiMessage.content,
         userPrompt: userPrompt,
       );
+      if (nowSaved) {
+        await preferences.removeDislike(aiMessage.content);
+      }
       if (!context.mounted) return;
 
       ScaffoldMessenger.of(context)
@@ -103,6 +108,50 @@ class _ChatScreenState extends State<ChatScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Не удалось обновить избранное'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _toggleDislike(
+    BuildContext context,
+    ChatMessage aiMessage,
+    String? userPrompt,
+  ) async {
+    final preferences = context.read<OutfitPreferencesController>();
+    final favorites = context.read<FavoritesController>();
+    final wardrobe = WardrobeSnapshotScope.maybeOf(context)?.items ?? const [];
+
+    try {
+      final nowDisliked = await preferences.toggleDislike(
+        recommendation: aiMessage.content,
+        recommendedItemIds: aiMessage.recommendedItemIds,
+        wardrobe: wardrobe,
+        userPrompt: userPrompt,
+      );
+      if (nowDisliked) {
+        await favorites.refresh();
+      }
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              nowDisliked
+                  ? 'Учтём: не будем предлагать похожие образы'
+                  : 'Дизлайк снят',
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Не удалось сохранить отзыв'),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -177,6 +226,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     scrollController: _scrollController,
                     inputBarKey: _inputBarKey,
                     onToggleFavorite: _toggleFavorite,
+                    onToggleDislike: _toggleDislike,
                   ),
                 ),
                 BlocSelector<ChatCubit, ChatState, bool>(
@@ -288,11 +338,13 @@ class _ChatMessageArea extends StatelessWidget {
     required this.scrollController,
     required this.inputBarKey,
     required this.onToggleFavorite,
+    required this.onToggleDislike,
   });
 
   final ScrollController scrollController;
   final GlobalKey<ChatInputBarState> inputBarKey;
   final void Function(BuildContext, ChatMessage, String?) onToggleFavorite;
+  final void Function(BuildContext, ChatMessage, String?) onToggleDislike;
 
   @override
   Widget build(BuildContext context) {
@@ -324,6 +376,8 @@ class _ChatMessageArea extends StatelessWidget {
             isLoading: data.isLoading,
             onToggleFavorite: (message, userPrompt) =>
                 onToggleFavorite(context, message, userPrompt),
+            onToggleDislike: (message, userPrompt) =>
+                onToggleDislike(context, message, userPrompt),
           ),
         );
       },

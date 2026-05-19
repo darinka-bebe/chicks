@@ -12,12 +12,14 @@ class ChatMessagesList extends StatelessWidget {
     required this.messages,
     required this.isLoading,
     required this.onToggleFavorite,
+    this.onToggleDislike,
   });
 
   final ScrollController scrollController;
   final List<ChatMessage> messages;
   final bool isLoading;
   final void Function(ChatMessage message, String? userPrompt)? onToggleFavorite;
+  final void Function(ChatMessage message, String? userPrompt)? onToggleDislike;
 
   @override
   Widget build(BuildContext context) {
@@ -49,8 +51,8 @@ class ChatMessagesList extends StatelessWidget {
             key: ValueKey<String>(message.id),
             message: message,
             userPrompt: userPrompt,
-            onToggleFavorite:
-                isAssistant ? onToggleFavorite : null,
+            onToggleFavorite: isAssistant ? onToggleFavorite : null,
+            onToggleDislike: isAssistant ? onToggleDislike : null,
           ),
         );
       },
