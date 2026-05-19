@@ -9,6 +9,7 @@ import '../../../data/models/wardrobe_item.dart';
 import '../../../data/repositories/wardrobe_repository.dart';
 import '../wardrobe_controller.dart';
 import '../widgets/wardrobe_empty_state.dart';
+import '../widgets/wardrobe_insights_banner.dart';
 import '../widgets/wardrobe_item_card.dart';
 
 class WardrobeScreen extends StatefulWidget {
@@ -324,12 +325,13 @@ class _WardrobeScreenState extends State<WardrobeScreen>
       final items = widget.items!;
       return Scaffold(
         backgroundColor: AppBrandColors.background,
-        appBar: _buildAppBar(context),
+        appBar: _buildAppBar(context, hasItems: items.isNotEmpty),
         floatingActionButton: _buildFab(),
         body: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildCountLabel(items.length),
+            const WardrobeInsightsBanner(),
             Expanded(child: _buildGrid(items)),
           ],
         ),
@@ -350,21 +352,25 @@ class _WardrobeScreenState extends State<WardrobeScreen>
 
     return Scaffold(
       backgroundColor: AppBrandColors.background,
-      appBar: _buildAppBar(context),
-      floatingActionButton: _buildFab(),
-      body: items.isEmpty
+        appBar: _buildAppBar(context, hasItems: items.isNotEmpty),
+        floatingActionButton: _buildFab(),
+        body: items.isEmpty
           ? WardrobeEmptyState(onAddPressed: _openAddItem)
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildCountLabel(items.length),
+                const WardrobeInsightsBanner(),
                 Expanded(child: _buildGrid(items)),
               ],
             ),
     );
   }
 
-  PreferredSizeWidget _buildAppBar(BuildContext context) {
+  PreferredSizeWidget _buildAppBar(
+    BuildContext context, {
+    required bool hasItems,
+  }) {
     return AppBar(
       backgroundColor: Colors.transparent,
       elevation: 0,
@@ -382,6 +388,16 @@ class _WardrobeScreenState extends State<WardrobeScreen>
         ),
       ),
       centerTitle: true,
+      actions: [
+        IconButton(
+          tooltip: 'Анализ гардероба',
+          onPressed: !hasItems
+              ? null
+              : () => context.pushNamed(RouteNames.wardrobeInsightsName),
+          icon: const Icon(Icons.insights_outlined),
+          color: AppBrandColors.pink,
+        ),
+      ],
     );
   }
 

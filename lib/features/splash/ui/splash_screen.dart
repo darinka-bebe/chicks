@@ -81,6 +81,15 @@ class _SplashScreenState extends State<SplashScreen>
       return;
     }
 
+    final bodyQuizDone =
+        await UserProfileRepository.instance.isBodyTypeQuizCompleted();
+    if (!mounted) return;
+
+    if (!bodyQuizDone) {
+      context.go(RouteNames.bodyTypeQuiz);
+      return;
+    }
+
     final isLoggedIn = AuthRepository.instance.isLoggedIn;
     if (isLoggedIn) {
       context.go(RouteNames.main);

@@ -47,3 +47,4 @@ flutter:
   assets:
     - .env
     - assets/svg/
+    - assets/body_types/

@@ -1,6 +1,8 @@
 import '../../data/models/wardrobe_item.dart';
+import '../models/body_profile.dart';
 import '../models/seasonal_color_type.dart';
 import '../models/stylist_request_context.dart';
+import 'silhouette_balancer.dart';
 import '../models/wardrobe_outfit_slot.dart';
 import '../models/weather_snapshot.dart';
 import '../utils/logger.dart';
@@ -19,6 +21,7 @@ abstract final class OutfitRecommendationCurator {
     StylistRequestContext context = StylistRequestContext.empty,
     WeatherSnapshot? weather,
     SeasonalColorType? colorType,
+    BodyProfile? bodyProfile,
   }) {
     return curateItems(
       requestedIds: requestedIds,
@@ -26,6 +29,7 @@ abstract final class OutfitRecommendationCurator {
       context: context,
       weather: weather,
       colorType: colorType,
+      bodyProfile: bodyProfile,
     ).map((item) => item.id).toList();
   }
 
@@ -35,6 +39,7 @@ abstract final class OutfitRecommendationCurator {
     StylistRequestContext context = StylistRequestContext.empty,
     WeatherSnapshot? weather,
     SeasonalColorType? colorType,
+    BodyProfile? bodyProfile,
   }) {
     if (requestedIds.isEmpty || wardrobe.isEmpty) return const [];
 
@@ -45,6 +50,7 @@ abstract final class OutfitRecommendationCurator {
         context: context,
         weather: weather,
         colorType: colorType,
+        bodyProfile: bodyProfile,
       );
     } catch (e, stack) {
       AppLogger.error(
@@ -65,6 +71,7 @@ abstract final class OutfitRecommendationCurator {
     required StylistRequestContext context,
     WeatherSnapshot? weather,
     SeasonalColorType? colorType,
+    BodyProfile? bodyProfile,
   }) {
     final resolved = WardrobeRecommendationResolver.resolveItems(
       requestedIds: requestedIds,
@@ -81,27 +88,63 @@ abstract final class OutfitRecommendationCurator {
     }
 
     final picked = <WardrobeOutfitSlot, WardrobeItem>{};
+    final pickOrder = [
+      WardrobeOutfitSlot.top,
+      WardrobeOutfitSlot.dress,
+      WardrobeOutfitSlot.bottom,
+      WardrobeOutfitSlot.outerwear,
+      WardrobeOutfitSlot.shoes,
+      WardrobeOutfitSlot.accessory,
+    ];
+
+    for (final slot in pickOrder) {
+      final candidates = slotBuckets[slot];
+      if (candidates == null || candidates.isEmpty) continue;
+
+      picked[slot] = candidates.length == 1
+          ? candidates.first
+          : _pickBest(
+              candidates,
+              context: context,
+              weather: weather,
+              colorType: colorType,
+              bodyProfile: bodyProfile,
+              coSelected: picked,
+            );
+    }
 
     for (final entry in slotBuckets.entries) {
       final slot = entry.key;
-      if (slot == WardrobeOutfitSlot.unknown) continue;
-
-      final candidates = entry.value;
-      if (candidates.length == 1) {
-        picked[slot] = candidates.first;
-      } else {
-        picked[slot] = _pickBest(
-          candidates,
-          context: context,
-          weather: weather,
-          colorType: colorType,
-        );
+      if (slot == WardrobeOutfitSlot.unknown || picked.containsKey(slot)) {
+        continue;
       }
+      final candidates = entry.value;
+      picked[slot] = candidates.length == 1
+          ? candidates.first
+          : _pickBest(
+              candidates,
+              context: context,
+              weather: weather,
+              colorType: colorType,
+              bodyProfile: bodyProfile,
+              coSelected: picked,
+            );
     }
 
     _applyDressBaseRule(picked);
 
-    final ordered = _orderOutfit(picked);
+    var ordered = _orderOutfit(picked);
+
+    if (bodyProfile != null && ordered.length >= 2) {
+      final harmony =
+          SilhouetteBalancer.outfitHarmonyScore(picked, bodyProfile);
+      if (harmony < 0.45) {
+        AppLogger.info(
+          'OutfitRecommendationCurator: low silhouette harmony=${harmony.toStringAsFixed(2)} '
+          'for ${bodyProfile.shape.englishLabel}',
+        );
+      }
+    }
 
     if (requestedIds.length != ordered.length) {
       AppLogger.info(
@@ -118,6 +161,8 @@ abstract final class OutfitRecommendationCurator {
     required StylistRequestContext context,
     WeatherSnapshot? weather,
     SeasonalColorType? colorType,
+    BodyProfile? bodyProfile,
+    Map<WardrobeOutfitSlot, WardrobeItem>? coSelected,
   }) {
     WardrobeItem? best;
     var bestScore = double.negativeInfinity;
@@ -128,6 +173,8 @@ abstract final class OutfitRecommendationCurator {
         context: context,
         weather: weather,
         colorType: colorType,
+        bodyProfile: bodyProfile,
+        coSelected: coSelected,
       );
       if (score > bestScore) {
         bestScore = score;

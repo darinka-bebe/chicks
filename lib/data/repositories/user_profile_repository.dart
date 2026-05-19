@@ -1,16 +1,21 @@
+import 'dart:convert';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/models/body_profile.dart';
 import '../../core/models/seasonal_color_type.dart';
 import '../../core/utils/logger.dart';
 
-/// Local user style profile (color type quiz, etc.).
+/// Local user style profile (color type, body shape, fit prefs).
 class UserProfileRepository {
   UserProfileRepository._();
 
   static final UserProfileRepository instance = UserProfileRepository._();
 
   static const _colorTypeKey = 'user_color_type_v1';
-  static const _quizCompletedKey = 'user_color_type_quiz_completed_v1';
+  static const _colorQuizCompletedKey = 'user_color_type_quiz_completed_v1';
+  static const _bodyProfileKey = 'user_body_profile_v1';
+  static const _bodyQuizCompletedKey = 'user_body_quiz_completed_v1';
 
   Future<SeasonalColorType?> getColorType() async {
     final prefs = await SharedPreferences.getInstance();
@@ -32,11 +37,47 @@ class UserProfileRepository {
 
   Future<bool> isColorTypeQuizCompleted() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_quizCompletedKey) ?? false;
+    return prefs.getBool(_colorQuizCompletedKey) ?? false;
   }
 
   Future<void> setColorTypeQuizCompleted({required bool completed}) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_quizCompletedKey, completed);
+    await prefs.setBool(_colorQuizCompletedKey, completed);
+  }
+
+  Future<BodyProfile?> getBodyProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_bodyProfileKey);
+    if (raw == null || raw.trim().isEmpty) return null;
+    try {
+      final map = jsonDecode(raw) as Map<String, dynamic>;
+      return BodyProfile.fromJson(map);
+    } catch (e) {
+      AppLogger.warning('UserProfileRepository: corrupt body profile ($e)');
+      return null;
+    }
+  }
+
+  Future<void> saveBodyProfile(BodyProfile profile) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_bodyProfileKey, jsonEncode(profile.toJson()));
+    AppLogger.info(
+      'UserProfileRepository: saved body shape ${profile.shape.englishLabel}',
+    );
+  }
+
+  Future<void> clearBodyProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_bodyProfileKey);
+  }
+
+  Future<bool> isBodyTypeQuizCompleted() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_bodyQuizCompletedKey) ?? false;
+  }
+
+  Future<void> setBodyTypeQuizCompleted({required bool completed}) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_bodyQuizCompletedKey, completed);
   }
 }

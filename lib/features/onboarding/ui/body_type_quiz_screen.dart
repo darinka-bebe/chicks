@@ -1,34 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/models/color_type_quiz_answers.dart';
-import '../../../core/models/seasonal_color_type.dart';
+import '../../../core/models/body_profile.dart';
 import '../../../core/router/route_names.dart';
-import '../../../core/services/color_type_calculator.dart';
+import '../../../core/services/body_shape_calculator.dart';
 import '../../../core/theme/app_brand_colors.dart';
+import '../../../data/repositories/auth_repository.dart';
 import '../../../data/repositories/user_profile_repository.dart';
-import '../data/color_type_quiz_questions.dart';
+import '../data/body_type_quiz_questions.dart';
+import '../widgets/body_type_illustration.dart';
 
-/// Lightweight appearance quiz → seasonal color type (no camera / Vision).
-class ColorTypeQuizScreen extends StatefulWidget {
-  const ColorTypeQuizScreen({super.key, this.fromProfile = false});
+/// Body shape + fit preferences quiz (no photos).
+class BodyTypeQuizScreen extends StatefulWidget {
+  const BodyTypeQuizScreen({super.key, this.fromProfile = false});
 
-  /// When true, returns to profile after save instead of login/main.
   final bool fromProfile;
 
   @override
-  State<ColorTypeQuizScreen> createState() => _ColorTypeQuizScreenState();
+  State<BodyTypeQuizScreen> createState() => _BodyTypeQuizScreenState();
 }
 
-class _ColorTypeQuizScreenState extends State<ColorTypeQuizScreen> {
+class _BodyTypeQuizScreenState extends State<BodyTypeQuizScreen> {
   final _pageController = PageController();
   final _selections = <String, String>{};
 
   int _currentIndex = 0;
   bool _showResult = false;
-  SeasonalColorType? _resultType;
+  BodyProfile? _resultProfile;
 
-  static const _questions = ColorTypeQuizQuestions.questions;
+  static const _questions = BodyTypeQuizQuestions.questions;
 
   @override
   void dispose() {
@@ -38,19 +38,19 @@ class _ColorTypeQuizScreenState extends State<ColorTypeQuizScreen> {
 
   String? _selectedFor(String questionId) => _selections[questionId];
 
-  ColorTypeQuizAnswers get _answers => ColorTypeQuizAnswers(
-        eyeColorId: _selections['eye_color'] ?? '',
-        hairColorId: _selections['hair_color'] ?? '',
-        skinUndertoneId: _selections['skin_undertone'] ?? '',
-        contrastLevelId: _selections['contrast_level'] ?? '',
-        skinDepthId: _selections['skin_depth'] ?? '',
+  BodyTypeQuizAnswers get _answers => BodyTypeQuizAnswers(
+        shapeId: _selections['body_shape'] ?? '',
+        shoulderHipsId: _selections['shoulder_hips'] ?? '',
+        waistId: _selections['waist'] ?? '',
+        fitPreferenceId: _selections['fit_pref'] ?? '',
+        heightId: _selections['height'] ?? '',
       );
 
-  void _selectOption(ColorTypeQuizQuestion question, String optionId) {
+  void _selectOption(BodyTypeQuizQuestion question, String optionId) {
     setState(() {
       _selections[question.id] = optionId;
       _showResult = false;
-      _resultType = null;
+      _resultProfile = null;
     });
   }
 
@@ -59,9 +59,8 @@ class _ColorTypeQuizScreenState extends State<ColorTypeQuizScreen> {
     if (_selectedFor(question.id) == null) return;
 
     if (_currentIndex >= _questions.length - 1) {
-      final type = ColorTypeCalculator.determine(_answers);
       setState(() {
-        _resultType = type;
+        _resultProfile = BodyShapeCalculator.determine(_answers);
         _showResult = true;
       });
       return;
@@ -86,7 +85,7 @@ class _ColorTypeQuizScreenState extends State<ColorTypeQuizScreen> {
   }
 
   Future<void> _skip() async {
-    await UserProfileRepository.instance.setColorTypeQuizCompleted(
+    await UserProfileRepository.instance.setBodyTypeQuizCompleted(
       completed: true,
     );
     if (!mounted) return;
@@ -94,11 +93,11 @@ class _ColorTypeQuizScreenState extends State<ColorTypeQuizScreen> {
   }
 
   Future<void> _saveAndContinue() async {
-    final type = _resultType;
-    if (type == null) return;
+    final profile = _resultProfile;
+    if (profile == null) return;
 
-    await UserProfileRepository.instance.saveColorType(type);
-    await UserProfileRepository.instance.setColorTypeQuizCompleted(
+    await UserProfileRepository.instance.saveBodyProfile(profile);
+    await UserProfileRepository.instance.setBodyTypeQuizCompleted(
       completed: true,
     );
     if (!mounted) return;
@@ -110,7 +109,10 @@ class _ColorTypeQuizScreenState extends State<ColorTypeQuizScreen> {
       context.pop(true);
       return;
     }
-    context.go(RouteNames.bodyTypeQuiz);
+    final destination = AuthRepository.instance.isLoggedIn
+        ? RouteNames.main
+        : RouteNames.login;
+    context.go(destination);
   }
 
   @override
@@ -135,7 +137,7 @@ class _ColorTypeQuizScreenState extends State<ColorTypeQuizScreen> {
                     const SizedBox(width: 48),
                   const Expanded(
                     child: Text(
-                      'Твой цветотип',
+                      'Тип фигуры',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 17,
@@ -171,9 +173,9 @@ class _ColorTypeQuizScreenState extends State<ColorTypeQuizScreen> {
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 320),
                 child: _showResult
-                    ? _ResultPanel(type: _resultType!)
+                    ? _ResultPanel(profile: _resultProfile!)
                     : PageView.builder(
-                        key: const ValueKey('quiz'),
+                        key: const ValueKey('body_quiz'),
                         controller: _pageController,
                         physics: const NeverScrollableScrollPhysics(),
                         onPageChanged: (index) =>
@@ -209,7 +211,6 @@ class _ColorTypeQuizScreenState extends State<ColorTypeQuizScreen> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    elevation: 0,
                   ),
                   child: Text(
                     _showResult ? 'Сохранить и продолжить' : 'Далее',
@@ -272,7 +273,7 @@ class _QuestionPage extends StatelessWidget {
     required this.onSelect,
   });
 
-  final ColorTypeQuizQuestion question;
+  final BodyTypeQuizQuestion question;
   final String? selectedId;
   final ValueChanged<String> onSelect;
 
@@ -325,7 +326,7 @@ class _OptionCard extends StatelessWidget {
     required this.onTap,
   });
 
-  final ColorTypeQuizOption option;
+  final BodyTypeQuizOption option;
   final bool selected;
   final VoidCallback onTap;
 
@@ -335,25 +336,25 @@ class _OptionCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 220),
           curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          padding: const EdgeInsets.fromLTRB(12, 12, 14, 12),
           decoration: BoxDecoration(
-            color: selected ? Colors.white : Colors.white.withValues(alpha: 0.7),
-            borderRadius: BorderRadius.circular(16),
+            color: selected ? Colors.white : Colors.white.withValues(alpha: 0.85),
+            borderRadius: BorderRadius.circular(18),
             border: Border.all(
               color: selected
                   ? AppBrandColors.pink
-                  : AppBrandColors.pink.withValues(alpha: 0.12),
-              width: selected ? 2 : 1,
+                  : AppBrandColors.pink.withValues(alpha: 0.14),
+              width: selected ? 2.5 : 1,
             ),
             boxShadow: selected
                 ? [
                     BoxShadow(
-                      color: AppBrandColors.pink.withValues(alpha: 0.12),
-                      blurRadius: 16,
+                      color: AppBrandColors.pink.withValues(alpha: 0.14),
+                      blurRadius: 18,
                       offset: const Offset(0, 6),
                     ),
                   ]
@@ -361,24 +362,16 @@ class _OptionCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              if (option.icon != null) ...[
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: selected
-                        ? AppBrandColors.pink.withValues(alpha: 0.12)
-                        : AppBrandColors.iconBackground,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    option.icon,
-                    color: AppBrandColors.pink,
-                    size: 22,
-                  ),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: BodyTypeIllustration.forOptionId(
+                  option.id,
+                  width: 84,
+                  height: 118,
+                  emphasized: selected,
                 ),
-                const SizedBox(width: 14),
-              ],
+              ),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -388,18 +381,19 @@ class _OptionCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight:
-                            selected ? FontWeight.w700 : FontWeight.w600,
+                            selected ? FontWeight.w800 : FontWeight.w700,
                         color: AppBrandColors.title,
+                        height: 1.2,
                       ),
                     ),
-                    if (option.subtitle != null) ...[
-                      const SizedBox(height: 4),
+                    if (option.hint != null) ...[
+                      const SizedBox(height: 6),
                       Text(
-                        option.subtitle!,
+                        option.hint!,
                         style: TextStyle(
                           fontSize: 13,
                           color: Colors.grey[600],
-                          height: 1.3,
+                          height: 1.35,
                         ),
                       ),
                     ],
@@ -411,7 +405,7 @@ class _OptionCard extends StatelessWidget {
                     ? Icons.check_circle_rounded
                     : Icons.circle_outlined,
                 color: selected ? AppBrandColors.pink : Colors.grey[400],
-                size: 24,
+                size: 26,
               ),
             ],
           ),
@@ -422,98 +416,56 @@ class _OptionCard extends StatelessWidget {
 }
 
 class _ResultPanel extends StatelessWidget {
-  const _ResultPanel({required this.type});
+  const _ResultPanel({required this.profile});
 
-  final SeasonalColorType type;
+  final BodyProfile profile;
 
   @override
   Widget build(BuildContext context) {
+    final shape = profile.shape;
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
       child: Column(
         children: [
-          Container(
-            width: 120,
-            height: 120,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: RadialGradient(
-                colors: [
-                  AppBrandColors.pink.withValues(alpha: 0.22),
-                  AppBrandColors.iconBackground,
-                ],
-              ),
-            ),
-            child: const Icon(
-              Icons.palette_outlined,
-              size: 56,
-              color: AppBrandColors.pink,
+          ClipRRect(
+            borderRadius: BorderRadius.circular(24),
+            child: BodyTypeIllustration.forBodyShape(
+              shape,
+              width: 140,
+              height: 168,
+              emphasized: true,
             ),
           ),
-          const SizedBox(height: 28),
-          const Text(
-            'Твой цветотип',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: AppBrandColors.pink,
-            ),
-          ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 24),
           Text(
-            type.displayNameRu,
+            shape.displayNameRu,
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w800,
               color: AppBrandColors.title,
-              height: 1.15,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text(
-            type.englishLabel,
+            shape.englishLabel,
+            style: TextStyle(color: Colors.grey[500], fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            shape.shortDescriptionRu,
+            textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[500],
-              letterSpacing: 0.4,
+              fontSize: 15,
+              color: Colors.grey[700],
+              height: 1.5,
             ),
           ),
-          const SizedBox(height: 20),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: AppBrandColors.pink.withValues(alpha: 0.12),
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  type.shortDescriptionRu,
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: Colors.grey[700],
-                    height: 1.5,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Стилист будет подбирать образы с учётом этой палитры — '
-                  'без фото и сложного анализа, только твои ответы.',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey[600],
-                    height: 1.45,
-                  ),
-                ),
-              ],
-            ),
+          const SizedBox(height: 16),
+          Text(
+            'Стилист будет балансировать силуэт и учитывать посадку: ${profile.fitPreference.isNotEmpty ? profile.fitPreference : "универсальная"}.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 13, color: Colors.grey[600], height: 1.45),
           ),
         ],
       ),

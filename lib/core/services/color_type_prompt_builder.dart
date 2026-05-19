@@ -8,7 +8,8 @@ abstract final class ColorTypePromptBuilder {
 ЦВЕТОТИП ПОЛЬЗОВАТЕЛЯ: ${type.englishLabel} (${type.displayNameRu}).
 ${palette.preferRu}
 ${palette.avoidRu}
-В блоке «Почему это работает» добавь 1 короткую фразу, почему палитра образа подходит именно цветотипу ${type.englishLabel} (например: «оттенки хорошо ложатся на твой ${type.displayNameRu}»).
+ОБЯЗАТЕЛЬНО при выборе recommendedItemIds отдавай приоритет вещам из гардероба, чьи цвета попадают в палитру ${type.englishLabel}; избегай id вещей с явно неподходящими оттенками, если есть альтернатива в гардеробе.
+В «Почему это работает»: 1 пункт про цветотип — почему оттенки образа подходят ${type.displayNameRu}.
 Не назначай цветотип заново — используй только ${type.englishLabel}.''';
   }
 

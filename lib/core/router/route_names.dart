@@ -3,6 +3,7 @@ class RouteNames {
   static const String splash = '/';
   static const String onboarding = '/onboarding';
   static const String colorTypeQuiz = '/onboarding/color-type';
+  static const String bodyTypeQuiz = '/onboarding/body-type';
   static const String login = '/login';
   static const String registration = '/registration';
 
@@ -12,6 +13,7 @@ class RouteNames {
   static const String wardrobe = '/wardrobe';
   static const String addWardrobeItem = '/wardrobe/add';
   static const String wardrobeItemDetails = '/wardrobe/item';
+  static const String wardrobeInsights = '/wardrobe/insights';
   static const String testImage = '/debug/test-image';
   static const String favorites = '/favorites';
   static const String favoriteOutfitDetails = '/favorites/item';
@@ -22,6 +24,7 @@ class RouteNames {
   static const String splashName = 'splash';
   static const String onboardingName = 'onboarding';
   static const String colorTypeQuizName = 'colorTypeQuiz';
+  static const String bodyTypeQuizName = 'bodyTypeQuiz';
   static const String loginName = 'login';
   static const String registrationName = 'registration';
 
@@ -31,6 +34,7 @@ class RouteNames {
   static const String wardrobeName = 'wardrobe';
   static const String addWardrobeItemName = 'wardrobeAdd';
   static const String wardrobeItemDetailsName = 'wardrobeItemDetails';
+  static const String wardrobeInsightsName = 'wardrobeInsights';
   static const String testImageName = 'testImage';
   static const String favoritesName = 'favorites';
   static const String favoriteOutfitDetailsName = 'favoriteOutfitDetails';

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_brand_colors.dart';
+import '../../../core/models/body_profile.dart';
 import '../../../core/models/seasonal_color_type.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/repositories/user_profile_repository.dart';
@@ -14,6 +15,7 @@ import '../../app/bloc/app_bloc.dart';
 import '../../app/bloc/app_event.dart';
 import '../../app/bloc/auth_state.dart';
 import '../data/profile_stats_loader.dart';
+import '../widgets/profile_body_type_card.dart';
 import '../widgets/profile_color_type_card.dart';
 import '../widgets/profile_action_tile.dart';
 import '../widgets/profile_card_decoration.dart';
@@ -31,19 +33,27 @@ class _ProfileTabState extends State<ProfileTab> {
       GlobalKey<_ProfileStatsPanelState>();
 
   SeasonalColorType? _colorType;
+  BodyProfile? _bodyProfile;
 
-  static const int _listItemCount = 11;
+  static const int _listItemCount = 13;
 
   @override
   void initState() {
     super.initState();
-    _loadColorType();
+    _loadStyleProfile();
   }
 
-  Future<void> _loadColorType() async {
-    final type = await UserProfileRepository.instance.getColorType();
+  Future<void> _loadStyleProfile() async {
+    final repo = UserProfileRepository.instance;
+    final results = await Future.wait([
+      repo.getColorType(),
+      repo.getBodyProfile(),
+    ]);
     if (!mounted) return;
-    setState(() => _colorType = type);
+    setState(() {
+      _colorType = results[0] as SeasonalColorType?;
+      _bodyProfile = results[1] as BodyProfile?;
+    });
   }
 
   Future<void> _confirmSignOut() async {
@@ -160,7 +170,7 @@ class _ProfileTabState extends State<ProfileTab> {
   Future<void> _refreshStats() async {
     await Future.wait([
       _statsPanelKey.currentState?.reload() ?? Future<void>.value(),
-      _loadColorType(),
+      _loadStyleProfile(),
     ]);
   }
 
@@ -212,19 +222,26 @@ class _ProfileTabState extends State<ProfileTab> {
                 case 2:
                   return ProfileColorTypeCard(
                     colorType: _colorType,
-                    onUpdated: _loadColorType,
+                    onUpdated: _loadStyleProfile,
                   );
                 case 3:
-                  return const SizedBox(height: 20);
-                case 4:
-                  return _ProfileStatsPanel(key: _statsPanelKey);
-                case 5:
-                  return const SizedBox(height: 24);
-                case 6:
-                  return const _SectionTitle(title: 'Быстрые действия');
-                case 7:
                   return const SizedBox(height: 12);
+                case 4:
+                  return ProfileBodyTypeCard(
+                    bodyProfile: _bodyProfile,
+                    onUpdated: _loadStyleProfile,
+                  );
+                case 5:
+                  return const SizedBox(height: 20);
+                case 6:
+                  return _ProfileStatsPanel(key: _statsPanelKey);
+                case 7:
+                  return const SizedBox(height: 24);
                 case 8:
+                  return const _SectionTitle(title: 'Быстрые действия');
+                case 9:
+                  return const SizedBox(height: 12);
+                case 10:
                   return _ProfileActionsBlock(
                     onWardrobe: () => context.pushNamed(RouteNames.wardrobeName),
                     onFavorites: () =>
@@ -234,9 +251,9 @@ class _ProfileTabState extends State<ProfileTab> {
                     onStyle: _showStylePreferences,
                     onSettings: _showSettings,
                   );
-                case 9:
+                case 11:
                   return const SizedBox(height: 28);
-                case 10:
+                case 12:
                   return _SignOutButton(
                     label: loc.signOut,
                     onPressed: _confirmSignOut,

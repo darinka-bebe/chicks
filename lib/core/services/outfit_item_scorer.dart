@@ -1,6 +1,10 @@
 import '../../data/models/wardrobe_item.dart';
+import '../models/body_profile.dart';
 import '../models/seasonal_color_type.dart';
 import '../models/stylist_request_context.dart';
+import '../models/wardrobe_outfit_slot.dart';
+import 'silhouette_balancer.dart';
+import 'wardrobe_slot_classifier.dart';
 import '../models/weather_snapshot.dart';
 import '../models/weather_condition.dart';
 
@@ -11,6 +15,8 @@ abstract final class OutfitItemScorer {
     StylistRequestContext context = StylistRequestContext.empty,
     WeatherSnapshot? weather,
     SeasonalColorType? colorType,
+    BodyProfile? bodyProfile,
+    Map<WardrobeOutfitSlot, WardrobeItem>? coSelected,
   }) {
     var total = 0.0;
 
@@ -20,9 +26,27 @@ abstract final class OutfitItemScorer {
     total += _scoreLiveWeather(item, weather) * 20;
     total += _scoreStyleCohesion(item, context) * 10;
     total += _scoreNeutralBasics(item) * 4;
-    total += _scoreColorType(item, colorType) * 14;
+    total += _scoreColorType(item, colorType) * 20;
+    total += _scoreBodyProfile(item, bodyProfile) * 16;
+
+    if (bodyProfile != null && coSelected != null && coSelected.isNotEmpty) {
+      final slot = WardrobeSlotClassifier.classify(item);
+      total +=
+          SilhouetteBalancer.combinationDelta(
+                candidate: item,
+                slot: slot,
+                selected: coSelected,
+                profile: bodyProfile,
+              ) *
+              12;
+    }
 
     return total;
+  }
+
+  static double _scoreBodyProfile(WardrobeItem item, BodyProfile? profile) {
+    if (profile == null) return 0.5;
+    return SilhouetteBalancer.scoreItemForBody(item: item, profile: profile);
   }
 
   static double _scoreColorType(WardrobeItem item, SeasonalColorType? colorType) {
@@ -39,8 +63,9 @@ abstract final class OutfitItemScorer {
       if (color.contains(keyword)) misses++;
     }
 
-    if (hits == 0 && misses == 0) return 0.45;
-    return ((hits * 0.35) - (misses * 0.45) + 0.5).clamp(0.0, 1.0);
+    if (hits == 0 && misses == 0) return 0.35;
+    if (misses > 0 && hits == 0) return 0.15;
+    return ((hits * 0.4) - (misses * 0.55) + 0.45).clamp(0.0, 1.0);
   }
 
   static _ColorKeywordSet _colorKeywordsFor(SeasonalColorType type) {

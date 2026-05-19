@@ -13,8 +13,9 @@ import '../utils/logger.dart';
 import 'stylist_context_parser.dart';
 import 'stylist_response_parser.dart';
 import '../models/weather_snapshot.dart';
-import '../../data/repositories/user_profile_repository.dart';
+import 'body_type_prompt_builder.dart';
 import 'color_type_prompt_builder.dart';
+import 'user_style_profile_loader.dart';
 import 'wardrobe_ai_context.dart';
 import 'wardrobe_sync_service.dart';
 import 'wardrobe_prompt_builder.dart';
@@ -153,9 +154,12 @@ class OpenAiChatService {
         );
       }
 
-      final colorType = await UserProfileRepository.instance.getColorType();
-      final colorTypeSection = colorType != null
-          ? ColorTypePromptBuilder.buildSystemSection(colorType)
+      final styleProfile = await UserStyleProfileLoader.load();
+      final colorTypeSection = styleProfile.colorType != null
+          ? ColorTypePromptBuilder.buildSystemSection(styleProfile.colorType!)
+          : null;
+      final bodyTypeSection = styleProfile.bodyProfile != null
+          ? BodyTypePromptBuilder.buildSystemSection(styleProfile.bodyProfile!)
           : null;
 
       final messages = <Map<String, String>>[
@@ -168,6 +172,10 @@ class OpenAiChatService {
         messages.add({'role': 'system', 'content': colorTypeSection.trim()});
       }
 
+      if (bodyTypeSection != null && bodyTypeSection.trim().isNotEmpty) {
+        messages.add({'role': 'system', 'content': bodyTypeSection.trim()});
+      }
+
       if (weatherSection != null && weatherSection.trim().isNotEmpty) {
         messages.add({'role': 'system', 'content': weatherSection});
       }
@@ -177,7 +185,8 @@ class OpenAiChatService {
         {
           'role': 'system',
           'content': WardrobePromptBuilder.buildResponseFormatSection(
-            hasColorType: colorType != null,
+            hasColorType: styleProfile.colorType != null,
+            hasBodyType: styleProfile.bodyProfile != null,
           ).trim(),
         },
       ]);
@@ -397,7 +406,7 @@ class OpenAiChatService {
   }) async {
     if (rawIds.isEmpty || wardrobe.isEmpty) return const [];
 
-    final colorType = await UserProfileRepository.instance.getColorType();
+    final styleProfile = await UserStyleProfileLoader.load();
 
     try {
       return OutfitRecommendationCurator.curateIds(
@@ -405,7 +414,8 @@ class OpenAiChatService {
         wardrobe: wardrobe,
         context: context,
         weather: weather.isAvailable ? weather : null,
-        colorType: colorType,
+        colorType: styleProfile.colorType,
+        bodyProfile: styleProfile.bodyProfile,
       );
     } catch (e, stack) {
       StylistPipelineLogger.logFailure('curateRecommendations', e, stack);

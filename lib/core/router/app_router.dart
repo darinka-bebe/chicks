@@ -13,12 +13,14 @@ import '../../features/outfit_history/ui/outfit_history_details_screen.dart';
 import '../../features/outfit_history/ui/outfit_history_screen.dart';
 import '../../features/wardrobe/ui/add_wardrobe_item_screen.dart';
 import '../../features/wardrobe/ui/wardrobe_item_details_screen.dart';
+import '../../features/wardrobe/ui/wardrobe_insights_screen.dart';
 import '../../features/wardrobe/ui/wardrobe_screen.dart';
 import '../../features/home/ui/home_shell.dart';
 import '../../features/home/ui/main_tab.dart';
 import '../../features/profile/ui/profile.dart';
 import '../../features/app/ui/registration_screen.dart';
 import '../../features/login/ui/login_screen.dart';
+import '../../features/onboarding/ui/body_type_quiz_screen.dart';
 import '../../features/onboarding/ui/color_type_quiz_screen.dart';
 import '../../features/onboarding/ui/onboarding_screen.dart';
 import '../../features/splash/ui/splash_screen.dart';
@@ -55,6 +57,14 @@ class AppRouter {
         builder: (context, state) {
           final fromProfile = state.uri.queryParameters['from'] == 'profile';
           return ColorTypeQuizScreen(fromProfile: fromProfile);
+        },
+      ),
+      GoRoute(
+        name: RouteNames.bodyTypeQuizName,
+        path: RouteNames.bodyTypeQuiz,
+        builder: (context, state) {
+          final fromProfile = state.uri.queryParameters['from'] == 'profile';
+          return BodyTypeQuizScreen(fromProfile: fromProfile);
         },
       ),
       GoRoute(
@@ -155,6 +165,12 @@ class AppRouter {
             path: 'add',
             parentNavigatorKey: rootNavigatorKey,
             builder: (context, state) => const AddWardrobeItemScreen(),
+          ),
+          GoRoute(
+            name: RouteNames.wardrobeInsightsName,
+            path: 'insights',
+            parentNavigatorKey: rootNavigatorKey,
+            builder: (context, state) => const WardrobeInsightsScreen(),
           ),
           GoRoute(
             name: RouteNames.wardrobeItemDetailsName,
