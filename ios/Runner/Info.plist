@@ -51,6 +51,20 @@
 	<true/>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Chicks uses your location to suggest weather-appropriate outfits.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Chicks needs access to your photo library to set your profile photo and add wardrobe items.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Chicks can save outfit photos to your library when you choose to export them.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Chicks can use the camera to photograph wardrobe items and your profile avatar.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Microphone access is not required for core features; some system pickers may request it.</string>
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<false/>
+	<key>UIStatusBarStyle</key>
+	<string>UIStatusBarStyleDarkContent</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
@@ -58,8 +72,6 @@
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>

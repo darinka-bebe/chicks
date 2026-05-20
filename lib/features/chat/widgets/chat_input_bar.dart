@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/stylist_suggestion_chips.dart';
+import '../../../core/widgets/iphone_layout.dart';
 import '../../../core/theme/app_brand_colors.dart';
 import '../../../core/theme/chicks_input_styles.dart';
 import 'chat_suggestion_chips.dart';
@@ -128,12 +129,7 @@ class ChatInputBarState extends State<ChatInputBar> {
             ),
             const SizedBox(height: 10),
             Padding(
-              padding: EdgeInsets.fromLTRB(
-                16,
-                0,
-                16,
-                12 + MediaQuery.paddingOf(context).bottom,
-              ),
+              padding: IphoneLayout.inputBarPadding(context),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [

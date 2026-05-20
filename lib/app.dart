@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
+import 'core/lifecycle/app_lifecycle_coordinator.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'data/repositories/auth_repository.dart';
@@ -36,7 +37,8 @@ class App extends StatelessWidget {
           create: (_) => WardrobeController(),
         ),
       ],
-      child: MaterialApp.router(
+      child: AppLifecycleCoordinator(
+        child: MaterialApp.router(
         title: 'Chicks',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
@@ -48,6 +50,7 @@ class App extends StatelessWidget {
           GlobalCupertinoLocalizations.delegate,
         ],
         supportedLocales: AppLocalizations.supportedLocales,
+        ),
       ),
     );
   }

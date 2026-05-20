@@ -43,16 +43,23 @@ class HomeShell extends StatelessWidget {
     final int selectedIndex = _currentIndex(context);
 
     return Scaffold(
-      body: child,
-      // Используем NavigationBar (Material 3) — более современный вид
-      // с анимированным indicator под активной вкладкой.
-      bottomNavigationBar: NavigationBar(
+      backgroundColor: const Color(0xFFFFF0F5),
+      body: SafeArea(
+        bottom: false,
+        child: child,
+      ),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        minimum: const EdgeInsets.only(bottom: 4),
+        child: NavigationBar(
         selectedIndex: selectedIndex,
         onDestinationSelected: (index) => _onTabTapped(context, index),
         backgroundColor: Colors.white,
         indicatorColor: const Color(0xFFFFD6E8),
+        surfaceTintColor: Colors.transparent,
         shadowColor: Colors.black12,
         elevation: 8,
+        height: 64,
         animationDuration: const Duration(milliseconds: 350),
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         destinations: [
@@ -73,6 +80,7 @@ class HomeShell extends StatelessWidget {
             label: loc.tabProfile,
           ),
         ],
+        ),
       ),
     );
   }

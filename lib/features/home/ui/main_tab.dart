@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/widgets/iphone_layout.dart';
 import '../../../core/router/route_names.dart';
 import '../../../features/app/bloc/app_bloc.dart';
 import '../../../l10n/generated/app_localizations.dart';
@@ -102,7 +103,12 @@ class _MainTabState extends State<MainTab> with SingleTickerProviderStateMixin {
         ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+        padding: IphoneLayout.scrollPadding(
+          context,
+          horizontal: 24,
+          top: 8,
+          extraBottom: IphoneLayout.shellBottomNavHeight,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [

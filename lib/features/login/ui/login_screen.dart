@@ -21,21 +21,20 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
 
-  Future<void> _onSignInPressed() async {
+  Future<void> _onGoogleSignIn() async {
+    if (_isLoading) return;
     setState(() => _isLoading = true);
 
     try {
       await AuthRepository.instance.signInWithGoogle();
-    } catch (error) {
-      AppLogger.error('Ошибка входа', error: error);
-
+      // Success: AppBloc navigates via BlocListener — no snackbar.
+    } on AuthException catch (e) {
+      if (!mounted || e.isCancelled) return;
+      _showError(e.message);
+    } catch (error, stack) {
+      AppLogger.error('LoginScreen: Google sign-in failed', error: error, stackTrace: stack);
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Ошибка входа через Google'),
-        ),
-         );
+      _showError('Не удалось войти через Google. Проверьте интернет и настройки Firebase.');
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -43,8 +42,20 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  void _showError(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+  }
+
   void _openRegistration() {
-    context.go(RouteNames.registration);
+    context.push(RouteNames.registration);
   }
 
   @override
@@ -53,46 +64,53 @@ class _LoginScreenState extends State<LoginScreen> {
     final textTheme = Theme.of(context).textTheme;
 
     return BlocListener<AppBloc, AuthState>(
-      listenWhen: (previous, current) => previous.status != current.status,
+      listenWhen: (previous, current) =>
+          previous.status != current.status &&
+          current.status == AppStatus.authenticated,
       listener: (context, state) {
-        if (state.status == AppStatus.authenticated) {
-          context.go(RouteNames.main);
-        }
+        context.go(RouteNames.main);
       },
       child: Scaffold(
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppConstants.largePadding,
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  loc.loginTitle,
-                  style: textTheme.headlineLarge,
-                ),
-                const SizedBox(height: 12),
-
-                Text(
-                  loc.loginSubtitle,
-                  textAlign: TextAlign.center,
-                ),
-
-                const SizedBox(height: 40),
-
-                GoogleSignInButton(
-                  onPressed: _onSignInPressed,
-                  isLoading: _isLoading,
-                ),
-
-                const SizedBox(height: 20),
-
-                TextButton(
-                  onPressed: _openRegistration,
-                  child: const Text('Создать аккаунт'),
-                ),
-              ],
+        backgroundColor: const Color(0xFFFFF0F5),
+        body: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppConstants.largePadding,
+                vertical: 24,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    loc.loginTitle,
+                    style: textTheme.headlineLarge?.copyWith(
+                      color: const Color(0xFFFF4FA0),
+                      fontWeight: FontWeight.w600,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    loc.loginSubtitle,
+                    textAlign: TextAlign.center,
+                    style: textTheme.bodyMedium?.copyWith(
+                      color: Colors.grey[700],
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+                  GoogleSignInButton(
+                    onPressed: _isLoading ? null : _onGoogleSignIn,
+                    isLoading: _isLoading,
+                  ),
+                  const SizedBox(height: 20),
+                  TextButton(
+                    onPressed: _isLoading ? null : _openRegistration,
+                    child: const Text('Создать аккаунт по email'),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

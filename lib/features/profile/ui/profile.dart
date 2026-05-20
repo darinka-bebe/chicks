@@ -4,13 +4,13 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_brand_colors.dart';
+import '../../../core/widgets/iphone_layout.dart';
 import '../../../core/models/body_profile.dart';
 import '../../../core/models/seasonal_color_type.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/repositories/user_profile_repository.dart';
 import '../../../features/favorites/favorites_controller.dart';
 import '../../../l10n/generated/app_localizations.dart';
-import '../../../widgets/user_avatar.dart';
 import '../../app/bloc/app_bloc.dart';
 import '../../app/bloc/app_event.dart';
 import '../../app/bloc/auth_state.dart';
@@ -19,6 +19,7 @@ import '../widgets/profile_body_type_card.dart';
 import '../widgets/profile_color_type_card.dart';
 import '../widgets/profile_action_tile.dart';
 import '../widgets/profile_card_decoration.dart';
+import '../widgets/profile_editable_avatar.dart';
 import '../widgets/profile_stat_card.dart';
 
 class ProfileTab extends StatefulWidget {
@@ -206,7 +207,7 @@ class _ProfileTabState extends State<ProfileTab> {
           onRefresh: _refreshStats,
           child: ListView.builder(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
+            padding: IphoneLayout.shellTabScrollPadding(context),
             itemCount: _listItemCount,
             itemBuilder: (context, index) {
               switch (index) {
@@ -392,18 +393,17 @@ class _ProfileHeader extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(20, 28, 20, 24),
         child: Column(
           children: [
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: AppBrandColors.pink.withValues(alpha: 0.35),
-                  width: 2,
-                ),
+            ProfileEditableAvatar(photoUrl: user.photoUrl),
+            const SizedBox(height: 10),
+            Text(
+              'Нажмите на фото, чтобы изменить',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey[600],
               ),
-              child: UserAvatar(photoUrl: user.photoUrl, radius: 52),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             Text(
               displayName,
               textAlign: TextAlign.center,
@@ -422,10 +422,10 @@ class _ProfileHeader extends StatelessWidget {
                 color: AppBrandColors.pink,
               ),
             ),
-            if (user.email.isNotEmpty) ...[
+            if (user.visibleEmail.isNotEmpty) ...[
               const SizedBox(height: 10),
               Text(
-                user.email,
+                user.visibleEmail,
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 13, color: Colors.grey[600]),
               ),

@@ -326,7 +326,7 @@ class _WardrobeScreenState extends State<WardrobeScreen>
       return Scaffold(
         backgroundColor: AppBrandColors.background,
         appBar: _buildAppBar(context, hasItems: items.isNotEmpty),
-        floatingActionButton: _buildFab(),
+        floatingActionButton: _buildFab(context),
         body: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -353,7 +353,7 @@ class _WardrobeScreenState extends State<WardrobeScreen>
     return Scaffold(
       backgroundColor: AppBrandColors.background,
         appBar: _buildAppBar(context, hasItems: items.isNotEmpty),
-        floatingActionButton: _buildFab(),
+        floatingActionButton: _buildFab(context),
         body: items.isEmpty
           ? WardrobeEmptyState(onAddPressed: _openAddItem)
           : Column(
@@ -401,13 +401,16 @@ class _WardrobeScreenState extends State<WardrobeScreen>
     );
   }
 
-  Widget _buildFab() {
-    return FloatingActionButton(
-      onPressed: _openAddItem,
-      backgroundColor: AppBrandColors.pink,
-      foregroundColor: Colors.white,
-      elevation: 4,
-      child: const Icon(Icons.add_rounded, size: 28),
+  Widget _buildFab(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom),
+      child: FloatingActionButton(
+        onPressed: _openAddItem,
+        backgroundColor: AppBrandColors.pink,
+        foregroundColor: Colors.white,
+        elevation: 4,
+        child: const Icon(Icons.add_rounded, size: 28),
+      ),
     );
   }
 

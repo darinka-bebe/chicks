@@ -1,4 +1,7 @@
 import 'package:equatable/equatable.dart';
+import 'package:firebase_auth/firebase_auth.dart' as firebase;
+
+import '../../core/utils/user_profile_rules.dart';
 
 class UserModel extends Equatable {
   final String uid;
@@ -27,6 +30,21 @@ class UserModel extends Equatable {
   bool get isEmpty => this == empty;
 
   bool get isNotEmpty => this != empty;
+
+  /// Email for UI — hides guest/placeholder addresses.
+  String get visibleEmail => UserProfileRules.visibleEmail(email);
+
+  factory UserModel.fromFirebaseUser(firebase.User user) {
+    return UserModel(
+      uid: user.uid,
+      displayName: user.displayName?.trim().isNotEmpty == true
+          ? user.displayName!.trim()
+          : 'Пользователь',
+      email: UserProfileRules.sanitizeStoredEmail(user.email),
+      photoUrl: user.photoURL?.trim() ?? '',
+      lastLoginAt: DateTime.now(),
+    );
+  }
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(

@@ -12,9 +12,9 @@ import io.flutter.plugins.GeneratedPluginRegistrant
  */
 class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
-        super.configureFlutterEngine(flutterEngine)
-        // Ensures plugins are registered after full rebuild (avoids MissingPluginException
-        // when the engine is created without going through the default path).
+        // Register plugins BEFORE super so firebase_core channel exists
+        // before Dart calls Firebase.initializeApp (via AppStartupGate).
         GeneratedPluginRegistrant.registerWith(flutterEngine)
+        super.configureFlutterEngine(flutterEngine)
     }
 }

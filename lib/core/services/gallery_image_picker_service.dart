@@ -130,7 +130,7 @@ abstract final class GalleryImagePickerService {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.image,
         allowMultiple: false,
-        withData: Platform.isAndroid,
+        withData: false,
         lockParentWindow: true,
       );
 

@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/chicks_input_styles.dart';
+import '../../../data/repositories/auth_repository.dart';
+import '../../../features/app/bloc/app_bloc.dart';
+import '../../../features/app/bloc/auth_state.dart';
 import '../../../ui_kit/ui_kit.dart';
 
 class RegistrationScreen extends StatefulWidget {
@@ -30,26 +34,42 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     super.dispose();
   }
 
-   Future<void> _onRegisterPressed() async {
+  Future<void> _onRegisterPressed() async {
     if (!(_formKey.currentState?.validate() ?? false)) {
       return;
     }
 
     setState(() => _isLoading = true);
 
-    await Future.delayed(const Duration(seconds: 1));
-
-    if (!mounted) return;
-
-    setState(() => _isLoading = false);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Регистрация успешна'),
-      ),
-    );
-
-    context.go(RouteNames.main);
+    try {
+      await AuthRepository.instance.signUp(
+        displayName: _nameController.text,
+        email: _emailController.text,
+        password: _passwordController.text,
+      );
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.message),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Не удалось зарегистрироваться'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   void _onLoginTapped() {
@@ -61,7 +81,14 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    return Scaffold(
+    return BlocListener<AppBloc, AuthState>(
+      listenWhen: (previous, current) =>
+          previous.status != current.status &&
+          current.status == AppStatus.authenticated,
+      listener: (context, state) {
+        context.go(RouteNames.main);
+      },
+      child: Scaffold(
       backgroundColor: colorScheme.surface,
       body: SafeArea(
         child: Center(
@@ -187,6 +214,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           ),
         ),
       ),
+    ),
     );
   }
 }
