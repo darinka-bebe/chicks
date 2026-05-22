@@ -10,6 +10,7 @@ import '../../core/services/profile_bootstrap_service.dart';
 import '../../core/utils/logger.dart';
 import '../../core/utils/user_profile_rules.dart';
 import '../models/user_model.dart';
+import 'profile_preferences_repository.dart';
 
 class AuthException implements Exception {
   AuthException(this.message, {this.code});
@@ -105,8 +106,10 @@ class AuthRepository {
     _authController.add(_currentUser);
   }
 
-  /// Clears invalid placeholder emails and missing avatar paths from storage.
+  /// Clears invalid placeholder emails, repairs avatar path, re-syncs Firebase user.
   Future<void> repairStoredSession() async {
+    await FirebaseBootstrap.ensureInitialized();
+
     final prefs = await SharedPreferences.getInstance();
     final rawEmail = prefs.getString(_emailKey);
     final sanitizedEmail = UserProfileRules.sanitizeStoredEmail(rawEmail);
@@ -119,10 +122,33 @@ class AuthRepository {
       }
     }
 
+    final storedUid = prefs.getString(_uidKey)?.trim() ?? _currentUser.uid;
     final rawPhoto = prefs.getString(_photoUrlKey) ?? '';
-    final photoUrl = await ProfileAvatarStorage.resolveValidLocalPath(rawPhoto);
+    final photoUrl = await ProfileAvatarStorage.resolveValidLocalPath(
+      rawPhoto,
+      uid: storedUid.isNotEmpty ? storedUid : null,
+    );
     if (photoUrl != rawPhoto) {
       await prefs.setString(_photoUrlKey, photoUrl);
+    }
+    if (storedUid.isNotEmpty && photoUrl.isNotEmpty) {
+      await ProfileAvatarStorage.pruneLegacyAvatars(
+        uid: storedUid,
+        keepPath: photoUrl,
+      );
+    }
+
+    final firebaseUser = _firebaseAuth.currentFirebaseUser;
+    if (firebaseUser != null) {
+      final merged = await _mergeWithLocalProfile(
+        UserModel.fromFirebaseUser(firebaseUser),
+      );
+      if (merged != _currentUser) {
+        _currentUser = merged;
+        await _persistSession(_currentUser);
+        _authController.add(_currentUser);
+      }
+      return;
     }
 
     final loggedIn = prefs.getBool(_loggedInKey) ?? false;
@@ -136,8 +162,11 @@ class AuthRepository {
       return;
     }
 
-    _currentUser = await _loadUserFromPrefs(prefs);
-    _authController.add(_currentUser);
+    final fromPrefs = await _loadUserFromPrefs(prefs);
+    if (fromPrefs != _currentUser) {
+      _currentUser = fromPrefs;
+      _authController.add(_currentUser);
+    }
   }
 
   Future<UserModel> signUp({
@@ -202,15 +231,80 @@ class AuthRepository {
       throw AuthException('User not authorized');
     }
 
-    final resolved =
-        await ProfileAvatarStorage.resolveValidLocalPath(photoPath);
+    final trimmed = photoPath.trim();
+    final resolved = trimmed.toLowerCase().startsWith('http')
+        ? trimmed
+        : await ProfileAvatarStorage.ensurePermanentAvatarPath(
+            trimmed,
+            uid: _currentUser.uid,
+          );
+
+    if (resolved.isEmpty) {
+      throw AuthException('Не удалось сохранить фото профиля');
+    }
+
+    _currentUser = _currentUser.copyWith(
+      photoUrl: resolved,
+      avatarRevision: _currentUser.avatarRevision + 1,
+    );
+    await _persistSession(_currentUser);
+    _authController.add(_currentUser);
+    AppLogger.info('AuthRepository: avatar path updated → $resolved');
+  }
+
+  Future<void> updateDisplayName(String displayName) async {
+    await updateProfileDetails(displayName: displayName);
+  }
+
+  Future<void> updateProfileDetails({
+    required String displayName,
+    String? username,
+  }) async {
+    if (!isLoggedIn) {
+      throw AuthException('User not authorized');
+    }
+
+    final trimmedName = displayName.trim();
+    if (trimmedName.isEmpty) {
+      throw AuthException('Введите имя');
+    }
 
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_photoUrlKey, resolved);
+    await prefs.setString(_nameKey, trimmedName);
 
-    _currentUser = _currentUser.copyWith(photoUrl: resolved);
+    final firebaseUser = _firebaseAuth.currentFirebaseUser;
+    if (firebaseUser != null) {
+      try {
+        await firebaseUser.updateDisplayName(trimmedName);
+        await firebaseUser.reload();
+      } catch (e, stack) {
+        AppLogger.error(
+          'AuthRepository: Firebase displayName update failed',
+          error: e,
+          stackTrace: stack,
+        );
+      }
+    }
+
+    var usernameValue = _currentUser.username;
+    if (username != null) {
+      await ProfilePreferencesRepository.instance.saveUsername(
+        uid: _currentUser.uid,
+        username: username,
+      );
+      usernameValue = username.trim();
+    } else {
+      usernameValue =
+          await ProfilePreferencesRepository.instance.getUsername(_currentUser.uid);
+    }
+
+    _currentUser = _currentUser.copyWith(
+      displayName: trimmedName,
+      username: usernameValue,
+    );
+    await _persistSession(_currentUser);
     _authController.add(_currentUser);
-    AppLogger.info('AuthRepository: avatar path updated');
+    AppLogger.info('AuthRepository: profile details updated');
   }
 
   Future<void> updateProfile({
@@ -221,8 +315,10 @@ class AuthRepository {
       throw AuthException('User not authorized');
     }
 
-    final resolved =
-        await ProfileAvatarStorage.resolveValidLocalPath(photoUrl);
+    final resolved = await ProfileAvatarStorage.ensurePermanentAvatarPath(
+      photoUrl,
+      uid: _currentUser.uid,
+    );
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_nameKey, displayName.trim());
@@ -236,21 +332,28 @@ class AuthRepository {
   }
 
   Future<UserModel> _loadUserFromPrefs(SharedPreferences prefs) async {
-    final rawPhoto = prefs.getString(_photoUrlKey) ?? '';
-    final photoUrl = await ProfileAvatarStorage.resolveValidLocalPath(rawPhoto);
-    if (photoUrl != rawPhoto) {
-      await prefs.setString(_photoUrlKey, photoUrl);
-    }
-
     final email = UserProfileRules.sanitizeStoredEmail(prefs.getString(_emailKey));
     final name = prefs.getString(_nameKey)?.trim() ?? '';
     final uid = prefs.getString(_uidKey)?.trim().isNotEmpty == true
         ? prefs.getString(_uidKey)!
         : (email.isNotEmpty ? 'local_${email.hashCode.abs()}' : 'local');
 
+    final rawPhoto = prefs.getString(_photoUrlKey) ?? '';
+    final photoUrl = await ProfileAvatarStorage.resolveValidLocalPath(
+      rawPhoto,
+      uid: uid,
+    );
+    if (photoUrl != rawPhoto) {
+      await prefs.setString(_photoUrlKey, photoUrl);
+    }
+
+    final username =
+        await ProfilePreferencesRepository.instance.getUsername(uid);
+
     return UserModel(
       uid: uid,
       displayName: name.isNotEmpty ? name : 'Пользователь',
+      username: username,
       email: email,
       photoUrl: photoUrl,
     );
@@ -263,18 +366,24 @@ class AuthRepository {
   Future<void> _persistSession(UserModel user) async {
     if (user.isEmpty) return;
     final prefs = await SharedPreferences.getInstance();
+    final email = UserProfileRules.sanitizeStoredEmail(user.email);
     await prefs.setBool(_loggedInKey, true);
     await prefs.setString(_uidKey, user.uid);
     await prefs.setString(_nameKey, user.displayName);
-    await prefs.setString(_emailKey, user.email);
+    if (email.isNotEmpty) {
+      await prefs.setString(_emailKey, email);
+    } else {
+      await prefs.remove(_emailKey);
+    }
     await prefs.setString(_photoUrlKey, user.photoUrl);
   }
 
-  /// Prefer local avatar file; keep Google photo URL when no local file.
+  /// Prefer local avatar file; Firebase email is source of truth.
   Future<UserModel> _mergeWithLocalProfile(UserModel firebaseUser) async {
     final prefs = await SharedPreferences.getInstance();
     final localPhoto = await ProfileAvatarStorage.resolveValidLocalPath(
       prefs.getString(_photoUrlKey) ?? '',
+      uid: firebaseUser.uid,
     );
 
     final photoUrl = localPhoto.isNotEmpty
@@ -286,8 +395,19 @@ class AuthRepository {
         ? savedName
         : firebaseUser.displayName;
 
+    final firebaseEmail =
+        UserProfileRules.sanitizeStoredEmail(firebaseUser.email);
+    final prefsEmail =
+        UserProfileRules.sanitizeStoredEmail(prefs.getString(_emailKey));
+    final email = firebaseEmail.isNotEmpty ? firebaseEmail : prefsEmail;
+
+    final username = await ProfilePreferencesRepository.instance
+        .getUsername(firebaseUser.uid);
+
     return firebaseUser.copyWith(
       displayName: displayName,
+      username: username,
+      email: email,
       photoUrl: photoUrl,
       lastLoginAt: DateTime.now(),
     );

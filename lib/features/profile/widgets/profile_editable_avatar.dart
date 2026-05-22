@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/services/gallery_image_picker_service.dart';
+import '../../../core/services/profile_avatar_crop_service.dart';
+import '../../../core/services/profile_avatar_picker_service.dart';
 import '../../../core/services/profile_avatar_service.dart';
+import '../../../core/services/profile_avatar_storage.dart';
 import '../../../core/theme/app_brand_colors.dart';
 import '../../../widgets/user_avatar.dart';
 
@@ -10,11 +13,17 @@ class ProfileEditableAvatar extends StatefulWidget {
   const ProfileEditableAvatar({
     super.key,
     required this.photoUrl,
+    this.userId,
+    this.avatarRevision = 0,
     this.radius = 52,
+    this.onPhotoUpdated,
   });
 
   final String photoUrl;
+  final String? userId;
+  final int avatarRevision;
   final double radius;
+  final ValueChanged<String>? onPhotoUpdated;
 
   @override
   State<ProfileEditableAvatar> createState() => _ProfileEditableAvatarState();
@@ -22,25 +31,75 @@ class ProfileEditableAvatar extends StatefulWidget {
 
 class _ProfileEditableAvatarState extends State<ProfileEditableAvatar> {
   bool _isUpdating = false;
+  String? _previewPath;
+
+  String get _effectivePhotoUrl => _previewPath ?? widget.photoUrl;
 
   Future<void> _changePhoto() async {
     if (_isUpdating) return;
-    setState(() => _isUpdating = true);
 
-    try {
-      final result = await ProfileAvatarService.pickFromGalleryAndSave();
-      if (!mounted) return;
+    final gallery = await ProfileAvatarPickerService.pickGalleryFile();
+    if (!mounted) return;
 
-      final messenger = ScaffoldMessenger.of(context);
-      messenger.hideCurrentSnackBar();
-
-      if (result.isSuccess) {
-        messenger.showSnackBar(
+    if (gallery.status == ProfileAvatarPickStatus.cancelled) {
+      return;
+    }
+    if (gallery.status == ProfileAvatarPickStatus.permissionDenied) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
           SnackBar(
-            content: Text(result.message ?? 'Фото профиля обновлено'),
+            content: Text(
+              gallery.message ?? 'Нет доступа к фото',
+            ),
             behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.redAccent,
           ),
         );
+      await GalleryImagePickerService.openAppSettingsIfNeeded();
+      return;
+    }
+    if (!gallery.isSuccess || gallery.localPath == null) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(gallery.message ?? 'Не удалось выбрать фото'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      return;
+    }
+
+    final crop = await ProfileAvatarCropService.cropSquare(
+      gallery.localPath!,
+      context: context,
+    );
+    if (!mounted) return;
+    if (crop.cancelled || !crop.hasPath) {
+      return;
+    }
+
+    setState(() => _isUpdating = true);
+    try {
+      final result =
+          await ProfileAvatarService.commitPermanentPath(crop.path!);
+      if (!mounted) return;
+
+      if (result.isSuccess &&
+          result.localPath != null &&
+          ProfileAvatarStorage.isStoredAvatarPath(result.localPath)) {
+        setState(() => _previewPath = result.localPath);
+        widget.onPhotoUpdated?.call(result.localPath!);
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text(result.message ?? 'Фото профиля обновлено'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
         return;
       }
 
@@ -48,17 +107,15 @@ class _ProfileEditableAvatarState extends State<ProfileEditableAvatar> {
         return;
       }
 
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(result.message ?? 'Не удалось выбрать фото'),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-
-      if (result.status == ProfileAvatarUpdateStatus.permissionDenied) {
-        await GalleryImagePickerService.openAppSettingsIfNeeded();
-      }
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(result.message ?? 'Не удалось сохранить фото'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.redAccent,
+          ),
+        );
     } finally {
       if (mounted) {
         setState(() => _isUpdating = false);
@@ -67,8 +124,23 @@ class _ProfileEditableAvatarState extends State<ProfileEditableAvatar> {
   }
 
   @override
+  void didUpdateWidget(ProfileEditableAvatar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.avatarRevision != widget.avatarRevision &&
+        _previewPath != null) {
+      setState(() => _previewPath = null);
+      return;
+    }
+    if (oldWidget.photoUrl != widget.photoUrl &&
+        widget.photoUrl == _previewPath) {
+      setState(() => _previewPath = null);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final outerSize = widget.radius * 2 + 12;
+    final innerSize = widget.radius * 2;
+    final outerSize = innerSize + 12;
 
     return Semantics(
       button: true,
@@ -83,6 +155,8 @@ class _ProfileEditableAvatarState extends State<ProfileEditableAvatar> {
             clipBehavior: Clip.none,
             children: [
               Container(
+                width: innerSize,
+                height: innerSize,
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
@@ -102,18 +176,26 @@ class _ProfileEditableAvatarState extends State<ProfileEditableAvatar> {
                     ),
                   ],
                 ),
-                child: DecoratedBox(
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white,
-                  ),
-                  child: _isUpdating
-                      ? SizedBox(
-                          width: widget.radius * 2,
-                          height: widget.radius * 2,
-                          child: const ColoredBox(
-                            color: AppBrandColors.iconBackground,
-                            child: Center(
+                child: ClipOval(
+                  child: SizedBox(
+                    width: innerSize - 8,
+                    height: innerSize - 8,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        UserAvatar(
+                          key: ValueKey(
+                            '${_effectivePhotoUrl}_${widget.avatarRevision}',
+                          ),
+                          photoUrl: _effectivePhotoUrl,
+                          userId: widget.userId,
+                          avatarRevision: widget.avatarRevision,
+                          radius: widget.radius,
+                        ),
+                        if (_isUpdating)
+                          ColoredBox(
+                            color: Colors.white.withValues(alpha: 0.72),
+                            child: const Center(
                               child: SizedBox(
                                 width: 28,
                                 height: 28,
@@ -124,39 +206,31 @@ class _ProfileEditableAvatarState extends State<ProfileEditableAvatar> {
                               ),
                             ),
                           ),
-                        )
-                      : UserAvatar(
-                          photoUrl: widget.photoUrl,
-                          radius: widget.radius,
-                        ),
-                ),
-              ),
-              Positioned(
-                right: 4,
-                bottom: 4,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: AppBrandColors.pink,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.08),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: const Padding(
-                    padding: EdgeInsets.all(7),
-                    child: Icon(
-                      Icons.camera_alt_rounded,
-                      size: 16,
-                      color: Colors.white,
+                      ],
                     ),
                   ),
                 ),
               ),
+              if (!_isUpdating)
+                Positioned(
+                  right: 2,
+                  bottom: 2,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: AppBrandColors.pink,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                    child: const Padding(
+                      padding: EdgeInsets.all(7),
+                      child: Icon(
+                        Icons.camera_alt_rounded,
+                        size: 16,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),

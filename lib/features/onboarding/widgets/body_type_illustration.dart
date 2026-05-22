@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/models/body_shape_type.dart';
+import 'quiz_visual_theme.dart';
 
-/// Static reference illustrations for body-type UI (from design assets).
+/// Static fashion-style silhouette PNGs (exported design assets).
 abstract final class BodyTypeIllustrationAssets {
   static const _base = 'assets/body_types';
 
@@ -42,58 +43,70 @@ abstract final class BodyTypeIllustrationAssets {
   }
 }
 
-/// Displays a cropped reference body-type illustration asset.
+/// Sharp static body illustration inside a square preview with a crisp frame.
 class BodyTypeIllustration extends StatelessWidget {
   const BodyTypeIllustration({
     super.key,
     required this.assetPath,
-    this.width = 84,
-    this.height = 118,
+    this.size = QuizVisualTheme.optionPreviewSize,
     this.emphasized = false,
   });
 
   BodyTypeIllustration.forOptionId(
     String optionId, {
     super.key,
-    this.width = 84,
-    this.height = 118,
+    this.size = QuizVisualTheme.optionPreviewSize,
     this.emphasized = false,
   }) : assetPath = BodyTypeIllustrationAssets.forOptionId(optionId);
 
   BodyTypeIllustration.forBodyShape(
     BodyShapeType shape, {
     super.key,
-    this.width = 84,
-    this.height = 118,
+    this.size = QuizVisualTheme.optionPreviewSize,
     this.emphasized = false,
   }) : assetPath = BodyTypeIllustrationAssets.forBodyShape(shape);
 
   final String assetPath;
-  final double width;
-  final double height;
+  final double size;
   final bool emphasized;
+
+  static double _snapSide(BuildContext context, double logical) {
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    return (logical * dpr).round() / dpr;
+  }
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedScale(
-      scale: emphasized ? 1.02 : 1.0,
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeOutCubic,
-      child: SizedBox(
-        width: width,
-        height: height,
-        child: Image.asset(
-          assetPath,
-          width: width,
-          height: height,
-          fit: BoxFit.contain,
-          filterQuality: FilterQuality.high,
-          errorBuilder: (context, error, stackTrace) => ColoredBox(
-            color: const Color(0xFFFFF0F7),
-            child: Icon(
+    final side = _snapSide(context, size);
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final cacheWidth = (side * dpr).round().clamp(144, 640);
+    const radius = QuizVisualTheme.bodyPreviewRadius;
+    const borderWidth = 2.0;
+    const innerRadius = radius - borderWidth;
+
+    return SizedBox(
+      width: side,
+      height: side,
+      child: DecoratedBox(
+        decoration: QuizVisualTheme.bodyPreviewDecoration(
+          emphasized: emphasized,
+          radius: radius,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(innerRadius),
+          child: Image.asset(
+            assetPath,
+            width: side,
+            height: side,
+            fit: BoxFit.contain,
+            alignment: Alignment.center,
+            filterQuality: FilterQuality.high,
+            cacheWidth: cacheWidth,
+            gaplessPlayback: true,
+            errorBuilder: (_, __, ___) => Icon(
               Icons.image_not_supported_outlined,
               color: Colors.grey[400],
-              size: width * 0.35,
+              size: side * 0.35,
             ),
           ),
         ),

@@ -8,7 +8,8 @@ import '../../../core/widgets/iphone_layout.dart';
 import '../../../core/models/body_profile.dart';
 import '../../../core/models/seasonal_color_type.dart';
 import '../../../data/models/user_model.dart';
-import '../../../data/repositories/user_profile_repository.dart';
+import '../../../core/models/user_preferences_bundle.dart';
+import '../../../data/repositories/user_preferences_repository.dart';
 import '../../../features/favorites/favorites_controller.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../app/bloc/app_bloc.dart';
@@ -19,7 +20,9 @@ import '../widgets/profile_body_type_card.dart';
 import '../widgets/profile_color_type_card.dart';
 import '../widgets/profile_action_tile.dart';
 import '../widgets/profile_card_decoration.dart';
+import '../widgets/profile_edit_sheet.dart';
 import '../widgets/profile_editable_avatar.dart';
+import '../widgets/profile_preferences_summary_card.dart';
 import '../widgets/profile_stat_card.dart';
 
 class ProfileTab extends StatefulWidget {
@@ -35,8 +38,9 @@ class _ProfileTabState extends State<ProfileTab> {
 
   SeasonalColorType? _colorType;
   BodyProfile? _bodyProfile;
+  UserPreferencesBundle _preferences = UserPreferencesBundle.empty;
 
-  static const int _listItemCount = 13;
+  static const int _listItemCount = 15;
 
   @override
   void initState() {
@@ -45,15 +49,12 @@ class _ProfileTabState extends State<ProfileTab> {
   }
 
   Future<void> _loadStyleProfile() async {
-    final repo = UserProfileRepository.instance;
-    final results = await Future.wait([
-      repo.getColorType(),
-      repo.getBodyProfile(),
-    ]);
+    final bundle = await UserPreferencesRepository.instance.loadBundle();
     if (!mounted) return;
     setState(() {
-      _colorType = results[0] as SeasonalColorType?;
-      _bodyProfile = results[1] as BodyProfile?;
+      _preferences = bundle;
+      _colorType = bundle.colorType;
+      _bodyProfile = bundle.bodyProfile;
     });
   }
 
@@ -86,6 +87,10 @@ class _ProfileTabState extends State<ProfileTab> {
   }
 
   void _showStylePreferences() {
+    final bundle = _preferences;
+    final moods = bundle.stylistDefaults.topMoods();
+    final occasions = bundle.stylistDefaults.topOccasions();
+
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.white,
@@ -96,34 +101,59 @@ class _ProfileTabState extends State<ProfileTab> {
         padding: const EdgeInsets.fromLTRB(24, 12, 24, 28),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(4),
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(4),
+                ),
               ),
             ),
             const SizedBox(height: 20),
             const Text(
               'Стиль и настроение',
+              textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
                 color: AppBrandColors.title,
               ),
             ),
-            const SizedBox(height: 10),
-            const Text(
-              'В чате со стилистом выбирай подсказки: romantic, comfy, school, rainy и другие — AI учтёт настроение, погоду и повод.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey,
-                height: 1.45,
+            const SizedBox(height: 12),
+            if (moods.isNotEmpty || occasions.isNotEmpty) ...[
+              if (moods.isNotEmpty)
+                Text(
+                  'Частые настроения: ${moods.join(', ')}',
+                  style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                ),
+              if (occasions.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Частые поводы: ${occasions.join(', ')}',
+                  style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                ),
+              ],
+              const SizedBox(height: 8),
+              Text(
+                'Избранных образов: ${bundle.favoritesCount} · '
+                'дизлайков: ${bundle.dislikesCount}',
+                style: TextStyle(fontSize: 13, color: Colors.grey[600]),
               ),
-            ),
+            ] else
+              Text(
+                'В чате выбирай подсказки (romantic, comfy, school, rainy…) — '
+                'приложение запомнит настроение и повод на этом устройстве.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                  height: 1.45,
+                ),
+              ),
             const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
@@ -233,16 +263,22 @@ class _ProfileTabState extends State<ProfileTab> {
                     onUpdated: _loadStyleProfile,
                   );
                 case 5:
-                  return const SizedBox(height: 20);
-                case 6:
-                  return _ProfileStatsPanel(key: _statsPanelKey);
-                case 7:
-                  return const SizedBox(height: 24);
-                case 8:
-                  return const _SectionTitle(title: 'Быстрые действия');
-                case 9:
                   return const SizedBox(height: 12);
+                case 6:
+                  return ProfilePreferencesSummaryCard(
+                    bundle: _preferences,
+                  );
+                case 7:
+                  return const SizedBox(height: 20);
+                case 8:
+                  return _ProfileStatsPanel(key: _statsPanelKey);
+                case 9:
+                  return const SizedBox(height: 24);
                 case 10:
+                  return const _SectionTitle(title: 'Быстрые действия');
+                case 11:
+                  return const SizedBox(height: 12);
+                case 12:
                   return _ProfileActionsBlock(
                     onWardrobe: () => context.pushNamed(RouteNames.wardrobeName),
                     onFavorites: () =>
@@ -252,9 +288,9 @@ class _ProfileTabState extends State<ProfileTab> {
                     onStyle: _showStylePreferences,
                     onSettings: _showSettings,
                   );
-                case 11:
+                case 13:
                   return const SizedBox(height: 28);
-                case 12:
+                case 14:
                   return _SignOutButton(
                     label: loc.signOut,
                     onPressed: _confirmSignOut,
@@ -382,6 +418,16 @@ class _ProfileHeader extends StatelessWidget {
 
   final UserModel user;
 
+  Future<void> _openEdit(BuildContext context) async {
+    if (user.isEmpty) return;
+    await ProfileEditSheet.show(
+      context,
+      displayName: user.displayName,
+      username: user.username,
+      uid: user.uid,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final displayName =
@@ -393,10 +439,14 @@ class _ProfileHeader extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(20, 28, 20, 24),
         child: Column(
           children: [
-            ProfileEditableAvatar(photoUrl: user.photoUrl),
+            ProfileEditableAvatar(
+              photoUrl: user.photoUrl,
+              userId: user.uid,
+              avatarRevision: user.avatarRevision,
+            ),
             const SizedBox(height: 10),
             Text(
-              'Нажмите на фото, чтобы изменить',
+              'Нажмите на фото — выберите и обрежьте кадр',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
@@ -404,15 +454,48 @@ class _ProfileHeader extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 14),
-            Text(
-              displayName,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                color: AppBrandColors.title,
+            InkWell(
+              onTap: () => _openEdit(context),
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        displayName,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w700,
+                          color: AppBrandColors.title,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Icon(
+                      Icons.edit_outlined,
+                      size: 18,
+                      color: Colors.grey[500],
+                    ),
+                  ],
+                ),
               ),
             ),
+            if (user.visibleUsername.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                user.visibleUsername,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ],
             const SizedBox(height: 6),
             const Text(
               'AI fashion enthusiast ✨',

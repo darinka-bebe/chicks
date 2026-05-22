@@ -3,6 +3,7 @@ import '../../core/services/openai_chat_service.dart';
 import '../../core/services/openai_vision_service.dart';
 import '../../core/utils/logger.dart';
 import '../models/clothing_vision_analysis.dart';
+import 'wardrobe_repository.dart';
 
 /// Wardrobe image analysis — coordinates Vision API and catalog mapping.
 class ClothingVisionRepository {
@@ -16,7 +17,11 @@ class ClothingVisionRepository {
   Future<ClothingVisionAnalysis> analyzeImage(String imagePath) async {
     AppLogger.debug('ClothingVisionRepository: analyze $imagePath');
     try {
-      final raw = await _visionService.analyzeClothingImage(imagePath);
+      final wardrobe = await WardrobeRepository.instance.loadItems();
+      final raw = await _visionService.analyzeClothingImage(
+        imagePath,
+        existingWardrobe: wardrobe,
+      );
       final mapped = ClothingVisionMapper.toCatalogValues(raw);
       AppLogger.debug(
         'ClothingVisionRepository: title="${mapped.title}" category=${mapped.category}',

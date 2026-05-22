@@ -8,7 +8,10 @@ import '../../../core/theme/app_brand_colors.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../data/repositories/user_profile_repository.dart';
 import '../data/body_type_quiz_questions.dart';
-import '../widgets/body_type_illustration.dart';
+import '../widgets/quiz_option_card.dart';
+import '../widgets/quiz_progress_bar.dart';
+import '../widgets/quiz_visual_registry.dart';
+import '../widgets/quiz_visual_theme.dart';
 
 /// Body shape + fit preferences quiz (no photos).
 class BodyTypeQuizScreen extends StatefulWidget {
@@ -162,7 +165,7 @@ class _BodyTypeQuizScreenState extends State<BodyTypeQuizScreen> {
             if (!_showResult) ...[
               Padding(
                 padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
-                child: _QuizProgressBar(
+                child: QuizProgressBar(
                   progress: (_currentIndex + 1) / _questions.length,
                   label: 'Вопрос ${_currentIndex + 1} из ${_questions.length}',
                 ),
@@ -229,43 +232,6 @@ class _BodyTypeQuizScreenState extends State<BodyTypeQuizScreen> {
   }
 }
 
-class _QuizProgressBar extends StatelessWidget {
-  const _QuizProgressBar({
-    required this.progress,
-    required this.label,
-  });
-
-  final double progress;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: Colors.grey[600],
-          ),
-        ),
-        const SizedBox(height: 10),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: LinearProgressIndicator(
-            value: progress.clamp(0.0, 1.0),
-            minHeight: 6,
-            backgroundColor: AppBrandColors.pink.withValues(alpha: 0.15),
-            color: AppBrandColors.pink,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class _QuestionPage extends StatelessWidget {
   const _QuestionPage({
     required this.question,
@@ -305,111 +271,20 @@ class _QuestionPage extends StatelessWidget {
           const SizedBox(height: 28),
           ...question.options.map(
             (option) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _OptionCard(
-                option: option,
+              padding: const EdgeInsets.only(bottom: QuizVisualTheme.optionCardGap),
+              child: QuizOptionCard(
+                label: option.label,
+                hint: option.hint,
                 selected: selectedId == option.id,
                 onTap: () => onSelect(option.id),
+                leading: QuizVisualRegistry.forBodyOption(
+                  option.id,
+                  emphasized: selectedId == option.id,
+                ),
               ),
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _OptionCard extends StatelessWidget {
-  const _OptionCard({
-    required this.option,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final BodyTypeQuizOption option;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.fromLTRB(12, 12, 14, 12),
-          decoration: BoxDecoration(
-            color: selected ? Colors.white : Colors.white.withValues(alpha: 0.85),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: selected
-                  ? AppBrandColors.pink
-                  : AppBrandColors.pink.withValues(alpha: 0.14),
-              width: selected ? 2.5 : 1,
-            ),
-            boxShadow: selected
-                ? [
-                    BoxShadow(
-                      color: AppBrandColors.pink.withValues(alpha: 0.14),
-                      blurRadius: 18,
-                      offset: const Offset(0, 6),
-                    ),
-                  ]
-                : null,
-          ),
-          child: Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: BodyTypeIllustration.forOptionId(
-                  option.id,
-                  width: 84,
-                  height: 118,
-                  emphasized: selected,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      option.label,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight:
-                            selected ? FontWeight.w800 : FontWeight.w700,
-                        color: AppBrandColors.title,
-                        height: 1.2,
-                      ),
-                    ),
-                    if (option.hint != null) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        option.hint!,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey[600],
-                          height: 1.35,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              Icon(
-                selected
-                    ? Icons.check_circle_rounded
-                    : Icons.circle_outlined,
-                color: selected ? AppBrandColors.pink : Colors.grey[400],
-                size: 26,
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -427,13 +302,10 @@ class _ResultPanel extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
       child: Column(
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(24),
-            child: BodyTypeIllustration.forBodyShape(
+          Center(
+            child: QuizVisualRegistry.forBodyResult(
               shape,
-              width: 140,
-              height: 168,
-              emphasized: true,
+              size: QuizVisualTheme.resultPreviewSize,
             ),
           ),
           const SizedBox(height: 24),

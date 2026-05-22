@@ -17,6 +17,25 @@ class WardrobeRepository {
   static String generateItemId() =>
       'wardrobe_${DateTime.now().microsecondsSinceEpoch}';
 
+  /// Adds bundled mock photos to legacy seed rows (ids 1–8) without imagePath.
+  Future<List<WardrobeItem>> _mergeMockSeedPhotos(List<WardrobeItem> items) async {
+    var changed = false;
+    final merged = items.map((item) {
+      final mock = MockWardrobeData.byId[item.id];
+      final mockPath = mock?.imagePath;
+      if (mockPath == null || mockPath.isEmpty) return item;
+      final current = item.imagePath?.trim() ?? '';
+      if (current.isNotEmpty) return item;
+      changed = true;
+      return item.copyWith(imagePath: mockPath);
+    }).toList();
+    if (changed) {
+      await saveItems(merged);
+      AppLogger.info('WardrobeRepository: applied mock seed photos');
+    }
+    return merged;
+  }
+
   /// Lightweight count for profile stats.
   Future<int> countItems() async {
     return HiveJsonListCodec.countEntries(
@@ -54,8 +73,9 @@ class WardrobeRepository {
         await saveItems(normalized);
       }
 
-      _logItemIds('loadItems', normalized);
-      return normalized;
+      final withMockPhotos = await _mergeMockSeedPhotos(normalized);
+      _logItemIds('loadItems', withMockPhotos);
+      return withMockPhotos;
     } catch (e, stack) {
       AppLogger.error(
         'WardrobeRepository.loadItems: corrupt data',

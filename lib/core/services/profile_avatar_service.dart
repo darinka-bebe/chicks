@@ -1,8 +1,11 @@
-import 'gallery_image_picker_service.dart';
+import 'package:flutter/material.dart';
+
 import 'image_import_diagnostics.dart';
+import 'profile_avatar_crop_service.dart';
+import 'profile_avatar_picker_service.dart';
 import 'profile_avatar_storage.dart';
-import 'wardrobe_image_storage.dart';
-import '../../data/repositories/auth_repository.dart' show AuthRepository, AuthException;
+import '../../data/repositories/auth_repository.dart'
+    show AuthRepository, AuthException;
 
 enum ProfileAvatarUpdateStatus {
   success,
@@ -25,39 +28,88 @@ class ProfileAvatarUpdateResult {
   bool get isSuccess => status == ProfileAvatarUpdateStatus.success;
 }
 
-/// Picks a gallery photo and persists it as the user's profile avatar.
+/// Profile avatar — always persisted under app documents ([ProfileAvatarStorage]).
 abstract final class ProfileAvatarService {
-  static Future<ProfileAvatarUpdateResult> pickFromGalleryAndSave() async {
-    final pick = await GalleryImagePickerService.pickFromGallery();
-    if (!pick.isSuccess || pick.localPath == null) {
-      return ProfileAvatarUpdateResult(
-        status: switch (pick.status) {
-          GalleryPickStatus.cancelled => ProfileAvatarUpdateStatus.cancelled,
-          GalleryPickStatus.permissionDenied =>
-            ProfileAvatarUpdateStatus.permissionDenied,
-          _ => ProfileAvatarUpdateStatus.failed,
-        },
-        message: pick.message,
+  /// Gallery → bottom-sheet crop → persist to profile.
+  static Future<ProfileAvatarUpdateResult> pickFromGalleryAndSave({
+    required BuildContext context,
+  }) async {
+    final auth = AuthRepository.instance;
+    if (!auth.isLoggedIn) {
+      return const ProfileAvatarUpdateResult(
+        status: ProfileAvatarUpdateStatus.failed,
+        message: 'Войдите в аккаунт, чтобы сохранить фото',
       );
     }
 
-    return saveFromPickedPath(pick.localPath!);
+    final gallery = await ProfileAvatarPickerService.pickGalleryFile();
+    if (gallery.status == ProfileAvatarPickStatus.cancelled) {
+      return const ProfileAvatarUpdateResult(
+        status: ProfileAvatarUpdateStatus.cancelled,
+      );
+    }
+    if (gallery.status == ProfileAvatarPickStatus.permissionDenied) {
+      return ProfileAvatarUpdateResult(
+        status: ProfileAvatarUpdateStatus.permissionDenied,
+        message: gallery.message,
+      );
+    }
+    if (!gallery.isSuccess || gallery.localPath == null) {
+      return ProfileAvatarUpdateResult(
+        status: ProfileAvatarUpdateStatus.failed,
+        message: gallery.message ?? 'Не удалось выбрать фото',
+      );
+    }
+
+    if (!context.mounted) {
+      return const ProfileAvatarUpdateResult(
+        status: ProfileAvatarUpdateStatus.cancelled,
+      );
+    }
+
+    final crop = await ProfileAvatarCropService.cropSquare(
+      gallery.localPath!,
+      context: context,
+    );
+    if (crop.cancelled || !crop.hasPath) {
+      return const ProfileAvatarUpdateResult(
+        status: ProfileAvatarUpdateStatus.cancelled,
+      );
+    }
+
+    return commitPermanentPath(crop.path!);
   }
 
-  static Future<ProfileAvatarUpdateResult> saveFromPickedPath(
-    String pickedPath,
+  /// Validates, persists to prefs, and prunes old avatar files.
+  static Future<ProfileAvatarUpdateResult> commitPermanentPath(
+    String candidatePath,
   ) async {
-    final avatarPath = await ProfileAvatarStorage.persistFromPath(pickedPath);
-    if (avatarPath == null || avatarPath.isEmpty) {
+    final auth = AuthRepository.instance;
+    if (!auth.isLoggedIn) {
+      return const ProfileAvatarUpdateResult(
+        status: ProfileAvatarUpdateStatus.failed,
+        message: 'Войдите в аккаунт, чтобы сохранить фото',
+      );
+    }
+
+    final uid = auth.currentUser.uid;
+    final permanent = await ProfileAvatarStorage.ensurePermanentAvatarPath(
+      candidatePath,
+      uid: uid,
+    );
+
+    if (permanent.isEmpty ||
+        (!ProfileAvatarStorage.isStoredAvatarPath(permanent) &&
+            !permanent.toLowerCase().startsWith('http'))) {
       return const ProfileAvatarUpdateResult(
         status: ProfileAvatarUpdateStatus.failed,
         message: 'Не удалось сохранить фото профиля',
       );
     }
 
-    final validation = await ImageImportDiagnostics.validatePath(avatarPath);
+    final validation = await ImageImportDiagnostics.validatePath(permanent);
     if (!validation.isValid) {
-      await ProfileAvatarStorage.deleteIfStored(avatarPath);
+      await ProfileAvatarStorage.deleteIfStored(permanent);
       return ProfileAvatarUpdateResult(
         status: ProfileAvatarUpdateStatus.failed,
         message: validation.message.isNotEmpty
@@ -66,34 +118,33 @@ abstract final class ProfileAvatarService {
       );
     }
 
-    final auth = AuthRepository.instance;
-    if (!auth.isLoggedIn) {
-      await ProfileAvatarStorage.deleteIfStored(avatarPath);
-      return const ProfileAvatarUpdateResult(
-        status: ProfileAvatarUpdateStatus.failed,
-        message: 'Войдите в аккаунт, чтобы сохранить фото',
-      );
-    }
-
     final previousPath = auth.currentUser.photoUrl;
     try {
-      await auth.updatePhotoPath(avatarPath);
-    } catch (e) {
-      await ProfileAvatarStorage.deleteIfStored(avatarPath);
+      await auth.updatePhotoPath(permanent);
+    } on AuthException catch (e) {
+      return ProfileAvatarUpdateResult(
+        status: ProfileAvatarUpdateStatus.failed,
+        message: e.message,
+      );
+    } catch (_) {
       return const ProfileAvatarUpdateResult(
         status: ProfileAvatarUpdateStatus.failed,
         message: 'Не удалось обновить профиль',
       );
     }
 
-    if (ProfileAvatarStorage.isStoredAvatarPath(previousPath)) {
+    if (ProfileAvatarStorage.isStoredAvatarPath(previousPath) &&
+        previousPath != permanent) {
       await ProfileAvatarStorage.deleteIfStored(previousPath);
     }
-    await WardrobeImageStorage.deleteIfStored(pickedPath);
+    await ProfileAvatarStorage.pruneLegacyAvatars(
+      uid: uid,
+      keepPath: permanent,
+    );
 
     return ProfileAvatarUpdateResult(
       status: ProfileAvatarUpdateStatus.success,
-      localPath: avatarPath,
+      localPath: permanent,
       message: 'Фото профиля обновлено',
     );
   }

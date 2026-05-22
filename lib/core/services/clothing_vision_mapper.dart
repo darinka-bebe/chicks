@@ -19,6 +19,8 @@ abstract final class ClothingVisionMapper {
       vibes: _matchMany(raw.vibes, WardrobeCatalog.vibes),
       fit: _matchOne(raw.fit, WardrobeCatalog.fits),
       outfitContext: raw.outfitContext,
+      isDuplicate: raw.isDuplicate,
+      duplicateMatchTitle: raw.duplicateMatchTitle,
     );
   }
 

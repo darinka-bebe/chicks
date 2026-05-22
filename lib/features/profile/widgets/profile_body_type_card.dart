@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/models/body_profile.dart';
+import '../../../core/models/body_shape_type.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_brand_colors.dart';
-import '../../onboarding/widgets/body_type_illustration.dart';
+import '../../onboarding/widgets/quiz_visual_registry.dart';
 import 'profile_card_decoration.dart';
 
+/// Profile preview for body shape — vector silhouette, same art as onboarding quiz.
 class ProfileBodyTypeCard extends StatelessWidget {
   const ProfileBodyTypeCard({
     super.key,
@@ -36,33 +38,18 @@ class ProfileBodyTypeCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         child: Ink(
           decoration: ProfileCardDecoration.actionTile,
-          padding: const EdgeInsets.all(18),
+          padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: profile != null
-                    ? BodyTypeIllustration.forBodyShape(
-                        profile.shape,
-                        width: 48,
-                        height: 56,
-                      )
-                    : Container(
-                        width: 48,
-                        height: 56,
-                        color: AppBrandColors.iconBackground,
-                        alignment: Alignment.center,
-                        child: const Icon(
-                          Icons.accessibility_new_rounded,
-                          color: AppBrandColors.pink,
-                          size: 28,
-                        ),
-                      ),
+              _BodyTypeProfilePreview(
+                shape: profile?.shape,
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Text(
                       'Тип фигуры',
@@ -70,18 +57,20 @@ class ProfileBodyTypeCard extends StatelessWidget {
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                         color: AppBrandColors.pink,
+                        letterSpacing: 0.1,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 6),
                     Text(
                       profile?.shape.displayNameRu ?? 'Не определён',
                       style: const TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w700,
                         color: AppBrandColors.title,
+                        height: 1.2,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 6),
                     Text(
                       profile != null
                           ? profile.shape.shortDescriptionRu
@@ -91,20 +80,55 @@ class ProfileBodyTypeCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 13,
                         color: Colors.grey[600],
-                        height: 1.35,
+                        height: 1.4,
                       ),
                     ),
                   ],
                 ),
               ),
-              Icon(
-                Icons.chevron_right_rounded,
-                color: AppBrandColors.pink.withValues(alpha: 0.8),
+              const SizedBox(width: 4),
+              Padding(
+                padding: const EdgeInsets.only(left: 4),
+                child: Icon(
+                  Icons.chevron_right_rounded,
+                  size: 26,
+                  color: AppBrandColors.pink.withValues(alpha: 0.75),
+                ),
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+class _BodyTypeProfilePreview extends StatelessWidget {
+  const _BodyTypeProfilePreview({required this.shape});
+
+  final BodyShapeType? shape;
+
+  @override
+  Widget build(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    final compact = width < 360;
+    final previewSize = compact ? 80.0 : 92.0;
+
+    return SizedBox(
+      width: previewSize,
+      height: previewSize,
+      child: shape != null
+          ? QuizVisualRegistry.forBodyResult(
+              shape!,
+              size: previewSize - 8,
+            )
+          : Center(
+              child: Icon(
+                Icons.accessibility_new_rounded,
+                color: AppBrandColors.pink.withValues(alpha: 0.55),
+                size: compact ? 32 : 36,
+              ),
+            ),
     );
   }
 }

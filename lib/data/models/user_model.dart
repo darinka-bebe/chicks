@@ -6,16 +6,21 @@ import '../../core/utils/user_profile_rules.dart';
 class UserModel extends Equatable {
   final String uid;
   final String displayName;
+  final String username;
   final String email;
   final String photoUrl;
+  /// Bumps when [photoUrl] file is overwritten at the same path (UI cache bust).
+  final int avatarRevision;
   final DateTime? createdAt;
   final DateTime? lastLoginAt;
 
   const UserModel({
     required this.uid,
     required this.displayName,
+    this.username = '',
     required this.email,
     required this.photoUrl,
+    this.avatarRevision = 0,
     this.createdAt,
     this.lastLoginAt,
   });
@@ -23,6 +28,7 @@ class UserModel extends Equatable {
   static const UserModel empty = UserModel(
     uid: '',
     displayName: '',
+    username: '',
     email: '',
     photoUrl: '',
   );
@@ -33,6 +39,9 @@ class UserModel extends Equatable {
 
   /// Email for UI — hides guest/placeholder addresses.
   String get visibleEmail => UserProfileRules.visibleEmail(email);
+
+  String get visibleUsername =>
+      username.trim().isNotEmpty ? '@${username.trim()}' : '';
 
   factory UserModel.fromFirebaseUser(firebase.User user) {
     return UserModel(
@@ -50,6 +59,7 @@ class UserModel extends Equatable {
     return UserModel(
       uid: json['uid'] as String? ?? '',
       displayName: json['displayName'] as String? ?? '',
+      username: json['username'] as String? ?? '',
       email: json['email'] as String? ?? '',
       photoUrl: json['photoUrl'] as String? ?? '',
       createdAt: json['createdAt'] != null
@@ -65,6 +75,7 @@ class UserModel extends Equatable {
     return {
       'uid': uid,
       'displayName': displayName,
+      'username': username,
       'email': email,
       'photoUrl': photoUrl,
       'createdAt': createdAt?.toIso8601String(),
@@ -75,16 +86,20 @@ class UserModel extends Equatable {
   UserModel copyWith({
     String? uid,
     String? displayName,
+    String? username,
     String? email,
     String? photoUrl,
+    int? avatarRevision,
     DateTime? createdAt,
     DateTime? lastLoginAt,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
       displayName: displayName ?? this.displayName,
+      username: username ?? this.username,
       email: email ?? this.email,
       photoUrl: photoUrl ?? this.photoUrl,
+      avatarRevision: avatarRevision ?? this.avatarRevision,
       createdAt: createdAt ?? this.createdAt,
       lastLoginAt: lastLoginAt ?? this.lastLoginAt,
     );
@@ -94,8 +109,10 @@ class UserModel extends Equatable {
   List<Object?> get props => [
         uid,
         displayName,
+        username,
         email,
         photoUrl,
+        avatarRevision,
         createdAt,
         lastLoginAt,
       ];

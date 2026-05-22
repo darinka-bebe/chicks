@@ -1,9 +1,8 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_brand_colors.dart';
+import '../../../core/widgets/wardrobe_item_image.dart';
 import '../../../core/utils/logger.dart';
 import '../../../data/models/wardrobe_item.dart';
 import '../../../data/repositories/wardrobe_repository.dart';
@@ -113,8 +112,7 @@ class _WardrobeItemDetailsScreenState extends State<WardrobeItemDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final imagePath = item.imagePath;
-    final hasImage = imagePath != null && imagePath.isNotEmpty;
+    final hasImage = item.imagePath?.trim().isNotEmpty == true;
 
     return Scaffold(
       backgroundColor: AppBrandColors.background,
@@ -157,11 +155,7 @@ class _WardrobeItemDetailsScreenState extends State<WardrobeItemDetailsScreen> {
                 ),
                 clipBehavior: Clip.antiAlias,
                 child: hasImage
-                    ? Image.file(
-                        File(imagePath),
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _iconPreview(),
-                      )
+                    ? WardrobeItemImage(item: item, iconSize: 72)
                     : _iconPreview(),
               ),
               const SizedBox(height: 24),

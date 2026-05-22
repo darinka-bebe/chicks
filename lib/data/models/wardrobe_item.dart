@@ -58,6 +58,33 @@ class WardrobeItem extends Equatable {
     return value.toString().trim();
   }
 
+  WardrobeItem copyWith({
+    String? id,
+    String? title,
+    String? category,
+    String? color,
+    String? season,
+    String? fit,
+    List<String>? styles,
+    List<String>? occasions,
+    List<String>? vibes,
+    String? imagePath,
+    bool clearImagePath = false,
+  }) {
+    return WardrobeItem(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      category: category ?? this.category,
+      color: color ?? this.color,
+      season: season ?? this.season,
+      fit: fit ?? this.fit,
+      styles: styles ?? this.styles,
+      occasions: occasions ?? this.occasions,
+      vibes: vibes ?? this.vibes,
+      imagePath: clearImagePath ? null : (imagePath ?? this.imagePath),
+    );
+  }
+
   factory WardrobeItem.fromJson(Map<String, dynamic> json) {
     return WardrobeItem(
       id: readIdFromJson(json['id']),

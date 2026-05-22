@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import '../models/wardrobe_analysis_snapshot.dart';
 import '../models/wardrobe_insight.dart';
 import '../utils/logger.dart';
+import 'openai_cost_logger.dart';
 
 /// Optional compact AI pass — adds up to 2 stylist tips from a wardrobe summary.
 abstract final class WardrobeInsightsAiService {
@@ -57,6 +58,14 @@ title ≤ 50 символов, body ≤ 180 символов. Только пр�
         );
         return const [];
       }
+
+      OpenAiCostLogger.logFromResponse(
+        feature: 'wardrobe_insights',
+        model: _model,
+        responseBody: response.body,
+        requestBodyBytes: body.length,
+        statusCode: response.statusCode,
+      );
 
       return _parse(response.body);
     } catch (e, stack) {

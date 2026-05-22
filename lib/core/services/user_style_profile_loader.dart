@@ -1,17 +1,15 @@
-import '../models/body_profile.dart';
-import '../models/seasonal_color_type.dart';
 import '../models/user_style_profile.dart';
-import '../../data/repositories/user_profile_repository.dart';
+import '../../data/repositories/user_preferences_repository.dart';
 
-/// Loads color type + body profile for scoring and prompts.
+/// Loads full personalization bundle for AI stylist requests.
 abstract final class UserStyleProfileLoader {
   static Future<UserStyleProfile> load() async {
-    final repo = UserProfileRepository.instance;
-    final colorType = await repo.getColorType();
-    final bodyProfile = await repo.getBodyProfile();
+    final bundle = await UserPreferencesRepository.instance.loadBundle();
     return UserStyleProfile(
-      colorType: colorType,
-      bodyProfile: bodyProfile,
+      colorType: bundle.colorType,
+      bodyProfile: bundle.bodyProfile,
+      dislikeProfile: bundle.dislikeProfile,
+      stylistDefaults: bundle.stylistDefaults,
     );
   }
 }

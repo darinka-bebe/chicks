@@ -1,8 +1,7 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_brand_colors.dart';
+import '../../../core/widgets/wardrobe_item_image.dart';
 import '../../../data/models/wardrobe_item.dart';
 
 class WardrobeItemCard extends StatelessWidget {
@@ -28,9 +27,6 @@ class WardrobeItemCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final value = animationValue.clamp(0.0, 1.0);
-    final imagePath = item.imagePath;
-    final hasImage = imagePath != null && imagePath.isNotEmpty;
-
     return Transform.scale(
       scale: 0.92 + (0.08 * value),
       child: Opacity(
@@ -63,24 +59,7 @@ class WardrobeItemCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(14),
                   ),
                   clipBehavior: Clip.antiAlias,
-                  child: hasImage
-                      ? Image.file(
-                          File(imagePath),
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          height: double.infinity,
-                          gaplessPlayback: true,
-                          errorBuilder: (_, __, ___) => Icon(
-                            item.placeholderIcon,
-                            size: 48,
-                            color: AppBrandColors.pink.withValues(alpha: 0.85),
-                          ),
-                        )
-                      : Icon(
-                          item.placeholderIcon,
-                          size: 48,
-                          color: AppBrandColors.pink.withValues(alpha: 0.85),
-                        ),
+                  child: WardrobeItemImage(item: item),
                 ),
               ),
               Padding(

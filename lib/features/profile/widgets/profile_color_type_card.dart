@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/models/seasonal_color_type.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_brand_colors.dart';
+import '../../onboarding/widgets/quiz_visual_registry.dart';
 import '../widgets/profile_card_decoration.dart';
 
 /// Shows the user's seasonal color type with option to retake the quiz.
@@ -39,18 +40,22 @@ class ProfileColorTypeCard extends StatelessWidget {
           padding: const EdgeInsets.all(18),
           child: Row(
             children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: AppBrandColors.iconBackground,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Icon(
-                  Icons.palette_outlined,
-                  color: AppBrandColors.pink,
-                ),
-              ),
+              type != null
+                  ? QuizVisualRegistry.forColorResult(type, size: 48)
+                  : SizedBox(
+                      width: 48,
+                      height: 48,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: AppBrandColors.iconBackground,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Icon(
+                          Icons.palette_outlined,
+                          color: AppBrandColors.pink,
+                        ),
+                      ),
+                    ),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(

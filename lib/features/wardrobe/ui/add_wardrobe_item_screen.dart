@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../core/services/gallery_image_picker_service.dart';
 import '../../../core/services/openai_chat_service.dart';
+import '../../../core/services/wardrobe_duplicate_detector.dart';
 import '../../../core/utils/logger.dart';
 import '../../../core/theme/app_brand_colors.dart';
 import '../../../core/theme/chicks_input_styles.dart';
@@ -44,6 +45,7 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
   bool _isSaving = false;
   bool _isAnalyzing = false;
   bool _visionAnalysisFailed = false;
+  WardrobeDuplicateMatch? _duplicateMatch;
 
   @override
   void initState() {
@@ -131,7 +133,52 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
     setState(() {
       _imagePath = path;
       _visionAnalysisFailed = false;
+      _duplicateMatch = null;
     });
+  }
+
+  Future<void> _refreshDuplicateHint({ClothingVisionAnalysis? vision}) async {
+    final wardrobe = await WardrobeRepository.instance.loadItems();
+
+    final match = WardrobeDuplicateDetector.evaluate(
+      title: _titleController.text.trim(),
+      category: _category,
+      color: _colorController.text.trim().isEmpty
+          ? 'Не указан'
+          : _colorController.text.trim(),
+      wardrobe: wardrobe,
+      vision: vision,
+    );
+
+    if (!mounted) return;
+    setState(() => _duplicateMatch = match);
+  }
+
+  Future<bool> _confirmSaveDespiteDuplicate(WardrobeDuplicateMatch match) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Вещь уже в гардеробе'),
+        content: Text(
+          'Совпадает с ${match.label}.\n\n'
+          'Если на фото другая вещь — нажмите «Всё равно добавить».',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Отмена'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text(
+              'Всё равно добавить',
+              style: TextStyle(color: AppBrandColors.pink),
+            ),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
   }
 
   Future<void> _pickImage() async {
@@ -190,10 +237,19 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
       final analysis = await _visionRepository.analyzeImage(imagePath);
       if (!mounted) return;
       _applyVisionAnalysis(analysis);
-      _showSnackBar(
-        'AI заполнил поля — проверьте и отредактируйте при необходимости',
-        isError: false,
-      );
+      await _refreshDuplicateHint(vision: analysis);
+      if (!mounted) return;
+      if (_duplicateMatch != null) {
+        _showSnackBar(
+          'Это та же вещь, что уже в гардеробе — проверьте перед сохранением',
+          isError: true,
+        );
+      } else {
+        _showSnackBar(
+          'AI заполнил поля — проверьте и отредактируйте при необходимости',
+          isError: false,
+        );
+      }
     } on OpenAiChatException catch (e, stack) {
       AppLogger.error(
         'AddWardrobeItem: vision analysis failed',
@@ -294,6 +350,14 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
 
     if (!_validateRequiredFields()) return;
 
+    await _refreshDuplicateHint();
+    if (!mounted) return;
+
+    if (_duplicateMatch != null) {
+      final proceed = await _confirmSaveDespiteDuplicate(_duplicateMatch!);
+      if (!mounted || !proceed) return;
+    }
+
     setState(() => _isSaving = true);
     AppLogger.info('AddWardrobeItem: saving…');
 
@@ -386,6 +450,10 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
               _VisionRetryBanner(
                 onRetry: () => _runVisionAnalysis(_imagePath!),
               ),
+            ],
+            if (_duplicateMatch != null && !_isAnalyzing) ...[
+              const SizedBox(height: 12),
+              _DuplicateWarningBanner(match: _duplicateMatch!),
             ],
             const SizedBox(height: 20),
             _ChicksTextField(
@@ -600,6 +668,43 @@ class _VisionAnalyzingBanner extends StatelessWidget {
               'AI анализирует вещь...',
               style: TextStyle(
                 fontWeight: FontWeight.w600,
+                color: AppBrandColors.title,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DuplicateWarningBanner extends StatelessWidget {
+  const _DuplicateWarningBanner({required this.match});
+
+  final WardrobeDuplicateMatch match;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF3E8),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.orange.shade200),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.info_outline_rounded, color: Colors.orange.shade800, size: 22),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Похоже, вы снова добавляете ту же вещь: ${match.label}. '
+              'Если это другая вещь (например, другие джинсы) — сохраните, мы уточним название.',
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.35,
                 color: AppBrandColors.title,
               ),
             ),

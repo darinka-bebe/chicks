@@ -42,8 +42,10 @@ abstract final class StylistPipelineLogger {
         'preview=${_preview(content)}',
       );
     }
+    final estimatedTokens = (totalChars / 4).ceil();
     AppLogger.info(
-      'StylistPipeline: ${messages.length} system message(s), $totalChars chars total',
+      'StylistPipeline: ${messages.length} system message(s), '
+      '$totalChars chars, ~$estimatedTokens tokens (estimate)',
     );
   }
 

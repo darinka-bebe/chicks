@@ -117,7 +117,11 @@ class _MainTabState extends State<MainTab> with SingleTickerProviderStateMixin {
               0,
               Column(
                 children: [
-                  UserAvatar(photoUrl: user.photoUrl),
+                  UserAvatar(
+                    photoUrl: user.photoUrl,
+                    userId: user.uid,
+                    avatarRevision: user.avatarRevision,
+                  ),
                   const SizedBox(height: AppConstants.defaultPadding),
                   Text(
                     loc.greeting(

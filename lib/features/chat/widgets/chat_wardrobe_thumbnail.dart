@@ -32,7 +32,7 @@ class ChatWardrobeThumbnail extends StatelessWidget {
         height: height,
         child: hasImage
             ? Image(
-                image: WardrobeChatImageCache.fileProvider(
+                image: WardrobeChatImageCache.provider(
                   imagePath,
                   cacheWidth: cacheWidth,
                 ),

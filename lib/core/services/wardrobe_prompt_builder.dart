@@ -3,6 +3,7 @@ import '../../data/models/wardrobe_item.dart';
 import '../models/stylist_request_context.dart';
 import '../models/wardrobe_outfit_slot.dart';
 import 'stylist_pipeline_safety.dart';
+import 'wardrobe_prompt_selector.dart';
 import 'wardrobe_slot_classifier.dart';
 
 /// Builds readable wardrobe and styling context for the AI stylist system prompt.
@@ -10,16 +11,18 @@ abstract final class WardrobePromptBuilder {
   /// Logs wardrobe payload attached to the next AI request.
   static void logPromptWardrobe({
     required int revision,
-    required List<WardrobeItem> items,
+    required WardrobePromptSelection selection,
   }) {
     AppLogger.info(
-      'WardrobePromptBuilder: building prompt rev=$revision count=${items.length}',
+      'WardrobePromptBuilder: prompt rev=$revision '
+      'items=${selection.promptCount}/${selection.totalCount} '
+      'omitted=${selection.omittedCount}',
     );
-    if (items.isEmpty) {
-      AppLogger.debug('WardrobePromptBuilder: titles in prompt=(empty)');
+    if (selection.items.isEmpty) {
+      AppLogger.debug('WardrobePromptBuilder: prompt wardrobe=(empty)');
       return;
     }
-    final grouped = StylistPipelineSafety.safeGroup(items);
+    final grouped = StylistPipelineSafety.safeGroup(selection.items);
     final summary = WardrobeOutfitSlotX.outfitOrder
         .where(
           (slot) => StylistPipelineSafety.itemsForSlot(grouped, slot).isNotEmpty,
@@ -29,45 +32,54 @@ abstract final class WardrobePromptBuilder {
               '${slot.name}=${StylistPipelineSafety.itemsForSlot(grouped, slot).length}',
         )
         .join(', ');
-    AppLogger.debug('WardrobePromptBuilder: slots → $summary');
+    AppLogger.debug('WardrobePromptBuilder: prompt slots → $summary');
   }
 
   /// Tells the model to ignore wardrobe names from older chat turns.
   static String buildFreshnessGuard({
     required int revision,
-    required List<WardrobeItem> items,
+    required WardrobePromptSelection selection,
   }) {
-    if (items.isEmpty) {
+    if (selection.totalCount == 0) {
       return '''
 АКТУАЛЬНОСТЬ ГАРДЕРОБА (ревизия $revision):
 Гардероб пуст. Не ссылайся на вещи из прошлых сообщений в этом чате — их больше нет в данных приложения.''';
     }
 
-    final titles = items.map((item) => '«${item.title}»').join(', ');
+    final truncation = selection.wasTruncated
+        ? '\nВ промпте ${selection.promptCount} из ${selection.totalCount} вещей (релевантные слоты). '
+            'recommendedItemIds — только id из блока ГАРДЕРОБ ниже.'
+        : '';
 
     return '''
 АКТУАЛЬНОСТЬ ГАРДЕРОБА (ревизия $revision):
-Список вещей в системных сообщениях — единственный источник правды.
-Игнорируй любые названия вещей из прошлых реплик user/assistant, которых НЕТ в гардеробе сейчас.
-Допустимые названия: $titles.
-Не предлагай и не упоминай удалённые вещи.''';
+Блок «ГАРДЕРОБ» ниже — единственный источник id для recommendedItemIds.
+Игнорируй названия вещей из старых реплик чата, если их id нет в этом списке.$truncation''';
   }
 
-  /// Full wardrobe block grouped by outfit slots for the OpenAI system message.
-  static String buildWardrobeSection(List<WardrobeItem> items) {
+  /// Wardrobe block for the OpenAI system message (bounded subset).
+  static String buildWardrobeSection(
+    List<WardrobeItem> items, {
+    StylistRequestContext context = StylistRequestContext.empty,
+    WardrobePromptSelection? selection,
+  }) {
     try {
-      final safeItems = StylistPipelineSafety.sanitizeWardrobe(items);
-      if (safeItems.isEmpty) {
+      final resolved = selection ??
+          WardrobePromptSelector.select(items, context: context);
+      if (resolved.totalCount == 0) {
         return _emptyWardrobePrompt;
       }
 
-      final grouped = StylistPipelineSafety.safeGroup(safeItems);
+      final promptItems = resolved.items;
+      final grouped = StylistPipelineSafety.safeGroup(promptItems);
+      final header = resolved.wasTruncated
+          ? 'ГАРДЕРОБ (${resolved.promptCount} из ${resolved.totalCount} вещей в промпте, по слотам)'
+          : 'ГАРДЕРОБ (${resolved.totalCount} вещей, по слотам образа)';
+
       final buffer = StringBuffer()
-        ..writeln(
-          'ГАРДЕРОБ ПОЛЬЗОВАТЕЛЯ (${safeItems.length} вещей, по слотам образа)',
-        )
+        ..writeln(header)
         ..writeln()
-        ..writeln(_outfitSlotRules)
+        ..writeln(_compactWardrobeRules)
         ..writeln();
 
       var slotsWithItems = 0;
@@ -76,48 +88,30 @@ abstract final class WardrobePromptBuilder {
         if (slotItems.isEmpty) continue;
         slotsWithItems++;
 
-        buffer
-          ..writeln('── ${slot.sectionTitleRu} (${slotItems.length}) ──')
-          ..writeln('Слот: ${slot.promptLabelRu}');
+        buffer.writeln('── ${slot.sectionTitleRu} ──');
 
         for (final item in slotItems) {
-          buffer.writeln('• ${formatItemLine(item)}');
+          buffer.writeln('• ${formatCompactItemLine(item, context: context)}');
         }
         buffer.writeln();
       }
 
       if (slotsWithItems == 0) {
         buffer.writeln(
-          'В гардеробе нет вещей с распознанными слотами — используй список ID ниже.',
+          'Слоты не распознаны — используй id из списка «Прочее».',
         );
       }
 
       final unknown =
           StylistPipelineSafety.itemsForSlot(grouped, WardrobeOutfitSlot.unknown);
       if (unknown.isNotEmpty) {
-        buffer
-          ..writeln('── ${WardrobeOutfitSlot.unknown.sectionTitleRu} ──')
-          ..writeln(
-            'Классифицируй по смыслу в один из слотов образа; не дублируй категории.',
-          );
+        buffer.writeln('── ${WardrobeOutfitSlot.unknown.sectionTitleRu} ──');
         for (final item in unknown) {
-          final hint = WardrobeSlotClassifier.classify(item);
-          buffer.writeln(
-            '• ${formatItemLine(item)} (вероятный слот: ${hint.name})',
-          );
+          buffer.writeln('• ${formatCompactItemLine(item, context: context)}');
         }
         buffer.writeln();
       }
 
-      buffer.writeln('ID для recommendedItemIds (только эти строки):');
-      for (final item in safeItems) {
-        buffer.writeln(
-          '- "${item.id}" → «${item.title}» [${item.category}]',
-        );
-      }
-
-      buffer.writeln(_stylistCompositionGuide);
-      buffer.writeln(_wardrobeRecommendationRules);
       return buffer.toString().trim();
     } catch (e, stack) {
       AppLogger.error(
@@ -151,6 +145,7 @@ abstract final class WardrobePromptBuilder {
 
 Правила JSON:
 - "message" — ответ профессионального стилиста: связный ОБРАЗ, не случайный набор вещей.
+- В тексте message называй ТОЛЬКО вещи из recommendedItemIds (в кавычках «…» — точные названия из гардероба). Не упоминай удалённые или выдуманные вещи.
 - Структура message (рекомендуется):
   1) «Состав образа» — перечисли вещи «…» по слотам (верх/низ или платье, верхняя одежда, обувь, аксессуар).
   2) «Почему это работает» — 3–5 коротких пунктов: запрос, погода, цвета, силуэт, повод.
@@ -231,32 +226,53 @@ ${sections.join('\n\n')}''';
   static bool _impliesStreetwear(Set<String> keys) =>
       keys.contains('streetwear');
 
-  /// Single-line wardrobe entry for the prompt.
-  static String formatItemLine(WardrobeItem item) {
+  /// Compact single-line wardrobe entry for the AI prompt.
+  static String formatCompactItemLine(
+    WardrobeItem item, {
+    StylistRequestContext context = StylistRequestContext.empty,
+  }) {
     final slot = WardrobeSlotClassifier.classify(item);
     final parts = <String>[
       'id="${item.id.trim()}"',
       '«${item.title.trim()}»',
-      'слот: ${slot.name}',
-      'категория: ${item.category.trim().isEmpty ? "—" : item.category.trim()}',
-      'цвет: ${item.color.trim().isEmpty ? "—" : item.color.trim()}',
-      'сезон: ${item.season.trim().isEmpty ? "—" : item.season.trim()}',
+      slot.name,
+      item.color.trim().isEmpty ? '—' : item.color.trim(),
+      item.season.trim().isEmpty ? '—' : item.season.trim(),
     ];
 
-    if (item.fit.isNotEmpty) {
-      parts.add('посадка: ${item.fit}');
-    }
-    if (item.styles.isNotEmpty) {
-      parts.add('стиль: ${item.styles.join(', ')}');
-    }
-    if (item.occasions.isNotEmpty) {
-      parts.add('повод: ${item.occasions.join(', ')}');
-    }
-    if (item.vibes.isNotEmpty) {
-      parts.add('вайб: ${item.vibes.join(', ')}');
+    final tag = _bestContextTag(item, context);
+    if (tag != null) {
+      parts.add(tag);
     }
 
     return parts.join(' | ');
+  }
+
+  static String? _bestContextTag(
+    WardrobeItem item,
+    StylistRequestContext context,
+  ) {
+    if (context.isEmpty) return null;
+
+    final keywords = {
+      ...context.moods,
+      ...context.weather,
+      ...context.occasions,
+    }.map((e) => e.toLowerCase()).toSet();
+
+    for (final style in item.styles) {
+      if (keywords.contains(style.toLowerCase())) return style;
+    }
+    for (final occasion in item.occasions) {
+      if (keywords.contains(occasion.toLowerCase())) return occasion;
+    }
+    for (final vibe in item.vibes) {
+      if (keywords.contains(vibe.toLowerCase())) return vibe;
+    }
+    if (item.fit.isNotEmpty && keywords.contains(item.fit.toLowerCase())) {
+      return item.fit;
+    }
+    return null;
   }
 
   static const _emptyWardrobePrompt = '''
@@ -264,34 +280,8 @@ ${sections.join('\n\n')}''';
 Список вещей пуст. Дай универсальные советы по стилю и мягко предложи добавить вещи в раздел «Твой гардероб».
 Не называй конкретные вещи пользователя. recommendedItemIds: [].''';
 
-  static const _outfitSlotRules = '''
-ПРАВИЛА СБОРКИ ОБРАЗА (критично — как у профессионального стилиста):
-Собирай ЦЕЛОСТНЫЙ лук из гардероба, а не случайный список.
-• 1 слот = максимум 1 вещь. Запрещено: 2 верха, 2 низа, 2 пары обуви.
-• Платье = самостоятельная база (не добавляй отдельный верх и низ к платью).
-• Если слота нет в гардеробе — пропусти, не заменяй другой категорией.
-• Сочетай цвета осознанно: нейтральная база + 1 акцент ИЛИ тон-в-тон.
-• Не смешивай конфликтующие стили (например sporty + romantic) без явного запроса.
-• Учитывай сезон и посадку: slim низ + oversized верх — баланс; не дублируй объём.''';
-
-  static const _stylistCompositionGuide = '''
-
-КАК ДУМАТЬ КАК СТИЛИСТ (перед выбором id):
-1) Пойми запрос: повод, настроение, погода, dress code.
-2) Выбери БАЗУ: платье ИЛИ (верх + низ) — одна логичная пара по цвету и силуэту.
-3) Добавь верхнюю одежду только если холод / дождь / ветер.
-4) Подбери ОДНУ обувь под повод и погоду.
-5) Один аксессуар — если усиливает образ, не перегружай.
-6) В message объясни ПОЧЕМУ: (а) под запрос, (б) под погоду, (в) почему цвета/стили сочетаются.''';
-
-  static const _wardrobeRecommendationRules = '''
-
-Персональные рекомендации:
-- Только вещи из гардероба выше; названия в кавычках «…» точно как в списке.
-- Приоритет: запрос пользователя → живая погода → теги вещей (стиль, повод, сезон, вайб).
-- Не предлагай визуально конфликтующие вещи (спортивные кроссовки + вечернее платье без запроса).
-- Докупку упоминай только если критичного слота нет в гардеробе.
-- Русский язык, тепло и уверенно, без канцелярита.''';
+  static const _compactWardrobeRules = '''
+Правила: только id из списка ниже; 1 вещь на слот; платье заменяет верх+низ.''';
 
   static const _contextMatchingGuide = '''
 

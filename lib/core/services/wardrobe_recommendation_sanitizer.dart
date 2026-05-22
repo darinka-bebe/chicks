@@ -3,6 +3,7 @@ import '../../data/models/outfit_history_entry.dart';
 import '../../data/models/wardrobe_item.dart';
 import '../../data/repositories/wardrobe_repository.dart';
 import '../utils/logger.dart';
+import 'wardrobe_message_content_sanitizer.dart';
 import 'wardrobe_recommendation_resolver.dart';
 
 /// Strips deleted wardrobe ids from persisted recommendations.
@@ -54,18 +55,43 @@ abstract final class WardrobeRecommendationSanitizer {
         continue;
       }
 
+      final beforeItems = WardrobeRecommendationResolver.resolveItems(
+        requestedIds: message.recommendedItemIds,
+        wardrobe: wardrobe,
+      );
       final filtered = filterIds(
         ids: message.recommendedItemIds,
         wardrobe: wardrobe,
       );
+      final afterItems = WardrobeRecommendationResolver.resolveItems(
+        requestedIds: filtered,
+        wardrobe: wardrobe,
+      );
 
-      if (!_idsEqual(filtered, message.recommendedItemIds)) {
+      final removedTitles = <String>[];
+      for (final item in beforeItems) {
+        final stillKept = afterItems.any(
+          (kept) => WardrobeRepository.idEquals(kept.id, item.id),
+        );
+        if (!stillKept) removedTitles.add(item.title);
+      }
+
+      final alignedContent = WardrobeMessageContentSanitizer.alignWithValidItems(
+        message: message.content,
+        validItems: afterItems,
+        extraRemovedTitles: removedTitles,
+      );
+
+      final idsChanged = !_idsEqual(filtered, message.recommendedItemIds);
+      final contentChanged = alignedContent != message.content;
+
+      if (idsChanged || contentChanged) {
         changed = true;
         result.add(
           ChatMessage(
             id: message.id,
             role: message.role,
-            content: message.content,
+            content: alignedContent,
             createdAt: message.createdAt,
             recommendedItemIds: filtered,
             weatherLabel: message.weatherLabel,
@@ -105,7 +131,33 @@ abstract final class WardrobeRecommendationSanitizer {
         wardrobe: wardrobe,
       );
 
-      if (!_idsEqual(filtered, entry.recommendedItemIds)) {
+      final beforeItems = WardrobeRecommendationResolver.resolveItems(
+        requestedIds: entry.recommendedItemIds,
+        wardrobe: wardrobe,
+      );
+      final afterItems = WardrobeRecommendationResolver.resolveItems(
+        requestedIds: filtered,
+        wardrobe: wardrobe,
+      );
+      final removedTitles = <String>[];
+      for (final item in beforeItems) {
+        if (!afterItems.any(
+          (kept) => WardrobeRepository.idEquals(kept.id, item.id),
+        )) {
+          removedTitles.add(item.title);
+        }
+      }
+
+      final alignedText = WardrobeMessageContentSanitizer.alignWithValidItems(
+        message: entry.aiResponseText,
+        validItems: afterItems,
+        extraRemovedTitles: removedTitles,
+      );
+
+      final idsChanged = !_idsEqual(filtered, entry.recommendedItemIds);
+      final textChanged = alignedText != entry.aiResponseText;
+
+      if (idsChanged || textChanged) {
         changed = true;
         result.add(
           OutfitHistoryEntry(
@@ -113,7 +165,7 @@ abstract final class WardrobeRecommendationSanitizer {
             createdAt: entry.createdAt,
             title: entry.title,
             userPrompt: entry.userPrompt,
-            aiResponseText: entry.aiResponseText,
+            aiResponseText: alignedText,
             recommendedItemIds: filtered,
             weatherLabel: entry.weatherLabel,
             moods: entry.moods,

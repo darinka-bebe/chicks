@@ -13,6 +13,8 @@ class ClothingVisionAnalysis extends Equatable {
     this.vibes = const [],
     this.fit = '',
     this.outfitContext = '',
+    this.isDuplicate = false,
+    this.duplicateMatchTitle = '',
   });
 
   final String title;
@@ -26,6 +28,12 @@ class ClothingVisionAnalysis extends Equatable {
   final String fit;
   final String outfitContext;
 
+  /// Vision thinks this photo is the same item already in the user's wardrobe.
+  final bool isDuplicate;
+
+  /// Title of the existing wardrobe item (must match list from the prompt).
+  final String duplicateMatchTitle;
+
   factory ClothingVisionAnalysis.fromJson(Map<String, dynamic> json) {
     return ClothingVisionAnalysis(
       title: _str(json['title']),
@@ -38,6 +46,10 @@ class ClothingVisionAnalysis extends Equatable {
       vibes: _strList(json['vibes']),
       fit: _str(json['fit']),
       outfitContext: _str(json['outfitContext'] ?? json['outfit_context']),
+      isDuplicate: json['isDuplicate'] == true || json['is_duplicate'] == true,
+      duplicateMatchTitle: _str(
+        json['duplicateMatchTitle'] ?? json['duplicate_match_title'],
+      ),
     );
   }
 
@@ -68,5 +80,7 @@ class ClothingVisionAnalysis extends Equatable {
         vibes,
         fit,
         outfitContext,
+        isDuplicate,
+        duplicateMatchTitle,
       ];
 }

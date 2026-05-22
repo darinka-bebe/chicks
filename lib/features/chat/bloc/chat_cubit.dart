@@ -1,6 +1,9 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/services/openai_chat_service.dart';
+import '../../../core/services/stylist_context_parser.dart';
+import '../../../data/repositories/auth_repository.dart';
+import '../../../data/repositories/user_preferences_repository.dart';
 import '../../../core/services/stylist_pipeline_safety.dart';
 import '../../../core/services/weather/weather_repository.dart';
 import '../../../core/services/wardrobe_ai_context.dart';
@@ -144,6 +147,15 @@ class ChatCubit extends Cubit<ChatState> {
 
     final userMessage = ChatMessage.user(trimmed);
     final withUserMessage = [...state.messages, userMessage];
+
+    final stylistContext = StylistContextParser.parse(trimmed);
+    if (stylistContext.isNotEmpty) {
+      final uid = AuthRepository.instance.currentUser.uid;
+      await UserPreferencesRepository.instance.recordStylistInteraction(
+        stylistContext,
+        uid: uid.isNotEmpty ? uid : null,
+      );
+    }
 
     emit(
       state.copyWith(

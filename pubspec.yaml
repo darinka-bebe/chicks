@@ -37,6 +37,8 @@ dependencies:
   firebase_core: ^4.9.0
   firebase_auth: ^6.5.1
   google_sign_in: ^6.2.2
+  crop_your_image: ^2.0.0
+  image: ^4.5.0
 
 dev_dependencies:
   flutter_test:
@@ -51,3 +53,5 @@ flutter:
     - .env
     - assets/svg/
     - assets/body_types/
+    - assets/color_quiz/
+    - assets/wardrobe_mock/
