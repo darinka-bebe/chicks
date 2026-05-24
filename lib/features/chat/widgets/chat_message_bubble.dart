@@ -6,6 +6,8 @@ import 'chat_ai_message_content.dart';
 import 'chat_weather_banner.dart';
 import 'outfit_preview_metrics.dart';
 import 'outfit_recommendation_row.dart';
+import '../../../core/services/outfit_why_section_parser.dart';
+import 'outfit_why_card.dart';
 
 class ChatMessageBubble extends StatelessWidget {
   const ChatMessageBubble({
@@ -88,6 +90,10 @@ class ChatMessageBubble extends StatelessWidget {
       horizontal: OutfitPreviewMetrics.chatBubbleHorizontalPadding,
     );
 
+    final parsed = OutfitWhySectionParser.parse(message.content);
+    final displayBody =
+        parsed.hasWhySection ? parsed.body : message.content;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -144,7 +150,9 @@ class ChatMessageBubble extends StatelessWidget {
                   compact: true,
                 ),
               const SizedBox(height: 10),
-              ChatAiMessageContent(content: message.content),
+              ChatAiMessageContent(content: displayBody),
+              if (parsed.hasWhySection)
+                OutfitWhyCard(bullets: parsed.whyBullets),
             ],
           ),
         ),

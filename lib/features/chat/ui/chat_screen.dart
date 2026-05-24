@@ -4,10 +4,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_brand_colors.dart';
+import '../../../core/widgets/chicks_skeleton.dart';
 import '../../../data/models/chat_message.dart';
 import '../../../data/models/outfit_history_entry.dart';
 import '../../favorites/favorites_controller.dart';
-import '../../outfit_history/outfit_history_controller.dart';
 import '../../preferences/outfit_preferences_controller.dart';
 import '../widgets/wardrobe_snapshot_scope.dart';
 import '../bloc/chat_cubit.dart';
@@ -46,7 +46,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
   @override
   void didChangeMetrics() {
-    _scrollToBottom();
+    _scrollToBottom(animated: false);
   }
 
   Future<void> _confirmClearChat(BuildContext context) async {
@@ -170,10 +170,19 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     }
   }
 
-  void _scrollToBottom() {
+  void _scrollToBottom({bool animated = true}) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scrollController.hasClients) return;
-      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+      final target = _scrollController.position.maxScrollExtent;
+      if (animated) {
+        _scrollController.animateTo(
+          target,
+          duration: const Duration(milliseconds: 280),
+          curve: Curves.easeOutCubic,
+        );
+      } else {
+        _scrollController.jumpTo(target);
+      }
     });
   }
 
@@ -197,29 +206,34 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
               (prev.isLoading && !curr.isLoading),
           listener: (context, state) {
             _scrollToBottom();
-            final last = state.messages.isNotEmpty ? state.messages.last : null;
-            if (last != null &&
-                last.role == ChatRole.assistant &&
-                last.recommendedItemIds.isNotEmpty &&
-                !state.isLoading) {
-              context.read<OutfitHistoryController>().refresh();
-            }
           },
           child: BlocListener<ChatCubit, ChatState>(
           listenWhen: (prev, curr) =>
               prev.error != curr.error && curr.error != null,
           listener: (context, state) {
+            final cubit = context.read<ChatCubit>();
             ScaffoldMessenger.of(context)
               ..hideCurrentSnackBar()
               ..showSnackBar(
                 SnackBar(
-                  content: Text(state.error!),
-                  backgroundColor: Colors.redAccent,
+                  content: Text(
+                    state.error!.contains('network') ||
+                            state.error!.contains('Network') ||
+                            state.error!.contains('сеть') ||
+                            state.error!.contains('интернет')
+                        ? 'Проблема с сетью — проверь подключение'
+                        : state.error!,
+                  ),
+                  backgroundColor: const Color(0xFFE57373),
                   behavior: SnackBarBehavior.floating,
+                  duration: const Duration(seconds: 6),
                   action: SnackBarAction(
-                    label: 'OK',
+                    label: 'Повторить',
                     textColor: Colors.white,
-                    onPressed: () => context.read<ChatCubit>().clearError(),
+                    onPressed: () {
+                      cubit.clearError();
+                      cubit.retryLastMessage();
+                    },
                   ),
                 ),
               );
@@ -234,25 +248,32 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
               children: [
                 const _ChatWeatherStrip(),
                 Expanded(
-                  child: _ChatMessageArea(
-                    scrollController: _scrollController,
-                    inputBarKey: _inputBarKey,
-                    onToggleFavorite: _toggleFavorite,
-                    onToggleDislike: _toggleDislike,
+                  child: GestureDetector(
+                    onTap: () => FocusScope.of(context).unfocus(),
+                    behavior: HitTestBehavior.translucent,
+                    child: _ChatMessageArea(
+                      scrollController: _scrollController,
+                      inputBarKey: _inputBarKey,
+                      onToggleFavorite: _toggleFavorite,
+                      onToggleDislike: _toggleDislike,
+                    ),
                   ),
                 ),
-                BlocSelector<ChatCubit, ChatState, bool>(
-                  selector: (state) =>
-                      !state.isLoading && !state.isRestoringHistory,
-                  builder: (context, enabled) {
-                    return ChatInputBar(
-                      key: _inputBarKey,
-                      enabled: enabled,
-                      onSend: context.read<ChatCubit>().sendMessage,
-                    );
-                  },
-                ),
               ],
+            ),
+            bottomNavigationBar: SafeArea(
+              top: false,
+              child: BlocSelector<ChatCubit, ChatState, bool>(
+                selector: (state) =>
+                    !state.isLoading && !state.isRestoringHistory,
+                builder: (context, enabled) {
+                  return ChatInputBar(
+                    key: _inputBarKey,
+                    enabled: enabled,
+                    onSend: context.read<ChatCubit>().sendMessage,
+                  );
+                },
+              ),
             ),
           ),
         ),
@@ -369,7 +390,16 @@ class _ChatMessageArea extends StatelessWidget {
       builder: (context, data) {
         if (data.isRestoringHistory) {
           return const Center(
-            child: CircularProgressIndicator(color: AppBrandColors.pink),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ChicksSkeleton(width: 220, height: 14, borderRadius: 8),
+                SizedBox(height: 16),
+                ChicksSkeleton(width: 280, height: 72, borderRadius: 16),
+                SizedBox(height: 12),
+                ChicksSkeleton(width: 240, height: 72, borderRadius: 16),
+              ],
+            ),
           );
         }
 

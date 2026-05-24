@@ -10,6 +10,8 @@ import '../../../data/repositories/user_profile_repository.dart';
 import '../data/color_type_quiz_questions.dart';
 import '../widgets/quiz_option_card.dart';
 import '../widgets/quiz_progress_bar.dart';
+import '../widgets/onboarding_funnel_header.dart';
+import '../data/onboarding_funnel.dart';
 import '../widgets/quiz_visual_registry.dart';
 import '../widgets/quiz_visual_theme.dart';
 
@@ -162,8 +164,18 @@ class _ColorTypeQuizScreenState extends State<ColorTypeQuizScreen> {
               ),
             ),
             if (!_showResult) ...[
+              if (!widget.fromProfile)
+                const OnboardingFunnelHeader(
+                  step: OnboardingFunnel.stepColorQuiz,
+                  title: 'Определение цветотипа',
+                ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+                padding: EdgeInsets.fromLTRB(
+                  24,
+                  widget.fromProfile ? 8 : 4,
+                  24,
+                  0,
+                ),
                 child: QuizProgressBar(
                   progress: (_currentIndex + 1) / _questions.length,
                   label: 'Вопрос ${_currentIndex + 1} из ${_questions.length}',
@@ -246,7 +258,15 @@ class _QuestionPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+      physics: const BouncingScrollPhysics(
+        parent: AlwaysScrollableScrollPhysics(),
+      ),
+      padding: EdgeInsets.fromLTRB(
+        24,
+        16,
+        24,
+        8 + MediaQuery.viewInsetsOf(context).bottom,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

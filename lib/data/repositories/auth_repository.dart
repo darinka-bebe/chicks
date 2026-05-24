@@ -128,8 +128,17 @@ class AuthRepository {
       rawPhoto,
       uid: storedUid.isNotEmpty ? storedUid : null,
     );
-    if (photoUrl != rawPhoto) {
-      await prefs.setString(_photoUrlKey, photoUrl);
+    if (photoUrl.isNotEmpty) {
+      if (photoUrl != rawPhoto) {
+        await prefs.setString(_photoUrlKey, photoUrl);
+      }
+    } else if (ProfileAvatarStorage.isEphemeralPath(rawPhoto)) {
+      await prefs.remove(_photoUrlKey);
+    } else if (rawPhoto.isNotEmpty &&
+        ProfileAvatarStorage.isStoredAvatarPath(rawPhoto)) {
+      AppLogger.warning(
+        'AuthRepository.repairStoredSession: avatar file missing, keeping path',
+      );
     }
     if (storedUid.isNotEmpty && photoUrl.isNotEmpty) {
       await ProfileAvatarStorage.pruneLegacyAvatars(
@@ -343,7 +352,7 @@ class AuthRepository {
       rawPhoto,
       uid: uid,
     );
-    if (photoUrl != rawPhoto) {
+    if (photoUrl.isNotEmpty && photoUrl != rawPhoto) {
       await prefs.setString(_photoUrlKey, photoUrl);
     }
 
@@ -391,9 +400,9 @@ class AuthRepository {
         : firebaseUser.photoUrl;
 
     final savedName = prefs.getString(_nameKey)?.trim() ?? '';
-    final displayName = savedName.isNotEmpty && savedName != 'Пользователь'
-        ? savedName
-        : firebaseUser.displayName;
+    final displayName = UserProfileRules.isGenericDisplayName(savedName)
+        ? firebaseUser.displayName
+        : savedName;
 
     final firebaseEmail =
         UserProfileRules.sanitizeStoredEmail(firebaseUser.email);
@@ -409,6 +418,9 @@ class AuthRepository {
       username: username,
       email: email,
       photoUrl: photoUrl,
+      avatarRevision: _currentUser.uid == firebaseUser.uid
+          ? _currentUser.avatarRevision
+          : 0,
       lastLoginAt: DateTime.now(),
     );
   }

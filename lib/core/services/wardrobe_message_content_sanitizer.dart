@@ -12,6 +12,9 @@ abstract final class WardrobeMessageContentSanitizer {
     final trimmed = message.trim();
     if (trimmed.isEmpty) return trimmed;
 
+    // Nothing to validate against — keep stylist text (avoid empty «Образ» block).
+    if (validItems.isEmpty) return trimmed;
+
     final validTitles = validItems
         .map((item) => _norm(item.title))
         .where((t) => t.isNotEmpty)

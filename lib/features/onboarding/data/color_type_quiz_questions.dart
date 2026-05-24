@@ -118,18 +118,15 @@ abstract final class ColorTypeQuizQuestions {
           id: 'contrast_low',
           label: 'Низкий',
           subtitle: 'Мягкие, близкие по глубине черты',
-          icon: Icons.contrast_outlined,
         ),
         ColorTypeQuizOption(
           id: 'contrast_medium',
           label: 'Средний',
-          icon: Icons.tonality_outlined,
         ),
         ColorTypeQuizOption(
           id: 'contrast_high',
           label: 'Высокий',
           subtitle: 'Ярко выраженная разница тонов',
-          icon: Icons.contrast,
         ),
       ],
     ),

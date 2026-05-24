@@ -18,7 +18,12 @@ import '../../../core/constants/wardrobe_catalog.dart';
 import '../widgets/wardrobe_chip_selector.dart';
 
 class AddWardrobeItemScreen extends StatefulWidget {
-  const AddWardrobeItemScreen({super.key});
+  const AddWardrobeItemScreen({super.key, this.editItem});
+
+  /// When set, screen updates an existing wardrobe row instead of adding.
+  final WardrobeItem? editItem;
+
+  bool get isEditing => editItem != null;
 
   @override
   State<AddWardrobeItemScreen> createState() => _AddWardrobeItemScreenState();
@@ -47,9 +52,30 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
   bool _visionAnalysisFailed = false;
   WardrobeDuplicateMatch? _duplicateMatch;
 
+  WardrobeItem? get _editingItem => widget.editItem;
+
   @override
   void initState() {
     super.initState();
+    final editing = _editingItem;
+    if (editing != null) {
+      _titleController.text = editing.title;
+      final color = editing.color.trim();
+      _colorController.text =
+          color.isEmpty || color == 'Не указан' ? '' : color;
+      _category = WardrobeCatalog.categories.contains(editing.category)
+          ? editing.category
+          : WardrobeCatalog.categories.first;
+      _imagePath = editing.imagePath;
+      _selectedStyles = List<String>.from(editing.styles);
+      _selectedOccasions = List<String>.from(editing.occasions);
+      _selectedFit =
+          editing.fit.trim().isEmpty ? [] : <String>[editing.fit.trim()];
+      _selectedSeason = editing.season.trim().isEmpty
+          ? [WardrobeCatalog.seasons.last]
+          : <String>[editing.season.trim()];
+      _selectedVibes = List<String>.from(editing.vibes);
+    }
     _fadeController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 500),
@@ -138,7 +164,13 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
   }
 
   Future<void> _refreshDuplicateHint({ClothingVisionAnalysis? vision}) async {
-    final wardrobe = await WardrobeRepository.instance.loadItems();
+    final excludeId = _editingItem?.id;
+    final all = await WardrobeRepository.instance.loadItems();
+    final wardrobe = excludeId == null
+        ? all
+        : all
+            .where((row) => !WardrobeRepository.idEquals(row.id, excludeId))
+            .toList();
 
     final match = WardrobeDuplicateDetector.evaluate(
       title: _titleController.text.trim(),
@@ -155,13 +187,14 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
   }
 
   Future<bool> _confirmSaveDespiteDuplicate(WardrobeDuplicateMatch match) async {
+    final editing = widget.isEditing;
     final result = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Вещь уже в гардеробе'),
+        title: Text(editing ? 'Похожая вещь в гардеробе' : 'Вещь уже в гардеробе'),
         content: Text(
           'Совпадает с ${match.label}.\n\n'
-          'Если на фото другая вещь — нажмите «Всё равно добавить».',
+          '${editing ? 'Если это другая вещь — нажмите «Всё равно сохранить».' : 'Если на фото другая вещь — нажмите «Всё равно добавить».'}',
         ),
         actions: [
           TextButton(
@@ -170,9 +203,9 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
           ),
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text(
-              'Всё равно добавить',
-              style: TextStyle(color: AppBrandColors.pink),
+            child: Text(
+              editing ? 'Всё равно сохранить' : 'Всё равно добавить',
+              style: const TextStyle(color: AppBrandColors.pink),
             ),
           ),
         ],
@@ -363,8 +396,9 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
 
     try {
       final colorRaw = _colorController.text.trim();
+      final editing = _editingItem;
       final item = WardrobeItem(
-        id: WardrobeRepository.generateItemId(),
+        id: editing?.id ?? WardrobeRepository.generateItemId(),
         title: _titleController.text.trim(),
         category: _category,
         color: colorRaw.isEmpty ? 'Не указан' : colorRaw,
@@ -375,15 +409,17 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
         styles: List<String>.from(_selectedStyles),
         occasions: List<String>.from(_selectedOccasions),
         vibes: List<String>.from(_selectedVibes),
-        imagePath: _imagePath,
+        imagePath: _imagePath ?? editing?.imagePath,
       );
 
       AppLogger.debug(
-        'AddWardrobeItem: created item id=${item.id} '
+        'AddWardrobeItem: ${editing != null ? 'update' : 'create'} id=${item.id} '
         'title="${item.title}" category=${item.category}',
       );
 
-      final persisted = await WardrobeRepository.instance.addItem(item);
+      final persisted = editing != null
+          ? await WardrobeRepository.instance.updateItem(item)
+          : await WardrobeRepository.instance.addItem(item);
 
       if (!mounted) return;
 
@@ -416,9 +452,9 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
           color: AppBrandColors.pink,
           onPressed: _isSaving || _isAnalyzing ? null : () => context.pop(),
         ),
-        title: const Text(
-          'Новая вещь',
-          style: TextStyle(
+        title: Text(
+          widget.isEditing ? 'Редактировать' : 'Новая вещь',
+          style: const TextStyle(
             color: AppBrandColors.pink,
             fontWeight: FontWeight.w600,
             fontSize: 18,
@@ -430,7 +466,12 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
         key: _formKey,
         child: ListView(
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          padding: EdgeInsets.fromLTRB(
+            20,
+            8,
+            20,
+            24 + MediaQuery.viewInsetsOf(context).bottom,
+          ),
           children: [
             FadeTransition(
               opacity: _fadeAnimation,

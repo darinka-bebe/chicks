@@ -29,23 +29,22 @@ abstract final class QuizVisualTheme {
         borderRadius: BorderRadius.circular(cardRadius),
         border: Border.all(
           color: selected ? AppBrandColors.pink : cardBorder,
-          width: selected ? 2 : 1,
+          width: selected ? 2.5 : 1,
         ),
         boxShadow: [
           BoxShadow(
             color: selected
-                ? AppBrandColors.pink.withValues(alpha: 0.2)
-                : const Color(0xFF2D1A24).withValues(alpha: 0.07),
-            blurRadius: selected ? 22 : 14,
-            offset: Offset(0, selected ? 8 : 5),
-            spreadRadius: selected ? 0 : -1,
+                ? AppBrandColors.pink.withValues(alpha: 0.28)
+                : const Color(0xFF2D1A24).withValues(alpha: 0.06),
+            blurRadius: selected ? 24 : 12,
+            offset: Offset(0, selected ? 10 : 4),
+            spreadRadius: selected ? -2 : -1,
           ),
-          if (!selected)
+          if (selected)
             BoxShadow(
-              color: Colors.white.withValues(alpha: 0.9),
+              color: AppBrandColors.pink.withValues(alpha: 0.12),
               blurRadius: 0,
-              offset: const Offset(0, 1),
-              spreadRadius: 0,
+              spreadRadius: 1,
             ),
         ],
       );
@@ -57,17 +56,24 @@ abstract final class QuizVisualTheme {
         borderRadius: BorderRadius.circular(previewRadius),
       );
 
-  /// Body-type photo slot — square, crisp 2px black frame.
+  /// Body-type photo slot — soft card frame (matches reference art).
   static BoxDecoration bodyPreviewDecoration({
     bool emphasized = false,
     double radius = bodyPreviewRadius,
   }) =>
       BoxDecoration(
-        color: emphasized ? const Color(0xFFFFF0F7) : panelFill,
+        color: emphasized ? const Color(0xFFFFF0F7) : cardSurface,
         borderRadius: BorderRadius.circular(radius),
         border: Border.all(
-          color: const Color(0xFF1A1A1A),
-          width: 2,
+          color: emphasized ? AppBrandColors.pink : cardBorder,
+          width: emphasized ? 2 : 1,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF2D1A24).withValues(alpha: 0.06),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
       );
 }

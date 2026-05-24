@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_brand_colors.dart';
 import '../../../core/widgets/chicks_empty_state.dart';
+import '../../../core/widgets/chicks_error_state.dart';
+import '../../../core/widgets/chicks_skeleton.dart';
 import '../../../data/models/favorite_outfit.dart';
 import '../favorites_controller.dart';
 import '../widgets/favorite_outfit_card.dart';
@@ -62,22 +64,41 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
         centerTitle: true,
       ),
       body: isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: AppBrandColors.pink),
+          ? ListView.separated(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: 3,
+              separatorBuilder: (_, __) => const SizedBox(height: 14),
+              itemBuilder: (_, __) => const ChicksListCardSkeleton(),
             )
-          : outfits.isEmpty
-              ? ChicksEmptyState(
-                  icon: Icons.favorite_border_rounded,
-                  secondaryIcon: Icons.bookmark_added_outlined,
-                  title: 'Пока нет избранных образов',
-                  message: 'Сохраняй понравившиеся образы',
-                  actionLabel: 'К чату со стилистом',
-                  onAction: () => context.pop(),
+          : favorites.loadError != null
+              ? ChicksRefreshableScroll(
+                  onRefresh: favorites.refresh,
+                  child: ChicksErrorState(
+                    message: favorites.loadError!,
+                    onRetry: favorites.refresh,
+                  ),
+                )
+              : outfits.isEmpty
+              ? ChicksRefreshableScroll(
+                  onRefresh: favorites.refresh,
+                  child: ChicksEmptyState(
+                    icon: Icons.favorite_border_rounded,
+                    secondaryIcon: Icons.bookmark_added_outlined,
+                    title: 'Пока нет избранных образов',
+                    message:
+                        'Сохраняй понравившиеся образы из чата — они появятся здесь',
+                    actionLabel: 'К чату со стилистом',
+                    onAction: () => context.pop(),
+                  ),
                 )
               : RefreshIndicator(
                   color: AppBrandColors.pink,
                   onRefresh: favorites.refresh,
                   child: ListView.separated(
+                    physics: const AlwaysScrollableScrollPhysics(
+                      parent: BouncingScrollPhysics(),
+                    ),
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                     itemCount: outfits.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 14),

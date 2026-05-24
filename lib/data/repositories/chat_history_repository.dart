@@ -1,5 +1,8 @@
 import '../../core/storage/hive_json_list_codec.dart';
 import '../../core/storage/local_hive_storage.dart';
+import '../../core/sync/cloud_sync_hooks.dart';
+import '../../core/sync/sync_meta_storage.dart';
+import '../../core/sync/sync_scope.dart';
 import '../../core/utils/logger.dart';
 import '../models/chat_message.dart';
 
@@ -36,6 +39,16 @@ class ChatHistoryRepository {
   }
 
   Future<void> saveMessages(List<ChatMessage> messages) async {
+    await saveMessagesLocally(messages);
+    await SyncMetaStorage.touchAll(
+      SyncScope.chatHistory,
+      messages.map((message) => message.id),
+    );
+    CloudSyncHooks.onLocalDataChanged(SyncScope.chatHistory);
+  }
+
+  /// Persists chat without triggering cloud upload (used during restore).
+  Future<void> saveMessagesLocally(List<ChatMessage> messages) async {
     await HiveJsonListCodec.write(
       LocalHiveStorage.chatBox,
       _messagesKey,

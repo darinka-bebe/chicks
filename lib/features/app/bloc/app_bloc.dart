@@ -23,19 +23,25 @@ class AppBloc extends Bloc<AppEvent, AuthState> {
 
   AppBloc({required AuthRepository authRepository})
       : _authRepository = authRepository,
-        super(const AuthState.unknown()) {
-    // Регистрируем обработчики событий.
+        super(_initialAuthState(authRepository)) {
     on<AppAuthStateChanged>(_onAuthStateChanged);
     on<AppSignOutRequested>(_onSignOutRequested);
 
-    // Подписываемся на стрим авторизации.
-    // Каждый раз, когда пользователь входит/выходит,
-    // стрим присылает нового [UserModel].
     _authSubscription = _authRepository.authStateChanges.listen(
       (UserModel user) {
         add(AppAuthStateChanged(user));
       },
     );
+  }
+
+  /// [AuthRepository.initialize] completes before [AppBloc] is created;
+  /// seed state from the singleton so profile (avatar, name) is not empty.
+  static AuthState _initialAuthState(AuthRepository authRepository) {
+    final user = authRepository.currentUser;
+    if (user.isNotEmpty) {
+      return AuthState.authenticated(user);
+    }
+    return const AuthState.unauthenticated();
   }
 
   /// Обработчик: изменился статус авторизации.

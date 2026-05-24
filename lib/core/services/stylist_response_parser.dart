@@ -93,9 +93,26 @@ abstract final class StylistResponseParser {
     final ids = <String>[];
     for (final entry in raw) {
       if (entry == null) continue;
+      if (entry is Map) {
+        final fromMap = entry['id'] ?? entry['itemId'] ?? entry['wardrobeItemId'];
+        if (fromMap != null) {
+          final id = fromMap.toString().trim();
+          if (id.isNotEmpty) ids.add(id);
+        }
+        continue;
+      }
       final id = entry.toString().trim();
-      if (id.isNotEmpty) ids.add(id);
+      if (id.isNotEmpty) ids.add(_normalizeIdToken(id));
     }
     return ids;
+  }
+
+  /// Maps prompt examples like "id1" → "1".
+  static String _normalizeIdToken(String raw) {
+    final trimmed = raw.trim();
+    final match = RegExp(r'^id[_-]?(\d+)$', caseSensitive: false)
+        .firstMatch(trimmed);
+    if (match != null) return match.group(1)!;
+    return trimmed;
   }
 }

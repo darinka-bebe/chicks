@@ -289,7 +289,7 @@ ${sections.join('\n\n')}''';
 - comfy / cozy → мягкие фактуры, relaxed/oversized, уютные вайбы, слои.
 - romantic / feminine / soft girl → нежные оттенки, аккуратный силуэт, минимум грубого sport.
 - confident / streetwear → чёткий силуэт, streetwear/casual в стилях, уместная обувь.
-- elegant / dark academia → сдержанная палитра, структурные вещи.
+- elegant → сдержанная палитра, структурные вещи.
 - hot / cold / rainy / windy — согласуй с сезоном вещи и обувью (см. блок погоды).''';
 
   static const _playbookSchool = '''【school / школа】

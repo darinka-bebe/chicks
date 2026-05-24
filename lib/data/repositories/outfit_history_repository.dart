@@ -1,5 +1,8 @@
 import '../../core/storage/hive_json_list_codec.dart';
 import '../../core/storage/local_hive_storage.dart';
+import '../../core/sync/cloud_sync_hooks.dart';
+import '../../core/sync/sync_meta_storage.dart';
+import '../../core/sync/sync_scope.dart';
 import '../../core/utils/logger.dart';
 import '../models/outfit_history_entry.dart';
 
@@ -43,6 +46,16 @@ class OutfitHistoryRepository {
   }
 
   Future<void> saveEntries(List<OutfitHistoryEntry> entries) async {
+    await saveEntriesLocally(entries);
+    await SyncMetaStorage.touchAll(
+      SyncScope.outfitHistory,
+      entries.map((item) => item.id),
+    );
+    CloudSyncHooks.onLocalDataChanged(SyncScope.outfitHistory);
+  }
+
+  /// Persists history without triggering cloud upload (used during restore).
+  Future<void> saveEntriesLocally(List<OutfitHistoryEntry> entries) async {
     final sorted = [...entries]
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     await HiveJsonListCodec.write(
@@ -64,7 +77,12 @@ class OutfitHistoryRepository {
     final entries = await loadEntries();
     final updated = entries.where((item) => item.id != id).toList();
     if (updated.length == entries.length) return false;
-    await saveEntries(updated);
+    await saveEntriesLocally(updated);
+    await SyncMetaStorage.touchAll(
+      SyncScope.outfitHistory,
+      updated.map((item) => item.id),
+    );
+    CloudSyncHooks.onLocalDataChanged(SyncScope.outfitHistory, deletedId: id);
     AppLogger.info('OutfitHistoryRepository.deleteEntry: $id');
     return true;
   }
@@ -75,5 +93,9 @@ class OutfitHistoryRepository {
       if (item.id == id) return item;
     }
     return null;
+  }
+
+  Future<void> clear() async {
+    await LocalHiveStorage.outfitHistoryBox.delete(_itemsKey);
   }
 }

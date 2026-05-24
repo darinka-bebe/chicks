@@ -2,6 +2,9 @@ import '../../core/services/wardrobe_sync_service.dart';
 import '../../core/services/wardrobe_image_storage.dart';
 import '../../core/storage/hive_json_list_codec.dart';
 import '../../core/storage/local_hive_storage.dart';
+import '../../core/sync/cloud_sync_hooks.dart';
+import '../../core/sync/sync_meta_storage.dart';
+import '../../core/sync/sync_scope.dart';
 import '../../core/utils/logger.dart';
 import '../../features/wardrobe/data/mock_wardrobe_data.dart';
 import '../models/wardrobe_item.dart';
@@ -30,7 +33,7 @@ class WardrobeRepository {
       return item.copyWith(imagePath: mockPath);
     }).toList();
     if (changed) {
-      await saveItems(merged);
+      await saveItemsLocally(merged);
       AppLogger.info('WardrobeRepository: applied mock seed photos');
     }
     return merged;
@@ -51,7 +54,7 @@ class WardrobeRepository {
 
     if (maps.isEmpty) {
       final seeded = List<WardrobeItem>.from(MockWardrobeData.items);
-      await saveItems(seeded);
+      await saveItemsLocally(seeded);
       AppLogger.info(
         'WardrobeRepository.loadItems: seeded ${seeded.length} mock item(s)',
       );
@@ -70,7 +73,7 @@ class WardrobeRepository {
         AppLogger.warning(
           'WardrobeRepository.loadItems: repaired missing/duplicate ids — persisting',
         );
-        await saveItems(normalized);
+        await saveItemsLocally(normalized);
       }
 
       final withMockPhotos = await _mergeMockSeedPhotos(normalized);
@@ -88,6 +91,22 @@ class WardrobeRepository {
   }
 
   Future<void> saveItems(
+    List<WardrobeItem> items, {
+    String? deletedItemId,
+  }) async {
+    await saveItemsLocally(items, deletedItemId: deletedItemId);
+    await SyncMetaStorage.touchAll(
+      SyncScope.wardrobe,
+      items.map((item) => item.id),
+    );
+    CloudSyncHooks.onLocalDataChanged(
+      SyncScope.wardrobe,
+      deletedId: deletedItemId,
+    );
+  }
+
+  /// Persists wardrobe without triggering cloud upload (used during restore).
+  Future<void> saveItemsLocally(
     List<WardrobeItem> items, {
     String? deletedItemId,
   }) async {
@@ -136,6 +155,27 @@ class WardrobeRepository {
     return toSave;
   }
 
+  Future<WardrobeItem> updateItem(WardrobeItem item) async {
+    final needle = item.id.trim();
+    if (needle.isEmpty) {
+      throw ArgumentError('WardrobeItem.id is required for update');
+    }
+
+    final items = await loadItems();
+    final index = items.indexWhere((row) => _idEquals(row.id, needle));
+    if (index < 0) {
+      throw StateError('WardrobeRepository.updateItem: id not found ($needle)');
+    }
+
+    final updated = [...items];
+    updated[index] = item;
+    await saveItems(updated);
+    AppLogger.info(
+      'WardrobeRepository.updateItem: id=$needle title="${item.title}"',
+    );
+    return item;
+  }
+
   /// Finds an item by persisted id (string-normalized for Hive int ids).
   Future<WardrobeItem?> findItemById(String id) async {
     final needle = id.trim();
@@ -173,16 +213,19 @@ class WardrobeRepository {
     }
 
     AppLogger.info(
-      'WardrobeRepository.deleteItem: matched id=${target.id} title="${target.title}"',
+      'WardrobeRepository.deleteItem: matched '
+      'localId=${target.id} firestoreDocId=${target.firestoreDocId} '
+      'title="${target.title}"',
     );
 
     await WardrobeImageStorage.deleteIfStored(target.imagePath);
 
     final updated =
         items.where((item) => !_idEquals(item.id, target!.id)).toList();
-    await saveItems(updated, deletedItemId: target.id);
+    await saveItems(updated, deletedItemId: target.firestoreDocId);
     AppLogger.info(
-      'WardrobeRepository.deleteItem: removed "${target.title}" (${updated.length} left)',
+      'WardrobeRepository.deleteItem: removed "${target.title}" '
+      '(${updated.length} left) firestorePath=${target.firestorePath('{uid}')}',
     );
     return true;
   }

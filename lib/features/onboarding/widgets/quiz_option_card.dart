@@ -21,7 +21,8 @@ class QuizOptionCard extends StatelessWidget {
   final Widget? leading;
 
   static const double _leadingSlot = QuizVisualTheme.optionPreviewSize;
-  static const double _radioSlot = 32;
+  static const double _radioSlot = 28;
+  static const double _minCardHeight = 88;
 
   @override
   Widget build(BuildContext context) {
@@ -36,69 +37,70 @@ class QuizOptionCard extends StatelessWidget {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 240),
           curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+          constraints: const BoxConstraints(minHeight: _minCardHeight),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: QuizVisualTheme.optionCardDecoration(selected: selected),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              if (leading != null)
+              if (leading != null) ...[
                 SizedBox(
                   width: _leadingSlot,
                   height: _leadingSlot,
-                  child: Center(child: leading),
+                  child: leading,
                 ),
-              if (leading != null) const SizedBox(width: 16),
+                const SizedBox(width: 14),
+              ],
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       label,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight:
                             selected ? FontWeight.w800 : FontWeight.w700,
                         color: AppBrandColors.title,
-                        height: 1.25,
+                        height: 1.2,
                         letterSpacing: -0.2,
                       ),
                     ),
                     if (hint != null && hint!.isNotEmpty) ...[
-                      const SizedBox(height: 5),
+                      const SizedBox(height: 4),
                       Text(
                         hint!,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
                           color: selected
                               ? AppBrandColors.pink.withValues(alpha: 0.72)
                               : const Color(0xFF8A7A82),
-                          height: 1.35,
+                          height: 1.3,
                         ),
                       ),
                     ],
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               SizedBox(
                 width: _radioSlot,
                 height: _radioSlot,
-                child: Center(
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 200),
-                    child: Icon(
-                      selected
-                          ? Icons.check_circle_rounded
-                          : Icons.circle_outlined,
-                      key: ValueKey(selected),
-                      color: selected
-                          ? AppBrandColors.pink
-                          : const Color(0xFFD4B8C4),
-                      size: 28,
-                    ),
-                  ),
+                child: Icon(
+                  selected
+                      ? Icons.check_circle_rounded
+                      : Icons.circle_outlined,
+                  color: selected
+                      ? AppBrandColors.pink
+                      : const Color(0xFFD4B8C4),
+                  size: 26,
                 ),
               ),
             ],

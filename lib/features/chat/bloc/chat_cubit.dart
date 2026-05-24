@@ -166,6 +166,56 @@ class ChatCubit extends Cubit<ChatState> {
     );
     await _persistMessages(withUserMessage);
 
+    await _requestStylistReply(
+      conversationHistory: withUserMessage,
+      userPrompt: trimmed,
+    );
+  }
+
+  /// Re-sends the last user message after a failed stylist request.
+  Future<void> retryLastMessage() async {
+    if (state.isLoading || state.isRestoringHistory) return;
+
+    final messages = state.messages;
+    if (messages.isEmpty) return;
+
+    ChatMessage? lastUser;
+    var historyEnd = messages.length;
+    for (var i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role == ChatRole.user) {
+        lastUser = messages[i];
+        historyEnd = i + 1;
+        break;
+      }
+    }
+
+    final lastUserMessage = lastUser;
+    if (lastUserMessage == null) return;
+
+    final trimmed = lastUserMessage.content.trim();
+    if (trimmed.isEmpty) return;
+
+    final conversationHistory = messages.sublist(0, historyEnd);
+
+    emit(
+      state.copyWith(
+        messages: conversationHistory,
+        isLoading: true,
+        clearError: true,
+      ),
+    );
+    await _persistMessages(conversationHistory);
+
+    await _requestStylistReply(
+      conversationHistory: conversationHistory,
+      userPrompt: trimmed,
+    );
+  }
+
+  Future<void> _requestStylistReply({
+    required List<ChatMessage> conversationHistory,
+    required String userPrompt,
+  }) async {
     WeatherSnapshot weather = WeatherSnapshot.unavailable;
     try {
       weather = await _weatherRepository.getCurrent(forceRefresh: true);
@@ -196,43 +246,46 @@ class ChatCubit extends Cubit<ChatState> {
 
     try {
       final reply = await _service.completeConversation(
-        withUserMessage,
+        conversationHistory,
         liveWeather: weather,
       );
 
       await _emitAssistantReply(
-        userMessages: withUserMessage,
+        userMessages: conversationHistory,
         reply: reply,
         weather: weather,
-        userPrompt: trimmed,
+        userPrompt: userPrompt,
       );
     } on OpenAiChatException catch (e, stack) {
       if (isClosed) return;
       AppLogger.error(
-        'ChatCubit.sendMessage: OpenAI error',
+        'ChatCubit: OpenAI error',
         error: e,
         stackTrace: stack,
       );
       await _emitAssistantReply(
-        userMessages: withUserMessage,
+        userMessages: conversationHistory,
         reply: StylistPipelineSafety.fallbackResponse(),
         weather: weather,
-        userPrompt: trimmed,
+        userPrompt: userPrompt,
         showErrorBanner: true,
         errorBanner: e.message,
       );
     } catch (e, stack) {
       if (isClosed) return;
       AppLogger.error(
-        'ChatCubit.sendMessage: pipeline failure — fallback reply',
+        'ChatCubit: pipeline failure — fallback reply',
         error: e,
         stackTrace: stack,
       );
       await _emitAssistantReply(
-        userMessages: withUserMessage,
+        userMessages: conversationHistory,
         reply: StylistPipelineSafety.fallbackResponse(),
         weather: weather,
-        userPrompt: trimmed,
+        userPrompt: userPrompt,
+        showErrorBanner: true,
+        errorBanner:
+            'Не удалось получить ответ стилиста. Проверьте сеть и попробуйте снова.',
       );
     }
   }

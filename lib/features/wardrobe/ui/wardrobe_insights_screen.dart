@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/models/wardrobe_analysis_snapshot.dart';
+import '../../../core/widgets/chicks_error_state.dart';
+import '../../../core/widgets/chicks_skeleton.dart';
 import '../../../core/theme/app_brand_colors.dart';
 import '../wardrobe_controller.dart';
 import '../wardrobe_insights_controller.dart';
@@ -79,37 +81,28 @@ class _WardrobeInsightsScreenState extends State<WardrobeInsightsScreen> {
     if (_controller.isLoading && _controller.snapshot == null) {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        children: const [
-          SizedBox(height: 120),
-          Center(
-            child: CircularProgressIndicator(color: AppBrandColors.pink),
+        padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+        children: List.generate(
+          4,
+          (_) => const Padding(
+            padding: EdgeInsets.only(bottom: 12),
+            child: ChicksSkeleton(
+              width: double.infinity,
+              height: 72,
+              borderRadius: 16,
+            ),
           ),
-        ],
+        ),
       );
     }
 
     if (_controller.error != null && _controller.snapshot == null) {
-      return ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(24),
-        children: [
-          const SizedBox(height: 48),
-          Text(
-            _controller.error!,
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey[700], fontSize: 15),
-          ),
-          const SizedBox(height: 16),
-          Center(
-            child: FilledButton(
-              onPressed: _runAnalysis,
-              style: FilledButton.styleFrom(
-                backgroundColor: AppBrandColors.pink,
-              ),
-              child: const Text('Повторить'),
-            ),
-          ),
-        ],
+      return ChicksRefreshableScroll(
+        onRefresh: _runAnalysis,
+        child: ChicksErrorState(
+          message: _controller.error!,
+          onRetry: _runAnalysis,
+        ),
       );
     }
 

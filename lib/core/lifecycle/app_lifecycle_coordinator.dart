@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import '../../data/repositories/auth_repository.dart';
+import '../services/sync_coordinator.dart';
 import '../services/wardrobe_ai_context.dart';
 import '../utils/logger.dart';
 
@@ -43,6 +44,9 @@ class _AppLifecycleCoordinatorState extends State<AppLifecycleCoordinator>
     try {
       await AuthRepository.instance.repairStoredSession();
       WardrobeAiContext.instance.invalidate(reason: 'app_resumed');
+      if (AuthRepository.instance.isLoggedIn) {
+        await SyncCoordinator.instance.syncOnResume();
+      }
     } catch (e, stack) {
       AppLogger.error(
         'AppLifecycleCoordinator: resume refresh failed',

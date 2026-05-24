@@ -4,6 +4,7 @@ import '../../../core/models/body_shape_type.dart';
 import '../../../core/models/seasonal_color_type.dart';
 import 'body_type_illustration.dart';
 import 'color_type_illustration.dart';
+import 'contrast_level_illustration.dart';
 import 'quiz_color_preview.dart';
 import 'quiz_icon_preview.dart';
 import 'quiz_visual_theme.dart';
@@ -15,26 +16,50 @@ abstract final class QuizVisualRegistry {
     bool emphasized = false,
     double size = QuizVisualTheme.optionPreviewSize,
   }) {
-    final asset = BodyTypeIllustrationAssets.forOptionId(optionId);
-    if (_isBodyOption(optionId)) {
-      return BodyTypeIllustration(
-        assetPath: asset,
+    if (_usesSilhouette(optionId)) {
+      return BodyTypeIllustration.forOptionId(
+        optionId,
         size: size,
         emphasized: emphasized,
       );
     }
     return QuizIconPreview(
-      icon: Icons.help_outline_rounded,
+      icon: _iconForBodyOption(optionId),
       size: size,
       emphasized: emphasized,
     );
   }
+
+  static bool _usesSilhouette(String id) =>
+      id.startsWith('shape_') || id.startsWith('prop_');
+
+  static IconData _iconForBodyOption(String id) => switch (id) {
+        'waist_defined' => Icons.hourglass_bottom_rounded,
+        'waist_soft' => Icons.waves_rounded,
+        'waist_straight' => Icons.horizontal_rule_rounded,
+        'fit_fitted' => Icons.straighten_rounded,
+        'fit_balanced' => Icons.checkroom_outlined,
+        'fit_oversized' => Icons.air_rounded,
+        'height_petite' => Icons.height_rounded,
+        'height_average' => Icons.social_distance_rounded,
+        'height_tall' => Icons.vertical_align_top_rounded,
+        _ => Icons.help_outline_rounded,
+      };
 
   static Widget forColorOption(
     String optionId, {
     bool emphasized = false,
     double size = QuizVisualTheme.optionPreviewSize,
   }) {
+    final contrastVariant = ContrastLevelVariant.fromOptionId(optionId);
+    if (contrastVariant != null) {
+      return ContrastLevelIllustration(
+        variant: contrastVariant,
+        size: size,
+        emphasized: emphasized,
+      );
+    }
+
     final asset = ColorTypeIllustrationAssets.forOptionId(optionId);
     if (asset != null) {
       return ColorTypeIllustration(
@@ -67,13 +92,6 @@ abstract final class QuizVisualRegistry {
     );
   }
 
-  static bool _isBodyOption(String id) =>
-      id.startsWith('shape_') ||
-      id.startsWith('prop_') ||
-      id.startsWith('waist_') ||
-      id.startsWith('fit_') ||
-      id.startsWith('height_');
-
   static Widget forColorResult(SeasonalColorType type, {double size = 112}) {
     return QuizColorPreview(
       colors: _paletteForSeason(type),
@@ -87,10 +105,6 @@ abstract final class QuizVisualRegistry {
         'eye_green_hazel' => const [Color(0xFF7FA882), Color(0xFF9BB59E)],
         'eye_warm_brown' => const [Color(0xFF8B5E3C), Color(0xFFA67B52)],
         'eye_dark_brown' => const [Color(0xFF3D2914), Color(0xFF5C4033)],
-        'hair_light_blonde' => const [Color(0xFFE8D4A8), Color(0xFFF5E6C8)],
-        'hair_golden' => const [Color(0xFFC8860A), Color(0xFFE8A84A)],
-        'hair_cool_brown' => const [Color(0xFF6B5344), Color(0xFF8B7355)],
-        'hair_dark' => const [Color(0xFF2A2018), Color(0xFF4A3C32)],
         'undertone_warm' => const [
             Color(0xFFE8B88A),
             Color(0xFFF0C9A0),
@@ -105,21 +119,6 @@ abstract final class QuizVisualRegistry {
             Color(0xFFD4C4B8),
             Color(0xFFE8DDD4),
             Color(0xFFC8B8A8),
-          ],
-        'contrast_low' => const [
-            Color(0xFFE8E0D8),
-            Color(0xFFD8D0C8),
-            Color(0xFFC8C0B8),
-          ],
-        'contrast_medium' => const [
-            Color(0xFF8B7355),
-            Color(0xFFF5F0E8),
-            Color(0xFF3D2914),
-          ],
-        'contrast_high' => const [
-            Color(0xFF1A1A1A),
-            Color(0xFFF5F5F5),
-            Color(0xFF6B4428),
           ],
         'depth_light' => const [Color(0xFFF5E6D8), Color(0xFFE8D4C4)],
         'depth_medium' => const [Color(0xFFC49A7A), Color(0xFFD4A88A)],

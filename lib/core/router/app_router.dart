@@ -24,6 +24,7 @@ import '../../features/onboarding/ui/body_type_quiz_screen.dart';
 import '../../features/onboarding/ui/color_type_quiz_screen.dart';
 import '../../features/onboarding/ui/onboarding_screen.dart';
 import '../../features/splash/ui/splash_screen.dart';
+import 'app_navigation_guard.dart';
 import 'route_names.dart';
 
 /// Конфигурация навигации (GoRouter).
@@ -40,6 +41,7 @@ class AppRouter {
   static final GoRouter router = GoRouter(
     navigatorKey: rootNavigatorKey,
     initialLocation: RouteNames.splash,
+    redirect: AppNavigationGuard.redirect,
     routes: [
       GoRoute(
         name: RouteNames.splashName,
@@ -164,7 +166,10 @@ class AppRouter {
             name: RouteNames.addWardrobeItemName,
             path: 'add',
             parentNavigatorKey: rootNavigatorKey,
-            builder: (context, state) => const AddWardrobeItemScreen(),
+            builder: (context, state) {
+              final editItem = state.extra as WardrobeItem?;
+              return AddWardrobeItemScreen(editItem: editItem);
+            },
           ),
           GoRoute(
             name: RouteNames.wardrobeInsightsName,

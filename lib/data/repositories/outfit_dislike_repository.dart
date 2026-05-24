@@ -108,4 +108,9 @@ class OutfitDislikeRepository {
     }
     return unique;
   }
+
+  Future<void> clear() async {
+    await LocalHiveStorage.outfitDislikesBox.delete(_itemsKey);
+    _cachedProfile = OutfitPreferenceProfile.empty;
+  }
 }

@@ -1,6 +1,8 @@
 import '../../data/models/wardrobe_item.dart';
 import '../models/body_profile.dart';
+import '../models/favorite_preference_profile.dart';
 import '../models/outfit_preference_profile.dart';
+import '../models/recent_outfit_signals.dart';
 import '../models/seasonal_color_type.dart';
 import '../models/stylist_request_context.dart';
 import 'silhouette_balancer.dart';
@@ -24,6 +26,8 @@ abstract final class OutfitRecommendationCurator {
     SeasonalColorType? colorType,
     BodyProfile? bodyProfile,
     OutfitPreferenceProfile preferenceProfile = OutfitPreferenceProfile.empty,
+    FavoritePreferenceProfile favoriteProfile = FavoritePreferenceProfile.empty,
+    RecentOutfitSignals recentSignals = RecentOutfitSignals.empty,
   }) {
     return curateItems(
       requestedIds: requestedIds,
@@ -33,6 +37,8 @@ abstract final class OutfitRecommendationCurator {
       colorType: colorType,
       bodyProfile: bodyProfile,
       preferenceProfile: preferenceProfile,
+      favoriteProfile: favoriteProfile,
+      recentSignals: recentSignals,
     ).map((item) => item.id).toList();
   }
 
@@ -44,6 +50,8 @@ abstract final class OutfitRecommendationCurator {
     SeasonalColorType? colorType,
     BodyProfile? bodyProfile,
     OutfitPreferenceProfile preferenceProfile = OutfitPreferenceProfile.empty,
+    FavoritePreferenceProfile favoriteProfile = FavoritePreferenceProfile.empty,
+    RecentOutfitSignals recentSignals = RecentOutfitSignals.empty,
   }) {
     if (requestedIds.isEmpty || wardrobe.isEmpty) return const [];
 
@@ -56,6 +64,8 @@ abstract final class OutfitRecommendationCurator {
         colorType: colorType,
         bodyProfile: bodyProfile,
         preferenceProfile: preferenceProfile,
+        favoriteProfile: favoriteProfile,
+        recentSignals: recentSignals,
       );
     } catch (e, stack) {
       AppLogger.error(
@@ -78,6 +88,8 @@ abstract final class OutfitRecommendationCurator {
     SeasonalColorType? colorType,
     BodyProfile? bodyProfile,
     OutfitPreferenceProfile preferenceProfile = OutfitPreferenceProfile.empty,
+    FavoritePreferenceProfile favoriteProfile = FavoritePreferenceProfile.empty,
+    RecentOutfitSignals recentSignals = RecentOutfitSignals.empty,
   }) {
     final resolved = WardrobeRecommendationResolver.resolveItems(
       requestedIds: requestedIds,
@@ -117,6 +129,8 @@ abstract final class OutfitRecommendationCurator {
               bodyProfile: bodyProfile,
               coSelected: picked,
               preferenceProfile: preferenceProfile,
+              favoriteProfile: favoriteProfile,
+              recentSignals: recentSignals,
             );
     }
 
@@ -136,6 +150,8 @@ abstract final class OutfitRecommendationCurator {
               bodyProfile: bodyProfile,
               coSelected: picked,
               preferenceProfile: preferenceProfile,
+              favoriteProfile: favoriteProfile,
+              recentSignals: recentSignals,
             );
     }
 
@@ -172,27 +188,45 @@ abstract final class OutfitRecommendationCurator {
     BodyProfile? bodyProfile,
     Map<WardrobeOutfitSlot, WardrobeItem>? coSelected,
     OutfitPreferenceProfile preferenceProfile = OutfitPreferenceProfile.empty,
+    FavoritePreferenceProfile favoriteProfile = FavoritePreferenceProfile.empty,
+    RecentOutfitSignals recentSignals = RecentOutfitSignals.empty,
   }) {
-    WardrobeItem? best;
-    var bestScore = double.negativeInfinity;
+    const varietyWindow = 3.0;
 
+    final scored = <({WardrobeItem item, double score})>[];
     for (final item in candidates) {
-      final score = OutfitItemScorer.score(
+      scored.add((
         item: item,
-        context: context,
-        weather: weather,
-        colorType: colorType,
-        bodyProfile: bodyProfile,
-        coSelected: coSelected,
-        preferenceProfile: preferenceProfile,
-      );
-      if (score > bestScore) {
-        bestScore = score;
-        best = item;
+        score: OutfitItemScorer.score(
+          item: item,
+          context: context,
+          weather: weather,
+          colorType: colorType,
+          bodyProfile: bodyProfile,
+          coSelected: coSelected,
+          preferenceProfile: preferenceProfile,
+          favoriteProfile: favoriteProfile,
+          recentSignals: recentSignals,
+        ),
+      ));
+    }
+
+    if (scored.isEmpty) return candidates.first;
+
+    scored.sort((a, b) => b.score.compareTo(a.score));
+    final topScore = scored.first.score;
+    final topCandidates = scored
+        .where((row) => row.score >= topScore - varietyWindow)
+        .map((row) => row.item)
+        .toList();
+
+    for (final item in topCandidates) {
+      if (!recentSignals.recentItemIds.contains(item.id)) {
+        return item;
       }
     }
 
-    return best ?? candidates.first;
+    return topCandidates.first;
   }
 
   /// Dress replaces separate top + bottom in the same look.

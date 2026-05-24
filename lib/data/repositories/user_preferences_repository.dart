@@ -8,6 +8,10 @@ import '../../core/models/seasonal_color_type.dart';
 import '../../core/models/stylist_defaults.dart';
 import '../../core/models/stylist_request_context.dart';
 import '../../core/models/user_preferences_bundle.dart';
+import '../../core/services/collection_names.dart';
+import '../../core/sync/cloud_sync_hooks.dart';
+import '../../core/sync/sync_meta_storage.dart';
+import '../../core/sync/sync_scope.dart';
 import '../../core/utils/logger.dart';
 import 'auth_repository.dart';
 import 'favorites_repository.dart';
@@ -73,7 +77,9 @@ class UserPreferencesRepository {
 
     final current = await _loadStylistDefaults(effectiveUid);
     final merged = current.mergeInteraction(context);
-    await _saveStylistDefaults(effectiveUid, merged);
+    await saveStylistDefaultsLocally(effectiveUid, merged);
+    await _touchProfile();
+    CloudSyncHooks.onLocalDataChanged(SyncScope.profile);
     AppLogger.info(
       'UserPreferencesRepository: stylist interaction saved '
       '(moods=${merged.recentMoods.length})',
@@ -85,13 +91,15 @@ class UserPreferencesRepository {
     if (effectiveUid.isEmpty) return;
 
     final current = await _loadStylistDefaults(effectiveUid);
-    await _saveStylistDefaults(
+    await saveStylistDefaultsLocally(
       effectiveUid,
       current.copyWith(
         styleNotes: notes.trim(),
         updatedAt: DateTime.now(),
       ),
     );
+    await _touchProfile();
+    CloudSyncHooks.onLocalDataChanged(SyncScope.profile);
   }
 
   Future<void> restoreAllCaches() async {
@@ -121,6 +129,20 @@ class UserPreferencesRepository {
       );
       return StylistDefaults.empty;
     }
+  }
+
+  Future<void> saveStylistDefaultsLocally(
+    String uid,
+    StylistDefaults defaults,
+  ) async {
+    await _saveStylistDefaults(uid, defaults);
+  }
+
+  Future<void> _touchProfile() async {
+    await SyncMetaStorage.touch(
+      SyncScope.profile,
+      CollectionNames.profileMainDocId,
+    );
   }
 
   Future<void> _saveStylistDefaults(String uid, StylistDefaults defaults) async {

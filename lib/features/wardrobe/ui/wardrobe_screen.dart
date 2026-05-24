@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_brand_colors.dart';
+import '../../../core/widgets/chicks_error_state.dart';
+import '../../../core/widgets/chicks_skeleton.dart';
 import '../../../core/utils/logger.dart';
 import '../../../data/models/wardrobe_item.dart';
 import '../../../data/repositories/wardrobe_repository.dart';
@@ -60,7 +62,7 @@ class _WardrobeScreenState extends State<WardrobeScreen>
       if (!mounted) return;
       final route = ModalRoute.of(context);
       if (route?.isCurrent ?? false) {
-        context.read<WardrobeController>().reloadFromStorage();
+        context.read<WardrobeController>().reloadIfRevisionChanged();
       }
     });
   }
@@ -223,18 +225,27 @@ class _WardrobeScreenState extends State<WardrobeScreen>
       'WardrobeScreen: open details id=${item.id} title="${item.title}"',
     );
 
-    final deletedId = await context.pushNamed<String>(
+    final result = await context.pushNamed<Object?>(
       RouteNames.wardrobeItemDetailsName,
       extra: item,
     );
 
     if (!mounted) return;
 
-    if (deletedId != null && deletedId.isNotEmpty) {
-      await _runDeleteAnimation(deletedId);
+    if (result is String && result.isNotEmpty) {
+      await _runDeleteAnimation(result);
       if (mounted) {
         _showSnack('Вещь удалена');
       }
+      return;
+    }
+
+    if (result is WardrobeItem) {
+      final controller = context.read<WardrobeController>();
+      await controller.onItemUpdated(result);
+      if (!mounted) return;
+      _applyItems(controller.items, animateEntrance: false);
+      _showSnack('«${result.title}» обновлена');
       return;
     }
 
@@ -342,27 +353,49 @@ class _WardrobeScreenState extends State<WardrobeScreen>
     final items = wardrobe.items;
 
     if (!wardrobe.isLoaded && wardrobe.isLoading) {
-      return const Scaffold(
+      return Scaffold(
         backgroundColor: AppBrandColors.background,
-        body: Center(
-          child: CircularProgressIndicator(color: AppBrandColors.pink),
+        appBar: _buildAppBar(context, hasItems: false),
+        floatingActionButton: _buildFab(context),
+        body: const ChicksWardrobeGridSkeleton(),
+      );
+    }
+
+    if (wardrobe.loadError != null) {
+      return Scaffold(
+        backgroundColor: AppBrandColors.background,
+        appBar: _buildAppBar(context, hasItems: false),
+        floatingActionButton: _buildFab(context),
+        body: ChicksRefreshableScroll(
+          onRefresh: wardrobe.refresh,
+          child: ChicksErrorState(
+            message: wardrobe.loadError!,
+            onRetry: wardrobe.refresh,
+          ),
         ),
       );
     }
 
     return Scaffold(
       backgroundColor: AppBrandColors.background,
-        appBar: _buildAppBar(context, hasItems: items.isNotEmpty),
-        floatingActionButton: _buildFab(context),
-        body: items.isEmpty
-          ? WardrobeEmptyState(onAddPressed: _openAddItem)
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildCountLabel(items.length),
-                const WardrobeInsightsBanner(),
-                Expanded(child: _buildGrid(items)),
-              ],
+      appBar: _buildAppBar(context, hasItems: items.isNotEmpty),
+      floatingActionButton: _buildFab(context),
+      body: items.isEmpty
+          ? ChicksRefreshableScroll(
+              onRefresh: wardrobe.refresh,
+              child: WardrobeEmptyState(onAddPressed: _openAddItem),
+            )
+          : RefreshIndicator(
+              color: AppBrandColors.pink,
+              onRefresh: wardrobe.refresh,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildCountLabel(items.length),
+                  const WardrobeInsightsBanner(),
+                  Expanded(child: _buildGrid(items)),
+                ],
+              ),
             ),
     );
   }

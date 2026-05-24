@@ -4,6 +4,9 @@ import 'package:provider/provider.dart';
 
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_brand_colors.dart';
+import '../../../core/widgets/chicks_empty_state.dart';
+import '../../../core/widgets/chicks_error_state.dart';
+import '../../../core/widgets/chicks_skeleton.dart';
 import '../../../data/models/outfit_history_entry.dart';
 import '../../../data/models/wardrobe_item.dart';
 import '../../wardrobe/wardrobe_controller.dart';
@@ -54,6 +57,11 @@ class _OutfitHistoryScreenState extends State<OutfitHistoryScreen> {
     }
   }
 
+  void _openChat() {
+    context.pop();
+    context.pushNamed(RouteNames.chatName);
+  }
+
   @override
   Widget build(BuildContext context) {
     final history = context.watch<OutfitHistoryController>();
@@ -81,20 +89,43 @@ class _OutfitHistoryScreenState extends State<OutfitHistoryScreen> {
         centerTitle: true,
       ),
       body: isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: AppBrandColors.pink),
+          ? ListView.builder(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: 3,
+              itemBuilder: (_, __) => const Padding(
+                padding: EdgeInsets.only(bottom: 14),
+                child: ChicksListCardSkeleton(),
+              ),
             )
-          : entries.isEmpty
-              ? _OutfitHistoryEmptyState(
-                  onOpenChat: () {
-                    context.pop();
-                    context.pushNamed(RouteNames.chatName);
-                  },
+          : history.loadError != null
+              ? ChicksRefreshableScroll(
+                  onRefresh: _refresh,
+                  child: ChicksErrorState(
+                    message: history.loadError!,
+                    onRetry: _refresh,
+                  ),
+                )
+              : entries.isEmpty
+              ? ChicksRefreshableScroll(
+                  onRefresh: _refresh,
+                  child: ChicksEmptyState(
+                    icon: Icons.history_rounded,
+                    secondaryIcon: Icons.auto_awesome_outlined,
+                    title: 'Твои AI-образы появятся здесь',
+                    message:
+                        'Каждая рекомендация стилиста с вещами из гардероба сохраняется автоматически',
+                    actionLabel: 'К чату со стилистом',
+                    onAction: _openChat,
+                  ),
                 )
               : RefreshIndicator(
                   color: AppBrandColors.pink,
                   onRefresh: _refresh,
                   child: ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(
+                      parent: BouncingScrollPhysics(),
+                    ),
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                     itemCount: entries.length,
                     itemBuilder: (context, index) {
@@ -103,86 +134,66 @@ class _OutfitHistoryScreenState extends State<OutfitHistoryScreen> {
                         padding: EdgeInsets.only(
                           bottom: index < entries.length - 1 ? 14 : 0,
                         ),
-                        child: OutfitHistoryCard(
-                          key: ValueKey<String>(entry.id),
-                          entry: entry,
-                          wardrobeItems: _wardrobeItems,
-                          onTap: () => _openDetails(entry),
+                        child: Dismissible(
+                          key: ValueKey<String>('dismiss-${entry.id}'),
+                          direction: DismissDirection.endToStart,
+                          background: Container(
+                            alignment: Alignment.centerRight,
+                            padding: const EdgeInsets.only(right: 20),
+                            decoration: BoxDecoration(
+                              color: Colors.redAccent.withValues(alpha: 0.85),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: const Icon(
+                              Icons.delete_outline_rounded,
+                              color: Colors.white,
+                            ),
+                          ),
+                          confirmDismiss: (_) async {
+                            final confirmed = await showDialog<bool>(
+                              context: context,
+                              builder: (dialogContext) => AlertDialog(
+                                title: const Text('Удалить образ?'),
+                                content: const Text(
+                                  'Запись исчезнет из истории.',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(dialogContext, false),
+                                    child: const Text('Отмена'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(dialogContext, true),
+                                    child: const Text(
+                                      'Удалить',
+                                      style: TextStyle(
+                                        color: AppBrandColors.pink,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                            return confirmed == true;
+                          },
+                          onDismissed: (_) {
+                            context
+                                .read<OutfitHistoryController>()
+                                .deleteEntry(entry.id);
+                          },
+                          child: OutfitHistoryCard(
+                            key: ValueKey<String>(entry.id),
+                            entry: entry,
+                            wardrobeItems: _wardrobeItems,
+                            onTap: () => _openDetails(entry),
+                          ),
                         ),
                       );
                     },
                   ),
                 ),
-    );
-  }
-}
-
-class _OutfitHistoryEmptyState extends StatelessWidget {
-  const _OutfitHistoryEmptyState({required this.onOpenChat});
-
-  final VoidCallback onOpenChat;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 88,
-              height: 88,
-              decoration: BoxDecoration(
-                color: AppBrandColors.iconBackground,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.history_rounded,
-                size: 40,
-                color: AppBrandColors.pink,
-              ),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'Твои AI-образы появятся здесь ✨',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: AppBrandColors.title,
-                height: 1.3,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              'Каждая рекомендация стилиста с вещами из гардероба сохраняется автоматически',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                height: 1.45,
-                color: Colors.grey[600],
-              ),
-            ),
-            const SizedBox(height: 24),
-            FilledButton(
-              onPressed: onOpenChat,
-              style: FilledButton.styleFrom(
-                backgroundColor: AppBrandColors.pink,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 14,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-              child: const Text('К чату со стилистом'),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

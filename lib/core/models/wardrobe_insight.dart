@@ -8,6 +8,8 @@ enum WardrobeInsightKind {
   style,
   highlight,
   tip,
+  silhouette,
+  recommendation,
 }
 
 class WardrobeInsight {
@@ -32,5 +34,18 @@ class WardrobeInsight {
         WardrobeInsightKind.style => Icons.style_outlined,
         WardrobeInsightKind.highlight => Icons.auto_awesome_outlined,
         WardrobeInsightKind.tip => Icons.lightbulb_outline_rounded,
+        WardrobeInsightKind.silhouette => Icons.accessibility_new_rounded,
+        WardrobeInsightKind.recommendation => Icons.tips_and_updates_outlined,
+      };
+
+  String get categoryLabelRu => switch (kind) {
+        WardrobeInsightKind.style => 'Стиль',
+        WardrobeInsightKind.color => 'Палитра',
+        WardrobeInsightKind.balance => 'Баланс',
+        WardrobeInsightKind.silhouette => 'Силуэт',
+        WardrobeInsightKind.recommendation => 'Совет',
+        WardrobeInsightKind.gap => 'Пробел',
+        WardrobeInsightKind.highlight => 'Акцент',
+        WardrobeInsightKind.tip => 'Инсайт',
       };
 }

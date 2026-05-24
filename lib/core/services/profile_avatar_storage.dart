@@ -30,6 +30,29 @@ class ProfileAvatarStorage {
     return File('${dir.path}/${fileNameForUser(uid)}').absolute.path;
   }
 
+  /// Copies gallery pick into app documents so crop/save survive Android cache cleanup.
+  static Future<String?> persistPickStagingFromXFile(XFile file) async {
+    try {
+      final bytes = await file.readAsBytes();
+      if (bytes.isEmpty) return null;
+
+      final dir = await _avatarsDirectory();
+      final output = File(
+        '${dir.path}/picker_staging_${DateTime.now().millisecondsSinceEpoch}.jpg',
+      );
+      await output.writeAsBytes(bytes, flush: true);
+      if (!await _isReadableFile(output)) return null;
+      return output.absolute.path;
+    } catch (e, stack) {
+      AppLogger.error(
+        'ProfileAvatarStorage.persistPickStagingFromXFile failed',
+        error: e,
+        stackTrace: stack,
+      );
+      return null;
+    }
+  }
+
   /// Writes bytes to the user's canonical avatar file.
   static Future<String?> persistBytesForUser(
     String uid,

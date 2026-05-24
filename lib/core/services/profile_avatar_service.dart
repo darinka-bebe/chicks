@@ -1,11 +1,14 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
+import '../../data/repositories/auth_repository.dart'
+    show AuthRepository, AuthException;
+import '../utils/logger.dart';
 import 'image_import_diagnostics.dart';
 import 'profile_avatar_crop_service.dart';
 import 'profile_avatar_picker_service.dart';
 import 'profile_avatar_storage.dart';
-import '../../data/repositories/auth_repository.dart'
-    show AuthRepository, AuthException;
 
 enum ProfileAvatarUpdateStatus {
   success,
@@ -93,10 +96,29 @@ abstract final class ProfileAvatarService {
     }
 
     final uid = auth.currentUser.uid;
-    final permanent = await ProfileAvatarStorage.ensurePermanentAvatarPath(
-      candidatePath,
-      uid: uid,
-    );
+    String permanent = '';
+
+    try {
+      final file = File(candidatePath);
+      if (await file.exists() && await file.length() > 0) {
+        final bytes = await file.readAsBytes();
+        permanent =
+            await ProfileAvatarStorage.persistBytesForUser(uid, bytes) ?? '';
+      }
+    } catch (e, stack) {
+      AppLogger.error(
+        'ProfileAvatarService.commitPermanentPath read failed',
+        error: e,
+        stackTrace: stack,
+      );
+    }
+
+    if (permanent.isEmpty) {
+      permanent = await ProfileAvatarStorage.ensurePermanentAvatarPath(
+        candidatePath,
+        uid: uid,
+      );
+    }
 
     if (permanent.isEmpty ||
         (!ProfileAvatarStorage.isStoredAvatarPath(permanent) &&

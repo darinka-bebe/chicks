@@ -11,7 +11,6 @@ abstract final class StylistContextParser {
     'romantic': ['romantic', 'романт'],
     'soft girl': ['soft girl', 'софт гёрл', 'софт girl'],
     'elegant': ['elegant', 'элегант', 'изыскан'],
-    'dark academia': ['dark academia', 'дарк академ', 'тёмн академ'],
     'streetwear': ['streetwear', 'стритвир', 'стрит', 'urban'],
   };
 

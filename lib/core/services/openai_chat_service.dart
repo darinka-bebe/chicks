@@ -21,12 +21,22 @@ import 'wardrobe_sync_service.dart';
 import 'wardrobe_prompt_builder.dart';
 import 'wardrobe_prompt_selector.dart';
 import 'outfit_preference_prompt_builder.dart';
+import 'favorite_preference_prompt_builder.dart';
+import 'recent_outfit_prompt_builder.dart';
+import 'recent_outfit_memory_loader.dart';
+import 'chat_history_limiter.dart';
+import 'stylist_system_prompt_merger.dart';
+import '../models/user_style_profile.dart';
+import '../models/recent_outfit_signals.dart';
 import 'stylist_defaults_prompt_builder.dart';
+import 'style_insights_loader.dart';
+import 'style_insights_prompt_builder.dart';
 import 'outfit_recommendation_curator.dart';
 import 'openai_cost_logger.dart';
 import 'stylist_pipeline_logger.dart';
 import 'stylist_pipeline_safety.dart';
 import 'wardrobe_message_content_sanitizer.dart';
+import 'wardrobe_outfit_fallback.dart';
 import 'wardrobe_recommendation_resolver.dart';
 import 'weather/weather_prompt_builder.dart';
 import 'weather/weather_repository.dart';
@@ -88,6 +98,8 @@ class OpenAiChatService {
     required String latestUserMessage,
     WeatherSnapshot? liveWeather,
     List<WardrobeItem>? wardrobeSnapshot,
+    UserStyleProfile? styleProfile,
+    RecentOutfitSignals? recentSignals,
   }) async {
     try {
       List<WardrobeItem> wardrobe;
@@ -168,13 +180,14 @@ class OpenAiChatService {
         );
       }
 
-      final styleProfile = await UserStyleProfileLoader.load();
-      final dislikeProfile = styleProfile.dislikeProfile;
-      final colorTypeSection = styleProfile.colorType != null
-          ? ColorTypePromptBuilder.buildSystemSection(styleProfile.colorType!)
+      final profile = styleProfile ?? await UserStyleProfileLoader.load();
+      final recent = recentSignals ?? await RecentOutfitMemoryLoader.load();
+      final dislikeProfile = profile.dislikeProfile;
+      final colorTypeSection = profile.colorType != null
+          ? ColorTypePromptBuilder.buildSystemSection(profile.colorType!)
           : null;
-      final bodyTypeSection = styleProfile.bodyProfile != null
-          ? BodyTypePromptBuilder.buildSystemSection(styleProfile.bodyProfile!)
+      final bodyTypeSection = profile.bodyProfile != null
+          ? BodyTypePromptBuilder.buildSystemSection(profile.bodyProfile!)
           : null;
 
       final messages = <Map<String, String>>[
@@ -197,11 +210,34 @@ class OpenAiChatService {
         messages.add({'role': 'system', 'content': dislikeSection});
       }
 
+      final favoriteSection = FavoritePreferencePromptBuilder.buildSystemSection(
+        profile.favoriteProfile,
+      );
+      if (favoriteSection.isNotEmpty) {
+        messages.add({'role': 'system', 'content': favoriteSection});
+      }
+
+      final recentSection = RecentOutfitPromptBuilder.buildSystemSection(recent);
+      if (recentSection.isNotEmpty) {
+        messages.add({'role': 'system', 'content': recentSection});
+      }
+
       final stylistDefaultsSection = StylistDefaultsPromptBuilder.buildSystemSection(
-        styleProfile.stylistDefaults,
+        profile.stylistDefaults,
       );
       if (stylistDefaultsSection.isNotEmpty) {
         messages.add({'role': 'system', 'content': stylistDefaultsSection});
+      }
+
+      try {
+        final styleInsights = await StyleInsightsLoader.load();
+        final insightsSection =
+            StyleInsightsPromptBuilder.buildSystemSection(styleInsights);
+        if (insightsSection != null && insightsSection.trim().isNotEmpty) {
+          messages.add({'role': 'system', 'content': insightsSection.trim()});
+        }
+      } catch (e) {
+        AppLogger.debug('OpenAiChatService: style insights skipped ($e)');
       }
 
       if (weatherSection != null && weatherSection.trim().isNotEmpty) {
@@ -213,13 +249,14 @@ class OpenAiChatService {
         {
           'role': 'system',
           'content': WardrobePromptBuilder.buildResponseFormatSection(
-            hasColorType: styleProfile.colorType != null,
-            hasBodyType: styleProfile.bodyProfile != null,
+            hasColorType: profile.colorType != null,
+            hasBodyType: profile.bodyProfile != null,
           ).trim(),
         },
       ]);
 
-      final safe = StylistPipelineSafety.sanitizeApiMessages(messages);
+      final compact = StylistSystemPromptMerger.compact(messages);
+      final safe = StylistPipelineSafety.sanitizeApiMessages(compact);
       StylistPipelineLogger.logSystemMessages(safe);
       StylistPipelineLogger.logWardrobeItems(wardrobe);
 
@@ -281,16 +318,22 @@ class OpenAiChatService {
     );
     StylistPipelineLogger.logCategorizedWardrobe(wardrobe);
 
+    final styleProfile = await UserStyleProfileLoader.load();
+    final recentSignals = await RecentOutfitMemoryLoader.load();
+    final apiHistory = ChatHistoryLimiter.trimForApi(history);
+
     try {
       final systemMessages = await buildSystemMessages(
         latestUserMessage: latestUser.content,
         liveWeather: weather,
         wardrobeSnapshot: wardrobe,
+        styleProfile: styleProfile,
+        recentSignals: recentSignals,
       );
 
       final messages = StylistPipelineSafety.sanitizeApiMessages([
         ...systemMessages,
-        for (final message in history)
+        for (final message in apiHistory)
           {
             'role': message.role == ChatRole.user ? 'user' : 'assistant',
             'content': message.content,
@@ -359,11 +402,53 @@ class OpenAiChatService {
         wardrobeForCuration = wardrobe;
       }
 
-      final curatedIds = await _curateRecommendations(
+      var curatedIds = await _curateRecommendations(
         rawIds: parsed.recommendedItemIds,
         wardrobe: wardrobeForCuration,
         context: requestContext,
         weather: weather,
+        styleProfile: styleProfile,
+        recentSignals: recentSignals,
+      );
+
+      var resolvedItems = WardrobeRecommendationResolver.resolveItems(
+        requestedIds: curatedIds,
+        wardrobe: wardrobeForCuration,
+      );
+
+      if (resolvedItems.isEmpty && wardrobeForCuration.isNotEmpty) {
+        resolvedItems = WardrobeOutfitFallback.build(
+          wardrobe: wardrobeForCuration,
+          context: requestContext,
+          weather: weather.isAvailable ? weather : null,
+          colorType: styleProfile.colorType,
+          bodyProfile: styleProfile.bodyProfile,
+          preferenceProfile: styleProfile.dislikeProfile,
+          favoriteProfile: styleProfile.favoriteProfile,
+          recentSignals: recentSignals,
+        );
+        curatedIds = resolvedItems.map((item) => item.id).toList();
+        if (curatedIds.isNotEmpty) {
+          AppLogger.info(
+            'OpenAiChatService: wardrobe fallback outfit ids=$curatedIds',
+          );
+        }
+      }
+
+      var messageText = parsed.message.isNotEmpty
+          ? parsed.message
+          : StylistPipelineSafety.fallbackAssistantMessage;
+
+      if (resolvedItems.isNotEmpty) {
+        messageText = WardrobeOutfitFallback.enrichMessage(
+          message: messageText,
+          items: resolvedItems,
+        );
+      }
+
+      final cleanedMessage = WardrobeMessageContentSanitizer.alignWithValidItems(
+        message: messageText,
+        validItems: resolvedItems,
       );
 
       StylistPipelineLogger.logRecommendationSource(
@@ -372,20 +457,9 @@ class OpenAiChatService {
         wardrobeCount: wardrobeForCuration.length,
       );
       StylistPipelineLogger.logParsedResponse(
-        messageLength: parsed.message.length,
+        messageLength: cleanedMessage.length,
         rawIds: parsed.recommendedItemIds,
         curatedIds: curatedIds,
-      );
-
-      final resolvedItems = WardrobeRecommendationResolver.resolveItems(
-        requestedIds: curatedIds,
-        wardrobe: wardrobeForCuration,
-      );
-      final cleanedMessage = WardrobeMessageContentSanitizer.alignWithValidItems(
-        message: parsed.message.isNotEmpty
-            ? parsed.message
-            : StylistPipelineSafety.fallbackAssistantMessage,
-        validItems: resolvedItems,
       );
 
       return StylistResponse(
@@ -450,10 +524,10 @@ class OpenAiChatService {
     required List<WardrobeItem> wardrobe,
     required StylistRequestContext context,
     required WeatherSnapshot weather,
+    required UserStyleProfile styleProfile,
+    required RecentOutfitSignals recentSignals,
   }) async {
     if (rawIds.isEmpty || wardrobe.isEmpty) return const [];
-
-    final styleProfile = await UserStyleProfileLoader.load();
 
     try {
       return OutfitRecommendationCurator.curateIds(
@@ -464,6 +538,8 @@ class OpenAiChatService {
         colorType: styleProfile.colorType,
         bodyProfile: styleProfile.bodyProfile,
         preferenceProfile: styleProfile.dislikeProfile,
+        favoriteProfile: styleProfile.favoriteProfile,
+        recentSignals: recentSignals,
       );
     } catch (e, stack) {
       StylistPipelineLogger.logFailure('curateRecommendations', e, stack);

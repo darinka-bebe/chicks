@@ -1,6 +1,8 @@
 import '../../data/models/wardrobe_item.dart';
 import '../models/body_profile.dart';
+import '../models/favorite_preference_profile.dart';
 import '../models/outfit_preference_profile.dart';
+import '../models/recent_outfit_signals.dart';
 import '../models/seasonal_color_type.dart';
 import '../models/stylist_request_context.dart';
 import '../models/wardrobe_outfit_slot.dart';
@@ -20,6 +22,8 @@ abstract final class OutfitItemScorer {
     BodyProfile? bodyProfile,
     Map<WardrobeOutfitSlot, WardrobeItem>? coSelected,
     OutfitPreferenceProfile preferenceProfile = OutfitPreferenceProfile.empty,
+    FavoritePreferenceProfile favoriteProfile = FavoritePreferenceProfile.empty,
+    RecentOutfitSignals recentSignals = RecentOutfitSignals.empty,
   }) {
     var total = 0.0;
 
@@ -45,8 +49,90 @@ abstract final class OutfitItemScorer {
     }
 
     total -= _scoreDislikePenalty(item, coSelected, preferenceProfile);
+    total += _scoreFavoriteBoost(
+          item,
+          context,
+          coSelected,
+          favoriteProfile,
+        ) *
+        16;
 
-    return total.clamp(0.0, 120.0);
+    total -= _scoreRecentRepeatPenalty(item, coSelected, recentSignals) * 14;
+
+    return total.clamp(0.0, 135.0);
+  }
+
+  static double _scoreRecentRepeatPenalty(
+    WardrobeItem item,
+    Map<WardrobeOutfitSlot, WardrobeItem>? coSelected,
+    RecentOutfitSignals signals,
+  ) {
+    if (!signals.hasSignals) return 0;
+
+    var penalty = signals.repeatPenalty(itemId: item.id);
+
+    if (coSelected != null && coSelected.isNotEmpty) {
+      final comboItems = [...coSelected.values, item];
+      final combinationKey = OutfitTraitExtractor.combinationKeyFrom(
+        itemIds: comboItems.map((i) => i.id).toList(),
+        styles: const [],
+      );
+      penalty = (penalty +
+              signals.repeatPenalty(
+                itemId: item.id,
+                combinationKey: combinationKey,
+              ))
+          .clamp(0.0, 1.0);
+    }
+
+    return penalty;
+  }
+
+  static double _scoreFavoriteBoost(
+    WardrobeItem item,
+    StylistRequestContext context,
+    Map<WardrobeOutfitSlot, WardrobeItem>? coSelected,
+    FavoritePreferenceProfile profile,
+  ) {
+    if (!profile.hasSignals) return 0;
+
+    final itemTraits = OutfitTraitExtractor.extract(
+      items: [item],
+      recommendationText: '',
+    );
+
+    var boost = profile.favoriteBoost(
+      styles: itemTraits.styles,
+      colors: itemTraits.colors,
+      silhouettes: itemTraits.silhouettes,
+      itemId: item.id,
+      moods: context.moods,
+      occasions: context.occasions,
+    );
+
+    if (coSelected != null && coSelected.isNotEmpty) {
+      final comboItems = coSelected.values.toList();
+      final comboTraits = OutfitTraitExtractor.extract(
+        items: comboItems,
+        recommendationText: '',
+      );
+      final combinationKey = OutfitTraitExtractor.combinationKeyFrom(
+        itemIds: [...comboItems.map((i) => i.id), item.id],
+        styles: {...comboTraits.styles, ...itemTraits.styles},
+      );
+      boost = (boost +
+              profile.favoriteBoost(
+                styles: comboTraits.styles,
+                colors: comboTraits.colors,
+                silhouettes: comboTraits.silhouettes,
+                combinationKey: combinationKey,
+                moods: context.moods,
+                occasions: context.occasions,
+              ))
+          .clamp(0.0, 1.0);
+    }
+
+    return boost;
   }
 
   static double _scoreDislikePenalty(
@@ -237,7 +323,6 @@ abstract final class OutfitItemScorer {
       'confident' => vibe.contains('дерз'),
       'feminine' => vibe.contains('романт') || vibe.contains('элегант'),
       'soft girl' => vibe.contains('игрив') || vibe.contains('романт'),
-      'dark academia' => vibe.contains('элегант') || vibe.contains('минимал'),
       _ => false,
     };
   }

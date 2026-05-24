@@ -13,10 +13,12 @@ class OutfitHistoryController extends ChangeNotifier {
   List<OutfitHistoryEntry> _entries = [];
   bool _isLoaded = false;
   bool _isLoading = false;
+  String? _loadError;
 
   List<OutfitHistoryEntry> get entries => List.unmodifiable(_entries);
   bool get isLoaded => _isLoaded;
   bool get isLoading => _isLoading;
+  String? get loadError => _loadError;
 
   Future<void> ensureLoaded() async {
     if (_isLoaded) return;
@@ -26,11 +28,14 @@ class OutfitHistoryController extends ChangeNotifier {
   Future<void> refresh() async {
     if (_isLoading) return;
     _isLoading = true;
+    _loadError = null;
     notifyListeners();
 
     try {
       _entries = await _repository.loadEntries();
       _isLoaded = true;
+    } catch (_) {
+      _loadError = 'Не удалось загрузить историю';
     } finally {
       _isLoading = false;
       notifyListeners();

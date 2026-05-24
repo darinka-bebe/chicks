@@ -39,7 +39,6 @@ abstract final class StylistContextCatalog {
     'romantic',
     'soft girl',
     'elegant',
-    'dark academia',
   ];
 
   static const weather = ['hot', 'cold', 'rainy', 'windy'];
@@ -76,12 +75,6 @@ abstract final class StylistContextCatalog {
       label: 'elegant',
       promptSnippet: 'элегантный образ',
       mood: 'elegant',
-    ),
-    StylistSuggestionChip(
-      emoji: '🖤',
-      label: 'dark academia',
-      promptSnippet: 'в стиле dark academia',
-      mood: 'dark academia',
     ),
   ];
 }

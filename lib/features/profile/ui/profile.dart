@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/services/demo_reset_service.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_brand_colors.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/widgets/chicks_skeleton.dart';
 import '../../../core/widgets/iphone_layout.dart';
 import '../../../core/models/body_profile.dart';
 import '../../../core/models/seasonal_color_type.dart';
@@ -23,7 +26,9 @@ import '../widgets/profile_card_decoration.dart';
 import '../widgets/profile_edit_sheet.dart';
 import '../widgets/profile_editable_avatar.dart';
 import '../widgets/profile_preferences_summary_card.dart';
+import '../widgets/profile_section.dart';
 import '../widgets/profile_stat_card.dart';
+import '../widgets/profile_style_insights_section.dart';
 
 class ProfileTab extends StatefulWidget {
   const ProfileTab({super.key});
@@ -36,11 +41,14 @@ class _ProfileTabState extends State<ProfileTab> {
   final GlobalKey<_ProfileStatsPanelState> _statsPanelKey =
       GlobalKey<_ProfileStatsPanelState>();
 
+  final GlobalKey<ProfileStyleInsightsSectionState> _styleInsightsKey =
+      GlobalKey<ProfileStyleInsightsSectionState>();
+
   SeasonalColorType? _colorType;
   BodyProfile? _bodyProfile;
   UserPreferencesBundle _preferences = UserPreferencesBundle.empty;
 
-  static const int _listItemCount = 15;
+  static const int _listItemCount = 14;
 
   @override
   void initState() {
@@ -185,8 +193,48 @@ class _ProfileTabState extends State<ProfileTab> {
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Настройки'),
-        content: const Text(
-          'Chicks — твой персональный AI-стилист\nВерсия 1.0.0',
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Chicks — твой персональный AI-стилист\nВерсия 1.0.0',
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Демо и данные',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppBrandColors.pink,
+                ),
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Сбросить демо-данные'),
+                subtitle: const Text(
+                  'Гардероб, чат, избранное и история образов',
+                ),
+                onTap: () {
+                  Navigator.pop(dialogContext);
+                  _confirmDemoReset(includeQuizzes: false);
+                },
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Сбросить всё + квизы'),
+                subtitle: const Text(
+                  'Как после первой установки (онбординг заново)',
+                ),
+                onTap: () {
+                  Navigator.pop(dialogContext);
+                  _confirmDemoReset(includeQuizzes: true);
+                },
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -198,9 +246,83 @@ class _ProfileTabState extends State<ProfileTab> {
     );
   }
 
+  Future<void> _confirmDemoReset({required bool includeQuizzes}) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(includeQuizzes ? 'Сбросить всё?' : 'Сбросить демо-данные?'),
+        content: Text(
+          includeQuizzes
+              ? 'Будут очищены гардероб, чат, избранное, история и результаты квизов. Аккаунт останется.'
+              : 'Гардероб снова заполнится демо-вещами. Чат, избранное и история будут очищены.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Отмена'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text(
+              'Сбросить',
+              style: TextStyle(color: AppBrandColors.pink),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      if (includeQuizzes) {
+        await DemoResetService.resetAllIncludingQuizzes();
+      } else {
+        await DemoResetService.resetDemoData();
+      }
+      if (!mounted) return;
+
+      context.read<FavoritesController>().refresh();
+
+      await _refreshStats();
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              includeQuizzes
+                  ? 'Данные сброшены — откроется онбординг'
+                  : 'Демо-данные восстановлены',
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+
+      if (includeQuizzes) {
+        context.go(RouteNames.splash);
+      }
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('Не удалось сбросить данные'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+    }
+  }
+
   Future<void> _refreshStats() async {
     await Future.wait([
       _statsPanelKey.currentState?.reload() ?? Future<void>.value(),
+      _styleInsightsKey.currentState?.reload() ?? Future<void>.value(),
       _loadStyleProfile(),
     ]);
   }
@@ -249,48 +371,55 @@ class _ProfileTabState extends State<ProfileTab> {
                     ),
                   );
                 case 1:
-                  return const SizedBox(height: 16);
+                  return const SizedBox(height: AppSpacing.lg);
                 case 2:
-                  return ProfileColorTypeCard(
-                    colorType: _colorType,
-                    onUpdated: _loadStyleProfile,
+                  return ProfileStyleProfileGroup(
+                    colorCard: ProfileColorTypeCard(
+                      colorType: _colorType,
+                      onUpdated: _loadStyleProfile,
+                      grouped: true,
+                    ),
+                    bodyCard: ProfileBodyTypeCard(
+                      bodyProfile: _bodyProfile,
+                      onUpdated: _loadStyleProfile,
+                      grouped: true,
+                    ),
                   );
                 case 3:
-                  return const SizedBox(height: 12);
+                  return const SizedBox(height: AppSpacing.lg);
                 case 4:
-                  return ProfileBodyTypeCard(
-                    bodyProfile: _bodyProfile,
-                    onUpdated: _loadStyleProfile,
-                  );
-                case 5:
-                  return const SizedBox(height: 12);
-                case 6:
                   return ProfilePreferencesSummaryCard(
                     bundle: _preferences,
                   );
+                case 5:
+                  return const SizedBox(height: AppSpacing.xl);
+                case 6:
+                  return ProfileStyleInsightsSection(key: _styleInsightsKey);
                 case 7:
-                  return const SizedBox(height: 20);
+                  return const SizedBox(height: AppSpacing.xl);
                 case 8:
                   return _ProfileStatsPanel(key: _statsPanelKey);
                 case 9:
-                  return const SizedBox(height: 24);
+                  return const SizedBox(height: AppSpacing.xxl);
                 case 10:
                   return const _SectionTitle(title: 'Быстрые действия');
                 case 11:
-                  return const SizedBox(height: 12);
-                case 12:
-                  return _ProfileActionsBlock(
-                    onWardrobe: () => context.pushNamed(RouteNames.wardrobeName),
-                    onFavorites: () =>
-                        context.pushNamed(RouteNames.favoritesName),
-                    onHistory: () =>
-                        context.pushNamed(RouteNames.outfitHistoryName),
-                    onStyle: _showStylePreferences,
-                    onSettings: _showSettings,
+                  return Padding(
+                    padding: const EdgeInsets.only(top: AppSpacing.md),
+                    child: _ProfileActionsBlock(
+                      onWardrobe: () =>
+                          context.pushNamed(RouteNames.wardrobeName),
+                      onFavorites: () =>
+                          context.pushNamed(RouteNames.favoritesName),
+                      onHistory: () =>
+                          context.pushNamed(RouteNames.outfitHistoryName),
+                      onStyle: _showStylePreferences,
+                      onSettings: _showSettings,
+                    ),
                   );
+                case 12:
+                  return const SizedBox(height: AppSpacing.section);
                 case 13:
-                  return const SizedBox(height: 28);
-                case 14:
                   return _SignOutButton(
                     label: loc.signOut,
                     onPressed: _confirmSignOut,
@@ -380,28 +509,28 @@ class _ProfileActionsBlock extends StatelessWidget {
           subtitle: 'Вещи для персональных образов',
           onTap: onWardrobe,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpacing.md),
         ProfileActionTile(
           icon: Icons.favorite_rounded,
           title: 'Избранные образы',
           subtitle: 'Сохранённые рекомендации стилиста',
           onTap: onFavorites,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpacing.md),
         ProfileActionTile(
           icon: Icons.history_rounded,
           title: 'История образов',
           subtitle: 'Все AI-рекомендации с вещами из гардероба',
           onTap: onHistory,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpacing.md),
         ProfileActionTile(
           icon: Icons.auto_awesome_outlined,
           title: 'Стиль и настроение',
           subtitle: 'Подсказки для AI-стилиста',
           onTap: onStyle,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpacing.md),
         ProfileActionTile(
           icon: Icons.settings_outlined,
           title: 'Настройки',
@@ -444,7 +573,7 @@ class _ProfileHeader extends StatelessWidget {
               userId: user.uid,
               avatarRevision: user.avatarRevision,
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpacing.md),
             Text(
               'Нажмите на фото — выберите и обрежьте кадр',
               style: TextStyle(
@@ -496,17 +625,8 @@ class _ProfileHeader extends StatelessWidget {
                 ),
               ),
             ],
-            const SizedBox(height: 6),
-            const Text(
-              'AI fashion enthusiast ✨',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: AppBrandColors.pink,
-              ),
-            ),
             if (user.visibleEmail.isNotEmpty) ...[
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpacing.md),
               Text(
                 user.visibleEmail,
                 textAlign: TextAlign.center,
@@ -550,12 +670,7 @@ class _StatsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return const SizedBox(
-        height: 110,
-        child: Center(
-          child: CircularProgressIndicator(color: AppBrandColors.pink),
-        ),
-      );
+      return const ChicksStatsRowSkeleton();
     }
 
     return Row(

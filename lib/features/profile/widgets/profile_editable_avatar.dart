@@ -126,12 +126,8 @@ class _ProfileEditableAvatarState extends State<ProfileEditableAvatar> {
   @override
   void didUpdateWidget(ProfileEditableAvatar oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.avatarRevision != widget.avatarRevision &&
-        _previewPath != null) {
-      setState(() => _previewPath = null);
-      return;
-    }
     if (oldWidget.photoUrl != widget.photoUrl &&
+        widget.photoUrl.isNotEmpty &&
         widget.photoUrl == _previewPath) {
       setState(() => _previewPath = null);
     }

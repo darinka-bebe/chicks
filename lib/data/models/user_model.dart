@@ -48,7 +48,7 @@ class UserModel extends Equatable {
       uid: user.uid,
       displayName: user.displayName?.trim().isNotEmpty == true
           ? user.displayName!.trim()
-          : 'Пользователь',
+          : '',
       email: UserProfileRules.sanitizeStoredEmail(user.email),
       photoUrl: user.photoURL?.trim() ?? '',
       lastLoginAt: DateTime.now(),

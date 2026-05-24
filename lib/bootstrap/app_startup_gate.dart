@@ -5,6 +5,7 @@ import '../app.dart';
 import '../core/platform/app_platform_bootstrap.dart';
 import '../core/services/firebase_bootstrap.dart';
 import '../core/services/profile_bootstrap_service.dart';
+import '../core/services/sync_coordinator.dart';
 import '../core/storage/local_hive_storage.dart';
 import '../core/theme/app_brand_colors.dart';
 import '../core/utils/logger.dart';
@@ -33,6 +34,7 @@ class _AppStartupGateState extends State<AppStartupGate> {
 
     await FirebaseBootstrap.ensureInitialized();
     await LocalHiveStorage.initialize();
+    SyncCoordinator.instance.initialize();
     await ProfileBootstrapService.restoreOnStartup();
   }
 

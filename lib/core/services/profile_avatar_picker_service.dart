@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import 'profile_avatar_storage.dart';
 import '../utils/logger.dart';
 
 enum ProfileAvatarPickStatus {
@@ -54,7 +55,10 @@ abstract final class ProfileAvatarPickerService {
         );
       }
 
-      final path = picked.path.trim();
+      final staged = await ProfileAvatarStorage.persistPickStagingFromXFile(
+        picked,
+      );
+      final path = staged ?? picked.path.trim();
       if (path.isEmpty) {
         return const ProfileAvatarPickResult(
           status: ProfileAvatarPickStatus.failed,
@@ -71,7 +75,7 @@ abstract final class ProfileAvatarPickerService {
       }
 
       AppLogger.debug(
-        'ProfileAvatarPicker: XFile path=$path name=${picked.name}',
+        'ProfileAvatarPicker: path=$path name=${picked.name}',
       );
 
       return ProfileAvatarPickResult(

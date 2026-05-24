@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_brand_colors.dart';
 import '../../../core/widgets/wardrobe_item_image.dart';
 import '../../../core/utils/logger.dart';
@@ -29,6 +30,17 @@ class _WardrobeItemDetailsScreenState extends State<WardrobeItemDetailsScreen> {
     AppLogger.info(
       'WardrobeItemDetails: open id=${item.id} title="${item.title}"',
     );
+  }
+
+  Future<void> _openEdit() async {
+    if (_isDeleting) return;
+
+    final updated = await context.pushNamed<WardrobeItem>(
+      RouteNames.addWardrobeItemName,
+      extra: item,
+    );
+    if (!mounted || updated == null) return;
+    context.pop(updated);
   }
 
   Future<void> _confirmDelete() async {
@@ -195,11 +207,24 @@ class _WardrobeItemDetailsScreenState extends State<WardrobeItemDetailsScreen> {
                 Padding(
                   padding: const EdgeInsets.only(top: 4, bottom: 8),
                   child: Text(
-                    'Теги стиля не заданы — добавьте их при создании новой вещи.',
+                    'Теги стиля не заданы — отредактируйте вещь, чтобы добавить их.',
                     style: TextStyle(fontSize: 13, color: Colors.grey[600]),
                   ),
                 ),
               const SizedBox(height: 24),
+              FilledButton.icon(
+                onPressed: _isDeleting ? null : _openEdit,
+                icon: const Icon(Icons.edit_outlined),
+                label: const Text('Редактировать'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppBrandColors.pink,
+                  minimumSize: const Size.fromHeight(48),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
               OutlinedButton.icon(
                 onPressed: _isDeleting ? null : _confirmDelete,
                 icon: _isDeleting

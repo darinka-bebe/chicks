@@ -4,7 +4,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/models/body_profile.dart';
 import '../../core/models/seasonal_color_type.dart';
+import '../../core/sync/cloud_sync_hooks.dart';
+import '../../core/sync/sync_meta_storage.dart';
+import '../../core/sync/sync_scope.dart';
 import '../../core/utils/logger.dart';
+import '../../core/services/collection_names.dart';
 
 /// Local user style profile (color type, body shape, fit prefs).
 class UserProfileRepository {
@@ -23,6 +27,12 @@ class UserProfileRepository {
   }
 
   Future<void> saveColorType(SeasonalColorType type) async {
+    await saveColorTypeLocally(type);
+    await _touchProfile();
+    CloudSyncHooks.onLocalDataChanged(SyncScope.profile);
+  }
+
+  Future<void> saveColorTypeLocally(SeasonalColorType type) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_colorTypeKey, type.storageKey);
     AppLogger.info(
@@ -41,6 +51,12 @@ class UserProfileRepository {
   }
 
   Future<void> setColorTypeQuizCompleted({required bool completed}) async {
+    await setColorTypeQuizCompletedLocally(completed: completed);
+    await _touchProfile();
+    CloudSyncHooks.onLocalDataChanged(SyncScope.profile);
+  }
+
+  Future<void> setColorTypeQuizCompletedLocally({required bool completed}) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_colorQuizCompletedKey, completed);
   }
@@ -59,6 +75,12 @@ class UserProfileRepository {
   }
 
   Future<void> saveBodyProfile(BodyProfile profile) async {
+    await saveBodyProfileLocally(profile);
+    await _touchProfile();
+    CloudSyncHooks.onLocalDataChanged(SyncScope.profile);
+  }
+
+  Future<void> saveBodyProfileLocally(BodyProfile profile) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_bodyProfileKey, jsonEncode(profile.toJson()));
     AppLogger.info(
@@ -77,7 +99,20 @@ class UserProfileRepository {
   }
 
   Future<void> setBodyTypeQuizCompleted({required bool completed}) async {
+    await setBodyTypeQuizCompletedLocally(completed: completed);
+    await _touchProfile();
+    CloudSyncHooks.onLocalDataChanged(SyncScope.profile);
+  }
+
+  Future<void> setBodyTypeQuizCompletedLocally({required bool completed}) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_bodyQuizCompletedKey, completed);
+  }
+
+  Future<void> _touchProfile() async {
+    await SyncMetaStorage.touch(
+      SyncScope.profile,
+      CollectionNames.profileMainDocId,
+    );
   }
 }

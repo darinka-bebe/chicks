@@ -1,6 +1,6 @@
 # Firebase Google Sign-In (Chicks)
 
-The app uses **Firebase Auth** + **google_sign_in** for the login button. Local data (wardrobe, quizzes, favorites, dislikes, avatar file) stays on the device and is restored after login/restart.
+The app uses **Firebase Auth** + **google_sign_in** for the login button. Wardrobe, chat, favorites, and profile sync to **Firestore** when signed in (Hive remains the local cache).
 
 ## Required files (not in git — add locally)
 
@@ -14,8 +14,9 @@ Download both from [Firebase Console](https://console.firebase.google.com) → P
 ## Firebase Console
 
 1. Enable **Authentication** → Sign-in method → **Google** → Enable.
-2. Android app: register package `com.example.chicks` (or your bundle ID).
-3. Add **SHA-1** and **SHA-256** (debug + release):
+2. Enable **Firestore Database** (production mode) and deploy `firestore.rules` from the repo root.
+3. Android app: register package `com.example.chicks` (or your bundle ID).
+4. Add **SHA-1** and **SHA-256** (debug + release):
 
 ```bash
 cd android
@@ -24,7 +25,40 @@ cd android
 
 Copy `SHA1` / `SHA-256` from the `debug` variant into Firebase → Android app settings.
 
-4. iOS app: register bundle ID; download `GoogleService-Info.plist`.
+5. iOS app: register bundle ID; download `GoogleService-Info.plist`.
+
+## Firestore rules (обязательно для cloud sync)
+
+Без правил синк падает с `permission-denied`.
+
+**Вариант A — Firebase Console (быстро):**
+
+1. [Firebase Console](https://console.firebase.google.com) → **Build** → **Firestore Database** → **Rules**
+2. Вставь содержимое файла `firestore.rules` из корня репозитория:
+
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
+```
+
+3. Нажми **Publish**
+
+**Вариант B — Firebase CLI:**
+
+```bash
+npm install -g firebase-tools
+firebase login
+firebase use --add   # выбери свой проект
+firebase deploy --only firestore:rules
+```
+
+После публикации правил перезапусти приложение и войди снова — синк должен пройти.
 
 ## iOS Google Sign-In
 

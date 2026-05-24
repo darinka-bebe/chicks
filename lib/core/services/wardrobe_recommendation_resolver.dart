@@ -28,6 +28,12 @@ abstract final class WardrobeRecommendationResolver {
 
       WardrobeItem? match = byId[id];
       if (match == null) {
+        final normalized = _normalizeIdToken(id);
+        if (normalized != id) {
+          match = byId[normalized];
+        }
+      }
+      if (match == null) {
         for (final item in wardrobe) {
           if (WardrobeRepository.idEquals(item.id, id)) {
             match = item;
@@ -50,6 +56,14 @@ abstract final class WardrobeRecommendationResolver {
     }
 
     return resolved;
+  }
+
+  static String _normalizeIdToken(String raw) {
+    final trimmed = raw.trim();
+    final match = RegExp(r'^id[_-]?(\d+)$', caseSensitive: false)
+        .firstMatch(trimmed);
+    if (match != null) return match.group(1)!;
+    return trimmed;
   }
 
   /// Filters and curates ids (one item per outfit slot, stylist order).

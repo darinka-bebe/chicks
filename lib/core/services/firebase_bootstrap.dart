@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 
@@ -25,6 +26,7 @@ abstract final class FirebaseBootstrap {
       AppLogger.info(
         'FirebaseBootstrap: initialized (${defaultTargetPlatform.name})',
       );
+      await FirestoreBootstrap.ensureReady();
     } on FirebaseException catch (e, stack) {
       AppLogger.error(
         'FirebaseBootstrap: FirebaseException ${e.code}',
@@ -40,5 +42,57 @@ abstract final class FirebaseBootstrap {
       );
       rethrow;
     }
+  }
+}
+
+/// Warms up the Firestore native channel after [FirebaseBootstrap].
+abstract final class FirestoreBootstrap {
+  static bool _ready = false;
+
+  static bool get isReady => _ready;
+
+  static Future<void> ensureReady() async {
+    if (_ready) return;
+    await FirebaseBootstrap.ensureInitialized();
+
+    Object? lastError;
+    for (var attempt = 1; attempt <= 4; attempt++) {
+      try {
+        final firestore = FirebaseFirestore.instance;
+        firestore.settings = const Settings(
+          persistenceEnabled: true,
+          cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+        );
+        _ready = true;
+        AppLogger.info('FirestoreBootstrap: native channel ready');
+        return;
+      } catch (e) {
+        lastError = e;
+        AppLogger.warning(
+          'FirestoreBootstrap: channel not ready (attempt $attempt/4): $e',
+        );
+        await Future<void>.delayed(Duration(milliseconds: 250 * attempt));
+      }
+    }
+
+    AppLogger.error(
+      'FirestoreBootstrap: failed to connect native Firestore channel. '
+      'Run flutter clean → flutter pub get → full rebuild (not hot restart).',
+      error: lastError,
+    );
+    throw lastError ?? StateError('Firestore channel unavailable');
+  }
+
+  static bool isChannelError(Object error) {
+    final text = error.toString().toLowerCase();
+    return text.contains('unable to establish connection on channel') ||
+        text.contains('firebasefirestorehostapi') ||
+        text.contains('channel-error');
+  }
+
+  static bool isPermissionDenied(Object error) {
+    final text = error.toString().toLowerCase();
+    return text.contains('permission-denied') ||
+        text.contains('permission_denied');
   }
 }

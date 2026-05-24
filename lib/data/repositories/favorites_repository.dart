@@ -1,5 +1,8 @@
 import '../../core/storage/hive_json_list_codec.dart';
 import '../../core/storage/local_hive_storage.dart';
+import '../../core/sync/cloud_sync_hooks.dart';
+import '../../core/sync/sync_meta_storage.dart';
+import '../../core/sync/sync_scope.dart';
 import '../../core/utils/logger.dart';
 import '../models/favorite_outfit.dart';
 
@@ -29,7 +32,7 @@ class FavoritesRepository {
       final items = maps.map(FavoriteOutfit.fromJson).toList();
       final deduped = _dedupeByContentHash(items);
       if (deduped.length != items.length) {
-        await saveOutfits(deduped);
+        await saveOutfitsLocally(deduped);
         AppLogger.info(
           'FavoritesRepository: removed ${items.length - deduped.length} duplicate(s)',
         );
@@ -61,6 +64,16 @@ class FavoritesRepository {
   }
 
   Future<void> saveOutfits(List<FavoriteOutfit> outfits) async {
+    await saveOutfitsLocally(outfits);
+    await SyncMetaStorage.touchAll(
+      SyncScope.favorites,
+      outfits.map((item) => item.id),
+    );
+    CloudSyncHooks.onLocalDataChanged(SyncScope.favorites);
+  }
+
+  /// Persists favorites without triggering cloud upload (used during restore).
+  Future<void> saveOutfitsLocally(List<FavoriteOutfit> outfits) async {
     final deduped = _dedupeByContentHash(outfits);
     await HiveJsonListCodec.write(
       LocalHiveStorage.favoritesBox,
@@ -93,17 +106,33 @@ class FavoritesRepository {
     final outfits = await loadOutfits();
     final updated = outfits.where((item) => item.id != id).toList();
     if (updated.length == outfits.length) return false;
-    await saveOutfits(updated);
+    await saveOutfitsLocally(updated);
+    await SyncMetaStorage.touchAll(
+      SyncScope.favorites,
+      updated.map((item) => item.id),
+    );
+    CloudSyncHooks.onLocalDataChanged(SyncScope.favorites, deletedId: id);
     AppLogger.info('FavoritesRepository.deleteOutfit: $id');
     return true;
   }
 
   Future<bool> deleteByContentHash(String contentHash) async {
     final outfits = await loadOutfits();
+    final removed = outfits.where((item) => item.contentHash == contentHash);
     final updated =
         outfits.where((item) => item.contentHash != contentHash).toList();
     if (updated.length == outfits.length) return false;
-    await saveOutfits(updated);
+    await saveOutfitsLocally(updated);
+    await SyncMetaStorage.touchAll(
+      SyncScope.favorites,
+      updated.map((item) => item.id),
+    );
+    for (final item in removed) {
+      CloudSyncHooks.onLocalDataChanged(
+        SyncScope.favorites,
+        deletedId: item.id,
+      );
+    }
     AppLogger.info('FavoritesRepository.deleteByContentHash: $contentHash');
     return true;
   }
@@ -114,5 +143,9 @@ class FavoritesRepository {
       if (item.contentHash == contentHash) return item;
     }
     return null;
+  }
+
+  Future<void> clear() async {
+    await LocalHiveStorage.favoritesBox.delete(_itemsKey);
   }
 }

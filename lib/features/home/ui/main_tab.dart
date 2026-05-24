@@ -3,9 +3,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/utils/user_profile_rules.dart';
 import '../../../core/widgets/iphone_layout.dart';
 import '../../../core/router/route_names.dart';
 import '../../../features/app/bloc/app_bloc.dart';
+import '../../../features/home/widgets/welcome_name_sheet.dart';
+import '../../../features/profile/widgets/profile_edit_sheet.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../widgets/user_avatar.dart';
 
@@ -45,6 +48,28 @@ class _MainTabState extends State<MainTab> with SingleTickerProviderStateMixin {
     });
 
     _controller.forward();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybePromptForName());
+  }
+
+  Future<void> _maybePromptForName() async {
+    if (!mounted) return;
+    final user = context.read<AppBloc>().state.user;
+    await WelcomeNamePrompt.maybeShow(context, user);
+  }
+
+  Future<void> _openNameSetup() async {
+    await WelcomeNameSheet.show(context);
+  }
+
+  Future<void> _openNameEdit() async {
+    final user = context.read<AppBloc>().state.user;
+    if (user.isEmpty) return;
+    await ProfileEditSheet.show(
+      context,
+      displayName: user.displayName,
+      username: user.username,
+      uid: user.uid,
+    );
   }
 
   @override
@@ -88,6 +113,8 @@ class _MainTabState extends State<MainTab> with SingleTickerProviderStateMixin {
     final appState = context.watch<AppBloc>().state;
     final user = appState.user;
     final textTheme = Theme.of(context).textTheme;
+    final greetingName = UserProfileRules.greetingName(user.displayName);
+    final hasPersonalName = greetingName.isNotEmpty;
 
     return Scaffold(
       backgroundColor: const Color(0xFFFFF0F5),
@@ -117,22 +144,63 @@ class _MainTabState extends State<MainTab> with SingleTickerProviderStateMixin {
               0,
               Column(
                 children: [
-                  UserAvatar(
-                    photoUrl: user.photoUrl,
-                    userId: user.uid,
-                    avatarRevision: user.avatarRevision,
+                  GestureDetector(
+                    onTap: hasPersonalName ? _openNameEdit : _openNameSetup,
+                    child: UserAvatar(
+                      photoUrl: user.photoUrl,
+                      userId: user.uid,
+                      avatarRevision: user.avatarRevision,
+                    ),
                   ),
                   const SizedBox(height: AppConstants.defaultPadding),
-                  Text(
-                    loc.greeting(
-                      user.displayName.isNotEmpty ? user.displayName : 'User',
+                  if (hasPersonalName) ...[
+                    GestureDetector(
+                      onTap: _openNameEdit,
+                      child: Text(
+                        loc.greeting(greetingName),
+                        style: textTheme.headlineMedium?.copyWith(
+                          color: const Color(0xFFFF4FA0),
+                          fontWeight: FontWeight.w600,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
                     ),
-                    style: textTheme.headlineMedium?.copyWith(
-                      color: const Color(0xFFFF4FA0),
-                      fontWeight: FontWeight.w600,
+                  ] else ...[
+                    Text(
+                      'Привет! 👋',
+                      style: textTheme.headlineMedium?.copyWith(
+                        color: const Color(0xFFFF4FA0),
+                        fontWeight: FontWeight.w600,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
-                    textAlign: TextAlign.center,
-                  ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Как тебя зовут?',
+                      textAlign: TextAlign.center,
+                      style: textTheme.bodyLarge?.copyWith(
+                        color: const Color(0xFF2D1A24),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    OutlinedButton.icon(
+                      onPressed: _openNameSetup,
+                      icon: const Icon(Icons.edit_outlined, size: 18),
+                      label: const Text('Добавить имя'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFFFF4FA0),
+                        side: const BorderSide(color: Color(0xFFFF4FA0)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 10,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 6),
                   Text(
                     'Твой персональный стилист всегда с тобой 💗',

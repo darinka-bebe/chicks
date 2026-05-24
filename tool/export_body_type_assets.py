@@ -1,126 +1,113 @@
-"""Export body-type PNGs: silhouette + pink geometry (vertical design reference)."""
+"""Export body-type PNGs from the 5-card grid reference (_source_grid.png)."""
+from __future__ import annotations
+
 from pathlib import Path
 
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parent.parent
+SRC = ROOT / "assets" / "body_types" / "_source_grid.png"
 OUT = ROOT / "assets" / "body_types"
 
-VERTICAL_SRC = Path(
-    r"C:\Users\Пользователь\.cursor\projects\c-chicks\assets"
-    r"\c__Users______________AppData_Roaming_Cursor_User_workspaceStorage_"
-    r"3c6416b586f809085696aba4f25a3769_images_image-d41d936c-04bb-4a98-a0f3-834d04743366.png"
-)
-
-CANVAS = (300, 320)
+CANVAS = (320, 340)
 BG_RGBA = (255, 245, 249, 255)
+TARGET_BOX = (272, 220)  # max figure slot inside canvas
+FOOT_BASELINE_Y = 302
+SIDE_PAD = 24
 
-NAMES = ["pear", "rectangle", "apple", "hourglass", "inverted_triangle"]
-ICON_X = (32, 198)
-ICON_Y0 = 198
-ICON_SLOT = 148
-ICON_GAP = 11
+CARD_BOXES: dict[str, tuple[int, int, int, int]] = {
+    "hourglass": (28, 40, 324, 328),
+    "pear": (352, 40, 648, 328),
+    "rectangle": (676, 40, 996, 328),
+    "inverted_triangle": (72, 358, 428, 642),
+    "apple": (468, 358, 824, 642),
+}
+
+ILLUSTRATION_HEIGHT_RATIO = 0.62
 
 
-def _is_near_black(r: int, g: int, b: int, a: int) -> bool:
-    return a > 100 and r < 50 and g < 50 and b < 50
-
-
-def _is_mockup_chrome(r: int, g: int, b: int) -> bool:
-    """White card frame, gray shadow, black divider — not the illustration."""
-    if r > 252 and g > 252 and b > 252:
+def _is_figure_pixel(r: int, g: int, b: int, a: int) -> bool:
+    """Silhouette outline + body fill only — skip card bg and decorative shapes."""
+    if a < 20:
+        return False
+    if r > 250 and g > 238 and b > 244:
+        return False
+    if r > 95 and r < 235 and abs(r - g) < 18 and abs(g - b) < 18:
+        return False
+    if r < 40 and g < 40 and b < 40:
         return True
-    if r < 50 and g < 50 and b < 50:
-        return True
-    # Neutral gray vertical stripe / card edge
-    if r < 220 and abs(r - g) < 22 and abs(g - b) < 22:
+    if r > 130 and g > 55 and b > 75 and r > g + 8 and r < 230:
         return True
     return False
 
 
-def _column_black_ratio(px, iw: int, ih: int, x: int) -> float:
-    black = 0
-    total = 0
-    for y in range(ih):
-        r, g, b, a = px[x, y]
-        if a < 40:
-            continue
-        total += 1
-        if _is_near_black(r, g, b, a) or _is_mockup_chrome(r, g, b):
-            black += 1
-    return black / total if total else 0.0
-
-
-def strip_edge_artifacts(img: Image.Image, scan_cols: int = 45) -> Image.Image:
+def _trim_figure(img: Image.Image, pad: int = 6) -> Image.Image:
     px = img.load()
-    iw, ih = img.size
-    scan = min(scan_cols, iw)
-
-    left = 0
-    while left < scan and _column_black_ratio(px, iw, ih, left) > 0.55:
-        left += 1
-
-    right = iw - 1
-    while right >= iw - scan and right > left and _column_black_ratio(px, iw, ih, right) > 0.55:
-        right -= 1
-
-    if right <= left:
-        return img
-    return img.crop((left, 0, right + 1, ih))
-
-
-def trim_illustration_only(img: Image.Image, pad: int = 4) -> Image.Image:
-    """Keep inner pink panel + silhouette; drop outer white card chrome."""
-    img = strip_edge_artifacts(img)
-    px = img.load()
-    iw, ih = img.size
-    minx, miny, maxx, maxy = iw, ih, 0, 0
-    for y in range(ih):
-        for x in range(iw):
-            r, g, b, a = px[x, y]
-            if a < 20:
-                continue
-            if _is_mockup_chrome(r, g, b):
-                continue
-            minx, miny = min(minx, x), min(miny, y)
-            maxx, maxy = max(maxx, x), max(maxy, y)
+    w, h = img.size
+    minx, miny, maxx, maxy = w, h, 0, 0
+    for y in range(h):
+        for x in range(w):
+            if _is_figure_pixel(*px[x, y]):
+                minx, miny = min(minx, x), min(miny, y)
+                maxx, maxy = max(maxx, x), max(maxy, y)
     if maxx <= minx:
         return img
     return img.crop(
         (
             max(0, minx - pad),
             max(0, miny - pad),
-            min(iw, maxx + pad),
-            min(ih, maxy + pad),
+            min(w, maxx + pad),
+            min(h, maxy + pad),
         )
     )
 
 
-def normalize_canvas(tight: Image.Image) -> Image.Image:
-    target_h = CANVAS[1]
-    scale = target_h / tight.height
-    scaled_w = max(1, int(tight.width * scale))
-    scaled = tight.resize((scaled_w, target_h), Image.Resampling.LANCZOS)
+def _illustration_zone(card: Image.Image) -> Image.Image:
+    cw, ch = card.size
+    top = int(ch * ILLUSTRATION_HEIGHT_RATIO)
+    return _trim_figure(card.crop((0, 0, cw, top)))
+
+
+def _normalize_canvas(tight: Image.Image) -> Image.Image:
+    max_w, max_h = TARGET_BOX
+    scale = min(max_w / tight.width, max_h / tight.height)
+    nw = max(1, int(tight.width * scale))
+    nh = max(1, int(tight.height * scale))
+    scaled = tight.resize((nw, nh), Image.Resampling.LANCZOS)
+
+    # Horizontal center by figure mass, not image bounds.
+    px = scaled.load()
+    sum_x = 0.0
+    count = 0
+    for y in range(nh):
+        for x in range(nw):
+            if _is_figure_pixel(*px[x, y]):
+                sum_x += x
+                count += 1
+    centroid_x = (sum_x / count) if count else nw / 2
+
     canvas = Image.new("RGBA", CANVAS, BG_RGBA)
-    canvas.paste(scaled, ((CANVAS[0] - scaled_w) // 2, 0), scaled)
-    return strip_edge_artifacts(canvas, scan_cols=32)
+    x = int(CANVAS[0] / 2 - centroid_x)
+    x = max(SIDE_PAD // 2, min(x, CANVAS[0] - nw - SIDE_PAD // 2))
+    y = FOOT_BASELINE_Y - nh
+    canvas.paste(scaled, (x, y), scaled)
+    return canvas
 
 
 def export_all() -> None:
-    im = Image.open(VERTICAL_SRC).convert("RGBA")
-    for i, name in enumerate(NAMES):
-        top = ICON_Y0 + i * (ICON_SLOT + ICON_GAP)
-        bottom = top + ICON_SLOT
-        tile = im.crop((ICON_X[0], top, ICON_X[1], bottom))
-        out = normalize_canvas(trim_illustration_only(tile))
+    im = Image.open(SRC).convert("RGBA")
+    for name, box in CARD_BOXES.items():
+        card = im.crop(box)
+        ill = _illustration_zone(card)
+        out = _normalize_canvas(ill)
         out.save(OUT / f"{name}.png")
-        print(f"exported {name}.png")
+        print(f"exported {name}.png figure={ill.size[0]}x{ill.size[1]}")
 
 
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
-    if not VERTICAL_SRC.exists():
-        raise SystemExit(f"Missing reference: {VERTICAL_SRC}")
+    if not SRC.exists():
+        raise SystemExit(f"Missing reference grid: {SRC}")
     export_all()
 
 

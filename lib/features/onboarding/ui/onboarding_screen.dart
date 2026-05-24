@@ -5,6 +5,8 @@ import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_brand_colors.dart';
 import '../../../data/repositories/onboarding_repository.dart';
 import '../data/onboarding_pages.dart';
+import '../data/onboarding_funnel.dart';
+import '../widgets/onboarding_funnel_header.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -83,7 +85,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               count: _pages.length,
               index: _currentPage,
             ),
-            const SizedBox(height: 20),
+            OnboardingFunnelHeader(
+              step: OnboardingFunnel.stepWelcome,
+              title: 'Знакомство с Chicks',
+              subProgress: (_currentPage + 1) / _pages.length,
+              subLabel: 'Слайд ${_currentPage + 1} из ${_pages.length}',
+            ),
+            const SizedBox(height: 12),
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
               child: SizedBox(

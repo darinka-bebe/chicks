@@ -11,6 +11,8 @@ import 'features/app/bloc/app_bloc.dart';
 import 'features/favorites/favorites_controller.dart';
 import 'features/outfit_history/outfit_history_controller.dart';
 import 'features/preferences/outfit_preferences_controller.dart';
+import 'features/sync/sync_refresh_binder.dart';
+import 'features/sync/sync_state_controller.dart';
 import 'features/wardrobe/wardrobe_controller.dart';
 import 'l10n/generated/app_localizations.dart';
 
@@ -36,20 +38,25 @@ class App extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => WardrobeController(),
         ),
+        ChangeNotifierProvider(
+          create: (_) => SyncStateController(),
+        ),
       ],
-      child: AppLifecycleCoordinator(
-        child: MaterialApp.router(
-        title: 'Chicks',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.light,
-        routerConfig: AppRouter.router,
-        localizationsDelegates: const [
-          AppLocalizations.delegate,
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        supportedLocales: AppLocalizations.supportedLocales,
+      child: SyncRefreshBinder(
+        child: AppLifecycleCoordinator(
+          child: MaterialApp.router(
+          title: 'Chicks',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light,
+          routerConfig: AppRouter.router,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          ),
         ),
       ),
     );

@@ -43,7 +43,7 @@ abstract final class BodyTypeIllustrationAssets {
   }
 }
 
-/// Sharp static body illustration inside a square preview with a crisp frame.
+/// Body silhouette in a fixed square preview — all shapes same slot size.
 class BodyTypeIllustration extends StatelessWidget {
   const BodyTypeIllustration({
     super.key,
@@ -70,43 +70,34 @@ class BodyTypeIllustration extends StatelessWidget {
   final double size;
   final bool emphasized;
 
-  static double _snapSide(BuildContext context, double logical) {
-    final dpr = MediaQuery.devicePixelRatioOf(context);
-    return (logical * dpr).round() / dpr;
-  }
-
   @override
   Widget build(BuildContext context) {
-    final side = _snapSide(context, size);
-    final dpr = MediaQuery.devicePixelRatioOf(context);
-    final cacheWidth = (side * dpr).round().clamp(144, 640);
     const radius = QuizVisualTheme.bodyPreviewRadius;
-    const borderWidth = 2.0;
-    const innerRadius = radius - borderWidth;
+    const innerPad = 4.0;
 
     return SizedBox(
-      width: side,
-      height: side,
+      width: size,
+      height: size,
       child: DecoratedBox(
         decoration: QuizVisualTheme.bodyPreviewDecoration(
           emphasized: emphasized,
           radius: radius,
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(innerRadius),
-          child: Image.asset(
-            assetPath,
-            width: side,
-            height: side,
-            fit: BoxFit.contain,
-            alignment: Alignment.center,
-            filterQuality: FilterQuality.high,
-            cacheWidth: cacheWidth,
-            gaplessPlayback: true,
-            errorBuilder: (_, __, ___) => Icon(
-              Icons.image_not_supported_outlined,
-              color: Colors.grey[400],
-              size: side * 0.35,
+        child: Padding(
+          padding: const EdgeInsets.all(innerPad),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(radius - 2),
+            child: Image.asset(
+              assetPath,
+              fit: BoxFit.contain,
+              alignment: Alignment.bottomCenter,
+              filterQuality: FilterQuality.high,
+              gaplessPlayback: true,
+              errorBuilder: (_, __, ___) => Icon(
+                Icons.image_not_supported_outlined,
+                color: Colors.grey[400],
+                size: size * 0.35,
+              ),
             ),
           ),
         ),

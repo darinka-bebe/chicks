@@ -125,11 +125,18 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                       'Создай свой аккаунт 💗',
                       style: textTheme.bodyMedium,
                     ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Имя будет на главном экране',
+                      style: textTheme.bodySmall?.copyWith(
+                        color: Colors.grey[600],
+                      ),
+                    ),
                     const SizedBox(height: 28),
 
                     _AuthTextField(
                       controller: _nameController,
-                      hintText: 'Имя',
+                      hintText: 'Как тебя зовут?',
                       validator: (v) {
                         if (v == null || v.trim().isEmpty) {
                           return 'Введите имя';

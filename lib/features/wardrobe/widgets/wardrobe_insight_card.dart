@@ -2,11 +2,17 @@ import 'package:flutter/material.dart';
 
 import '../../../core/models/wardrobe_insight.dart';
 import '../../../core/theme/app_brand_colors.dart';
+import '../../profile/widgets/profile_card_decoration.dart';
 
 class WardrobeInsightCard extends StatelessWidget {
-  const WardrobeInsightCard({super.key, required this.insight});
+  const WardrobeInsightCard({
+    super.key,
+    required this.insight,
+    this.showCategoryLabel = false,
+  });
 
   final WardrobeInsight insight;
+  final bool showCategoryLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -20,13 +26,7 @@ class WardrobeInsightCard extends StatelessWidget {
         border: Border.all(
           color: AppBrandColors.pink.withValues(alpha: 0.1),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: AppBrandColors.pink.withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: ProfileCardDecoration.softShadow,
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -58,7 +58,28 @@ class WardrobeInsightCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                    if (insight.isAiEnhanced)
+                    if (showCategoryLabel)
+                      Container(
+                        margin: const EdgeInsets.only(left: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppBrandColors.pink.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          insight.categoryLabelRu,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: AppBrandColors.pink,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      )
+                    else if (insight.isAiEnhanced)
                       Container(
                         margin: const EdgeInsets.only(left: 8),
                         padding: const EdgeInsets.symmetric(

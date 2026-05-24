@@ -5,7 +5,9 @@ import '../../../core/models/body_profile.dart';
 import '../../../core/models/body_shape_type.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_brand_colors.dart';
+import '../../../core/theme/app_spacing.dart';
 import '../../onboarding/widgets/quiz_visual_registry.dart';
+import '../../onboarding/widgets/quiz_visual_theme.dart';
 import 'profile_card_decoration.dart';
 
 /// Profile preview for body shape — vector silhouette, same art as onboarding quiz.
@@ -14,10 +16,12 @@ class ProfileBodyTypeCard extends StatelessWidget {
     super.key,
     required this.bodyProfile,
     required this.onUpdated,
+    this.grouped = false,
   });
 
   final BodyProfile? bodyProfile;
   final VoidCallback onUpdated;
+  final bool grouped;
 
   Future<void> _openQuiz(BuildContext context) async {
     final updated = await context.pushNamed<bool>(
@@ -35,10 +39,12 @@ class ProfileBodyTypeCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: () => _openQuiz(context),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(
+          grouped ? 0 : ProfileCardDecoration.radius,
+        ),
         child: Ink(
-          decoration: ProfileCardDecoration.actionTile,
-          padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
+          decoration: grouped ? null : ProfileCardDecoration.actionTile,
+          padding: const EdgeInsets.all(AppSpacing.cardPadding),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -110,23 +116,18 @@ class _BodyTypeProfilePreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
-    final compact = width < 360;
-    final previewSize = compact ? 80.0 : 92.0;
+    const previewSize = QuizVisualTheme.optionPreviewSize;
 
     return SizedBox(
       width: previewSize,
       height: previewSize,
       child: shape != null
-          ? QuizVisualRegistry.forBodyResult(
-              shape!,
-              size: previewSize - 8,
-            )
+          ? QuizVisualRegistry.forBodyResult(shape!, size: previewSize)
           : Center(
               child: Icon(
                 Icons.accessibility_new_rounded,
                 color: AppBrandColors.pink.withValues(alpha: 0.55),
-                size: compact ? 32 : 36,
+                size: 34,
               ),
             ),
     );

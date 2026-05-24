@@ -33,6 +33,15 @@ class WardrobeItem extends Equatable {
 
   IconData get placeholderIcon => WardrobeCatalog.iconForCategory(category);
 
+  /// Stable local identifier (Hive key).
+  String get localId => id;
+
+  /// Same as [localId]; used as the Firestore document id.
+  String get firestoreDocId => id;
+
+  /// Full Firestore path: `users/{uid}/wardrobe/{firestoreDocId}`.
+  String firestorePath(String uid) => 'users/$uid/wardrobe/$firestoreDocId';
+
   bool get hasStyleMetadata =>
       styles.isNotEmpty ||
       occasions.isNotEmpty ||
@@ -41,6 +50,7 @@ class WardrobeItem extends Equatable {
 
   Map<String, dynamic> toJson() => {
         'id': id,
+        'firestoreDocId': firestoreDocId,
         'title': title,
         'category': category,
         'color': color,

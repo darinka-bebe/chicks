@@ -19,6 +19,8 @@ class QuizColorPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final useCompactPalette = colors.length >= 3 && size <= 96;
+
     return SizedBox(
       width: size,
       height: size,
@@ -27,26 +29,49 @@ class QuizColorPreview extends StatelessWidget {
           emphasized: emphasized,
         ),
         child: Padding(
-          padding: const EdgeInsets.all(10),
-          child: colors.length == 1
-              ? _SwatchCircle(color: colors.first)
-              : Column(
-                  children: [
-                    Expanded(
-                      child: Row(
-                        children: [
-                          for (final c in colors)
-                            Expanded(child: _SwatchCircle(color: c)),
+          padding: EdgeInsets.all(useCompactPalette ? 8 : 10),
+          child: useCompactPalette
+              ? _CompactPaletteStripes(colors: colors)
+              : colors.length == 1
+                  ? _SwatchCircle(color: colors.first)
+                  : Column(
+                      children: [
+                        Expanded(
+                          child: Row(
+                            children: [
+                              for (final c in colors)
+                                Expanded(child: _SwatchCircle(color: c)),
+                            ],
+                          ),
+                        ),
+                        if (secondaryColor != null) ...[
+                          const SizedBox(height: 6),
+                          _SwatchBar(color: secondaryColor!),
                         ],
-                      ),
+                      ],
                     ),
-                    if (secondaryColor != null) ...[
-                      const SizedBox(height: 6),
-                      _SwatchBar(color: secondaryColor!),
-                    ],
-                  ],
-                ),
         ),
+      ),
+    );
+  }
+}
+
+class _CompactPaletteStripes extends StatelessWidget {
+  const _CompactPaletteStripes({required this.colors});
+
+  final List<Color> colors;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: Row(
+        children: [
+          for (final color in colors.take(3))
+            Expanded(
+              child: ColoredBox(color: color),
+            ),
+        ],
       ),
     );
   }

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/services/wardrobe_recommendation_resolver.dart';
 import '../../../core/theme/app_brand_colors.dart';
+import '../../../core/widgets/chicks_skeleton.dart';
 import '../../../data/models/wardrobe_item.dart';
 import 'outfit_card_layout.dart';
 import 'outfit_item_preview_card.dart';
@@ -167,14 +168,7 @@ class _OutfitRowSkeleton extends StatelessWidget {
         children: [
           Padding(
             padding: _headerPadding,
-            child: Container(
-              width: 100,
-              height: 11,
-              decoration: BoxDecoration(
-                color: AppBrandColors.pink.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ),
+            child: const ChicksSkeleton(width: 100, height: 11, borderRadius: 4),
           ),
           const SizedBox(height: 8),
           SizedBox(
@@ -227,15 +221,10 @@ class _CardSkeleton extends StatelessWidget {
                 OutfitPreviewMetrics.imageInset,
                 0,
               ),
-              child: Container(
-                height: layout.imageHeight,
+              child: ChicksSkeleton(
                 width: layout.innerImageWidth,
-                decoration: BoxDecoration(
-                  color: AppBrandColors.iconBackground,
-                  borderRadius: BorderRadius.circular(
-                    OutfitPreviewMetrics.imageRadius,
-                  ),
-                ),
+                height: layout.imageHeight,
+                borderRadius: OutfitPreviewMetrics.imageRadius,
               ),
             ),
             const Spacer(),

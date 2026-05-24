@@ -16,10 +16,12 @@ class FavoritesController extends ChangeNotifier {
   Set<String> _savedHashes = {};
   bool _isLoaded = false;
   bool _isLoading = false;
+  String? _loadError;
 
   List<FavoriteOutfit> get outfits => List.unmodifiable(_outfits);
   bool get isLoaded => _isLoaded;
   bool get isLoading => _isLoading;
+  String? get loadError => _loadError;
 
   bool isSavedRecommendation(String recommendation) {
     return _savedHashes.contains(OutfitContentHasher.hash(recommendation));
@@ -33,12 +35,15 @@ class FavoritesController extends ChangeNotifier {
   Future<void> refresh() async {
     if (_isLoading) return;
     _isLoading = true;
+    _loadError = null;
     notifyListeners();
 
     try {
       _outfits = await _repository.loadOutfits();
       _savedHashes = _outfits.map((item) => item.contentHash).toSet();
       _isLoaded = true;
+    } catch (_) {
+      _loadError = 'Не удалось загрузить избранное';
     } finally {
       _isLoading = false;
       notifyListeners();
