@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/onboarding_repository.dart';
+import '../../data/repositories/tutorial_repository.dart';
 import '../../data/repositories/user_profile_repository.dart';
 import 'route_names.dart';
 
@@ -40,6 +41,13 @@ abstract final class AppNavigationGuard {
 
     if (bodyDone && path == RouteNames.bodyTypeQuiz) {
       return loggedIn ? RouteNames.main : RouteNames.login;
+    }
+
+    if (path == RouteNames.tutorial && !fromProfile) {
+      final tutorialDone = await TutorialRepository.instance.isCompleted();
+      if (tutorialDone) {
+        return loggedIn ? RouteNames.main : RouteNames.login;
+      }
     }
 
     return null;

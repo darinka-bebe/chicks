@@ -4,22 +4,31 @@ import '../../core/services/wardrobe_sync_service.dart';
 import '../../core/services/wardrobe_ai_context.dart';
 import '../../core/utils/logger.dart';
 import '../../data/models/wardrobe_item.dart';
+import '../../data/repositories/wardrobe_favorites_repository.dart';
 import '../../data/repositories/wardrobe_repository.dart';
 
 /// Shared wardrobe list state — keeps grid in sync after add/delete.
 class WardrobeController extends ChangeNotifier {
-  WardrobeController({WardrobeRepository? repository})
-      : _repository = repository ?? WardrobeRepository.instance;
+  WardrobeController({
+    WardrobeRepository? repository,
+    WardrobeFavoritesRepository? favoritesRepository,
+  })  : _repository = repository ?? WardrobeRepository.instance,
+        _favoritesRepository =
+            favoritesRepository ?? WardrobeFavoritesRepository.instance;
 
   final WardrobeRepository _repository;
+  final WardrobeFavoritesRepository _favoritesRepository;
 
   List<WardrobeItem> _items = [];
+  Set<String> _favoriteIds = {};
   bool _isLoading = false;
   bool _isLoaded = false;
   String? _loadError;
   int _lastSyncedRevision = -1;
 
   List<WardrobeItem> get items => List.unmodifiable(_items);
+  Set<String> get favoriteIds => Set.unmodifiable(_favoriteIds);
+  bool isFavorite(String id) => _favoriteIds.contains(id.trim());
   bool get isLoading => _isLoading;
   bool get isLoaded => _isLoaded;
   String? get loadError => _loadError;
@@ -40,6 +49,7 @@ class WardrobeController extends ChangeNotifier {
 
     try {
       _items = await _repository.loadItems();
+      _favoriteIds = await _favoritesRepository.loadFavoriteIds();
       _isLoaded = true;
       _loadError = null;
       _lastSyncedRevision = WardrobeAiContext.instance.revision;
@@ -77,6 +87,7 @@ class WardrobeController extends ChangeNotifier {
   Future<void> reloadFromStorage() async {
     try {
       _items = await _repository.loadItems();
+      _favoriteIds = await _favoritesRepository.loadFavoriteIds();
       _isLoaded = true;
       _loadError = null;
       _lastSyncedRevision = WardrobeAiContext.instance.revision;
@@ -90,9 +101,20 @@ class WardrobeController extends ChangeNotifier {
     }
     _isLoading = false;
     AppLogger.debug(
-      'WardrobeController.reloadFromStorage: ${_items.length} item(s)',
+      'WardrobeController.reloadFromStorage: ${_items.length} item(s) '
+      'favorites=${_favoriteIds.length}',
     );
     notifyListeners();
+  }
+
+  Future<bool> toggleFavorite(String id) async {
+    final added = await _favoritesRepository.toggle(id);
+    _favoriteIds = await _favoritesRepository.loadFavoriteIds();
+    AppLogger.info(
+      'WardrobeController.toggleFavorite: id=$id favorited=$added',
+    );
+    notifyListeners();
+    return added;
   }
 
   /// Call after add screen persisted a new item.

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_brand_colors.dart';
+import 'chicks_hint_chip.dart';
 
 /// Premium empty state used across Chicks features.
 class ChicksEmptyState extends StatelessWidget {
@@ -12,6 +13,7 @@ class ChicksEmptyState extends StatelessWidget {
     this.actionLabel,
     this.onAction,
     this.secondaryIcon,
+    this.hint,
   });
 
   final IconData icon;
@@ -20,6 +22,7 @@ class ChicksEmptyState extends StatelessWidget {
   final String message;
   final String? actionLabel;
   final VoidCallback? onAction;
+  final String? hint;
 
   @override
   Widget build(BuildContext context) {
@@ -51,6 +54,10 @@ class ChicksEmptyState extends StatelessWidget {
                 height: 1.45,
               ),
             ),
+            if (hint != null) ...[
+              const SizedBox(height: 20),
+              ChicksHintChip(text: hint!),
+            ],
             if (actionLabel != null && onAction != null) ...[
               const SizedBox(height: 28),
               FilledButton(

@@ -5,6 +5,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/router/route_names.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../data/repositories/onboarding_repository.dart';
+import '../../../data/repositories/tutorial_repository.dart';
 import '../../../data/repositories/user_profile_repository.dart';
 import '../../../l10n/generated/app_localizations.dart';
 
@@ -92,6 +93,12 @@ class _SplashScreenState extends State<SplashScreen>
 
     final isLoggedIn = AuthRepository.instance.isLoggedIn;
     if (isLoggedIn) {
+      final tutorialDone = await TutorialRepository.instance.isCompleted();
+      if (!mounted) return;
+      if (!tutorialDone) {
+        context.go(RouteNames.tutorial);
+        return;
+      }
       context.go(RouteNames.main);
     } else {
       context.go(RouteNames.login);

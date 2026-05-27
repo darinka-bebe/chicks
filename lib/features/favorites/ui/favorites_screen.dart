@@ -64,54 +64,71 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
         centerTitle: true,
       ),
       body: isLoading
-          ? ListView.separated(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: 3,
-              separatorBuilder: (_, __) => const SizedBox(height: 14),
-              itemBuilder: (_, __) => const ChicksListCardSkeleton(),
+          ? AnimatedSwitcher(
+              duration: const Duration(milliseconds: 260),
+              child: ListView.separated(
+                key: const ValueKey('favorites-loading'),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: 3,
+                separatorBuilder: (_, __) => const SizedBox(height: 14),
+                itemBuilder: (_, __) => const ChicksListCardSkeleton(),
+              ),
             )
           : favorites.loadError != null
-              ? ChicksRefreshableScroll(
-                  onRefresh: favorites.refresh,
-                  child: ChicksErrorState(
-                    message: favorites.loadError!,
-                    onRetry: favorites.refresh,
+              ? AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 260),
+                  child: ChicksRefreshableScroll(
+                    key: const ValueKey('favorites-error'),
+                    onRefresh: favorites.refresh,
+                    child: ChicksErrorState(
+                      message: favorites.loadError!,
+                      onRetry: favorites.refresh,
+                    ),
                   ),
                 )
               : outfits.isEmpty
-              ? ChicksRefreshableScroll(
-                  onRefresh: favorites.refresh,
-                  child: ChicksEmptyState(
-                    icon: Icons.favorite_border_rounded,
-                    secondaryIcon: Icons.bookmark_added_outlined,
-                    title: 'Пока нет избранных образов',
-                    message:
-                        'Сохраняй понравившиеся образы из чата — они появятся здесь',
-                    actionLabel: 'К чату со стилистом',
-                    onAction: () => context.pop(),
-                  ),
-                )
-              : RefreshIndicator(
-                  color: AppBrandColors.pink,
-                  onRefresh: favorites.refresh,
-                  child: ListView.separated(
-                    physics: const AlwaysScrollableScrollPhysics(
-                      parent: BouncingScrollPhysics(),
+                  ? AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 260),
+                      child: ChicksRefreshableScroll(
+                        key: const ValueKey('favorites-empty'),
+                        onRefresh: favorites.refresh,
+                        child: ChicksEmptyState(
+                          icon: Icons.favorite_border_rounded,
+                          secondaryIcon: Icons.bookmark_added_outlined,
+                          title: 'Пока нет избранных образов',
+                          message:
+                              'Сохраняй понравившиеся образы из чата — они появятся здесь',
+                          hint: 'Нажми ♥ на образе в чате со стилистом',
+                          actionLabel: 'К чату со стилистом',
+                          onAction: () => context.pop(),
+                        ),
+                      ),
+                    )
+                  : AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 260),
+                      child: RefreshIndicator(
+                        key: const ValueKey('favorites-list'),
+                        color: AppBrandColors.pink,
+                        onRefresh: favorites.refresh,
+                        child: ListView.separated(
+                          physics: const AlwaysScrollableScrollPhysics(
+                            parent: BouncingScrollPhysics(),
+                          ),
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                          itemCount: outfits.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 14),
+                          itemBuilder: (context, index) {
+                            final outfit = outfits[index];
+                            return FavoriteOutfitCard(
+                              key: ValueKey(outfit.contentHash),
+                              outfit: outfit,
+                              onTap: () => _openDetails(outfit),
+                            );
+                          },
+                        ),
+                      ),
                     ),
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                    itemCount: outfits.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 14),
-                    itemBuilder: (context, index) {
-                      final outfit = outfits[index];
-                      return FavoriteOutfitCard(
-                        key: ValueKey(outfit.contentHash),
-                        outfit: outfit,
-                        onTap: () => _openDetails(outfit),
-                      );
-                    },
-                  ),
-                ),
     );
   }
 }

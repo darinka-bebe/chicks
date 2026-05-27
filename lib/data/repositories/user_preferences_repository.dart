@@ -76,7 +76,7 @@ class UserPreferencesRepository {
     if (effectiveUid.isEmpty) return;
 
     final current = await _loadStylistDefaults(effectiveUid);
-    final merged = current.mergeInteraction(context);
+    final merged = current.mergeInteraction(context).sanitized();
     await saveStylistDefaultsLocally(effectiveUid, merged);
     await _touchProfile();
     CloudSyncHooks.onLocalDataChanged(SyncScope.profile);
@@ -122,7 +122,17 @@ class UserPreferencesRepository {
 
     try {
       final map = jsonDecode(raw) as Map<String, dynamic>;
-      return StylistDefaults.fromJson(map);
+      final parsed = StylistDefaults.fromJson(map);
+      final cleaned = parsed.sanitized();
+      if (parsed.hasDeprecatedContextTags) {
+        await _saveStylistDefaults(uid, cleaned);
+        await _touchProfile();
+        CloudSyncHooks.onLocalDataChanged(SyncScope.profile);
+        AppLogger.info(
+          'UserPreferencesRepository: removed deprecated stylist tags',
+        );
+      }
+      return cleaned;
     } catch (e) {
       AppLogger.warning(
         'UserPreferencesRepository: corrupt stylist defaults ($e)',

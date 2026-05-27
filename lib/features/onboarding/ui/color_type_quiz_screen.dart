@@ -12,6 +12,7 @@ import '../widgets/quiz_option_card.dart';
 import '../widgets/quiz_progress_bar.dart';
 import '../widgets/onboarding_funnel_header.dart';
 import '../data/onboarding_funnel.dart';
+import '../widgets/color_type_palette_card.dart';
 import '../widgets/quiz_visual_registry.dart';
 import '../widgets/quiz_visual_theme.dart';
 
@@ -321,39 +322,28 @@ class _ResultPanel extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
       child: Column(
         children: [
-          QuizVisualRegistry.forColorResult(
-            type,
-            size: QuizVisualTheme.resultPreviewSize,
-          ),
-          const SizedBox(height: 28),
-          const Text(
-            'Твой цветотип',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: AppBrandColors.pink,
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: AppBrandColors.pink.withValues(alpha: 0.12),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppBrandColors.pink.withValues(alpha: 0.08),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            type.displayNameRu,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w800,
-              color: AppBrandColors.title,
-              height: 1.15,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            type.englishLabel,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[500],
-              letterSpacing: 0.4,
-            ),
+            child: ColorTypePaletteCard.fromColorType(
+                  type: type,
+                  emphasized: true,
+                  swatchSize: QuizVisualTheme.resultPreviewSize,
+                ),
           ),
           const SizedBox(height: 20),
           Container(
@@ -369,15 +359,6 @@ class _ResultPanel extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  type.shortDescriptionRu,
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: Colors.grey[700],
-                    height: 1.5,
-                  ),
-                ),
-                const SizedBox(height: 16),
                 Text(
                   'Стилист будет подбирать образы с учётом этой палитры — '
                   'без фото и сложного анализа, только твои ответы.',

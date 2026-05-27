@@ -24,6 +24,7 @@ import '../../features/onboarding/ui/body_type_quiz_screen.dart';
 import '../../features/onboarding/ui/color_type_quiz_screen.dart';
 import '../../features/onboarding/ui/onboarding_screen.dart';
 import '../../features/splash/ui/splash_screen.dart';
+import '../../features/tutorial/ui/tutorial_screen.dart';
 import 'app_navigation_guard.dart';
 import 'route_names.dart';
 
@@ -79,6 +80,33 @@ class AppRouter {
         path: RouteNames.registration,
         builder: (context, state) => const RegistrationScreen(),
       ),
+      GoRoute(
+        name: RouteNames.tutorialName,
+        path: RouteNames.tutorial,
+        pageBuilder: (context, state) {
+          final fromProfile = state.uri.queryParameters['from'] == 'profile';
+          return CustomTransitionPage<void>(
+            key: state.pageKey,
+            child: TutorialScreen(fromProfile: fromProfile),
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+              final slide = Tween<Offset>(
+                begin: const Offset(0, 0.04),
+                end: Offset.zero,
+              ).animate(
+                CurvedAnimation(
+                  parent: animation,
+                  curve: Curves.easeOutCubic,
+                ),
+              );
+              return SlideTransition(
+                position: slide,
+                child: FadeTransition(opacity: animation, child: child),
+              );
+            },
+          );
+        },
+      ),
       ShellRoute(
         navigatorKey: shellNavigatorKey,
         builder: (context, state, child) => HomeShell(child: child),
@@ -100,8 +128,13 @@ class AppRouter {
         path: RouteNames.chat,
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) {
-          final restoreEntry = state.extra as OutfitHistoryEntry?;
-          return ChatScreen(restoreEntry: restoreEntry);
+          final extra = state.extra;
+          final restoreEntry = extra is OutfitHistoryEntry ? extra : null;
+          final initialPrompt = extra is String ? extra : null;
+          return ChatScreen(
+            restoreEntry: restoreEntry,
+            initialPrompt: initialPrompt,
+          );
         },
       ),
       GoRoute(

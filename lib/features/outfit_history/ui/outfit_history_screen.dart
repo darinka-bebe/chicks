@@ -89,7 +89,10 @@ class _OutfitHistoryScreenState extends State<OutfitHistoryScreen> {
         centerTitle: true,
       ),
       body: isLoading
-          ? ListView.builder(
+          ? AnimatedSwitcher(
+              duration: const Duration(milliseconds: 260),
+              child: ListView.builder(
+                key: const ValueKey('history-loading'),
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
               physics: const NeverScrollableScrollPhysics(),
               itemCount: 3,
@@ -97,32 +100,45 @@ class _OutfitHistoryScreenState extends State<OutfitHistoryScreen> {
                 padding: EdgeInsets.only(bottom: 14),
                 child: ChicksListCardSkeleton(),
               ),
+            ),
             )
           : history.loadError != null
-              ? ChicksRefreshableScroll(
-                  onRefresh: _refresh,
-                  child: ChicksErrorState(
-                    message: history.loadError!,
-                    onRetry: _refresh,
+              ? AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 260),
+                  child: ChicksRefreshableScroll(
+                    key: const ValueKey('history-error'),
+                    onRefresh: _refresh,
+                    child: ChicksErrorState(
+                      message: history.loadError!,
+                      onRetry: _refresh,
+                    ),
                   ),
                 )
               : entries.isEmpty
-              ? ChicksRefreshableScroll(
-                  onRefresh: _refresh,
-                  child: ChicksEmptyState(
-                    icon: Icons.history_rounded,
-                    secondaryIcon: Icons.auto_awesome_outlined,
-                    title: 'Твои AI-образы появятся здесь',
-                    message:
-                        'Каждая рекомендация стилиста с вещами из гардероба сохраняется автоматически',
-                    actionLabel: 'К чату со стилистом',
-                    onAction: _openChat,
+              ? AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 260),
+                  child: ChicksRefreshableScroll(
+                    key: const ValueKey('history-empty'),
+                    onRefresh: _refresh,
+                    child: ChicksEmptyState(
+                      icon: Icons.history_rounded,
+                      secondaryIcon: Icons.auto_awesome_outlined,
+                      title: 'No saved outfits yet',
+                      message:
+                          'Каждая рекомендация стилиста с вещами из гардероба сохраняется автоматически',
+                      hint: 'Попробуй: «Уютный образ на дождливый день»',
+                      actionLabel: 'К чату со стилистом',
+                      onAction: _openChat,
+                    ),
                   ),
                 )
-              : RefreshIndicator(
-                  color: AppBrandColors.pink,
-                  onRefresh: _refresh,
-                  child: ListView.builder(
+              : AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 260),
+                  child: RefreshIndicator(
+                    key: const ValueKey('history-list'),
+                    color: AppBrandColors.pink,
+                    onRefresh: _refresh,
+                    child: ListView.builder(
                     physics: const AlwaysScrollableScrollPhysics(
                       parent: BouncingScrollPhysics(),
                     ),
@@ -193,6 +209,7 @@ class _OutfitHistoryScreenState extends State<OutfitHistoryScreen> {
                       );
                     },
                   ),
+                ),
                 ),
     );
   }

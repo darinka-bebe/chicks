@@ -18,9 +18,10 @@ import '../widgets/chat_messages_list.dart';
 import '../widgets/chat_weather_banner.dart';
 
 class ChatScreen extends StatefulWidget {
-  const ChatScreen({super.key, this.restoreEntry});
+  const ChatScreen({super.key, this.restoreEntry, this.initialPrompt});
 
   final OutfitHistoryEntry? restoreEntry;
+  final String? initialPrompt;
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -30,11 +31,23 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   final _scrollController = ScrollController();
   final _inputBarKey = GlobalKey<ChatInputBarState>();
   bool _historyRestoreDone = false;
+  bool _initialPromptInserted = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeInsertInitialPrompt());
+  }
+
+  void _maybeInsertInitialPrompt() {
+    if (_initialPromptInserted) return;
+    final prompt = widget.initialPrompt?.trim() ?? '';
+    if (prompt.isEmpty) return;
+    final inputState = _inputBarKey.currentState;
+    if (inputState == null) return;
+    inputState.insertPrompt(prompt);
+    _initialPromptInserted = true;
   }
 
   @override
@@ -188,6 +201,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeInsertInitialPrompt());
     return BlocProvider(
       create: (_) => ChatCubit(),
       child: BlocListener<ChatCubit, ChatState>(

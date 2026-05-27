@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'quiz_visual_theme.dart';
 
-/// Color / tone swatches for the seasonal color quiz.
+/// Simple color swatches for quiz answer options (not final color type cards).
 class QuizColorPreview extends StatelessWidget {
   const QuizColorPreview({
     super.key,

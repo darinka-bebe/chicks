@@ -6,6 +6,7 @@ import '../../../core/services/demo_reset_service.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_brand_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/widgets/chicks_error_state.dart';
 import '../../../core/widgets/chicks_skeleton.dart';
 import '../../../core/widgets/iphone_layout.dart';
 import '../../../core/models/body_profile.dart';
@@ -47,6 +48,8 @@ class _ProfileTabState extends State<ProfileTab> {
   SeasonalColorType? _colorType;
   BodyProfile? _bodyProfile;
   UserPreferencesBundle _preferences = UserPreferencesBundle.empty;
+  bool _isLoadingStyleProfile = true;
+  String? _styleProfileError;
 
   static const int _listItemCount = 14;
 
@@ -57,13 +60,28 @@ class _ProfileTabState extends State<ProfileTab> {
   }
 
   Future<void> _loadStyleProfile() async {
-    final bundle = await UserPreferencesRepository.instance.loadBundle();
-    if (!mounted) return;
-    setState(() {
-      _preferences = bundle;
-      _colorType = bundle.colorType;
-      _bodyProfile = bundle.bodyProfile;
-    });
+    if (mounted) {
+      setState(() {
+        _isLoadingStyleProfile = true;
+        _styleProfileError = null;
+      });
+    }
+    try {
+      final bundle = await UserPreferencesRepository.instance.loadBundle();
+      if (!mounted) return;
+      setState(() {
+        _preferences = bundle;
+        _colorType = bundle.colorType;
+        _bodyProfile = bundle.bodyProfile;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _styleProfileError = 'Не удалось загрузить персонализацию профиля';
+      });
+    } finally {
+      if (mounted) setState(() => _isLoadingStyleProfile = false);
+    }
   }
 
   Future<void> _confirmSignOut() async {
@@ -211,6 +229,20 @@ class _ProfileTabState extends State<ProfileTab> {
                 ),
               ),
               const SizedBox(height: 8),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Повторить обучение'),
+                subtitle: const Text(
+                  'Краткий тур по гардеробу, AI-стилисту и избранному',
+                ),
+                onTap: () {
+                  Navigator.pop(dialogContext);
+                  context.pushNamed(
+                    RouteNames.tutorialName,
+                    queryParameters: {'from': 'profile'},
+                  );
+                },
+              ),
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Сбросить демо-данные'),
@@ -373,6 +405,22 @@ class _ProfileTabState extends State<ProfileTab> {
                 case 1:
                   return const SizedBox(height: AppSpacing.lg);
                 case 2:
+                  if (_isLoadingStyleProfile) {
+                    return const Column(
+                      children: [
+                        ChicksListCardSkeleton(),
+                        SizedBox(height: 12),
+                        ChicksListCardSkeleton(),
+                      ],
+                    );
+                  }
+                  if (_styleProfileError != null) {
+                    return ChicksErrorState(
+                      message: _styleProfileError!,
+                      compact: true,
+                      onRetry: _loadStyleProfile,
+                    );
+                  }
                   return ProfileStyleProfileGroup(
                     colorCard: ProfileColorTypeCard(
                       colorType: _colorType,
@@ -388,6 +436,9 @@ class _ProfileTabState extends State<ProfileTab> {
                 case 3:
                   return const SizedBox(height: AppSpacing.lg);
                 case 4:
+                  if (_isLoadingStyleProfile) {
+                    return const ChicksListCardSkeleton();
+                  }
                   return ProfilePreferencesSummaryCard(
                     bundle: _preferences,
                   );

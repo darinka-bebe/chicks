@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_brand_colors.dart';
@@ -7,6 +8,7 @@ import '../../../core/widgets/wardrobe_item_image.dart';
 import '../../../core/utils/logger.dart';
 import '../../../data/models/wardrobe_item.dart';
 import '../../../data/repositories/wardrobe_repository.dart';
+import '../wardrobe_controller.dart';
 import '../widgets/wardrobe_chip_selector.dart';
 
 class WardrobeItemDetailsScreen extends StatefulWidget {
@@ -21,6 +23,7 @@ class WardrobeItemDetailsScreen extends StatefulWidget {
 
 class _WardrobeItemDetailsScreenState extends State<WardrobeItemDetailsScreen> {
   bool _isDeleting = false;
+  bool _isFavorite = false;
 
   WardrobeItem get item => widget.item;
 
@@ -30,6 +33,19 @@ class _WardrobeItemDetailsScreenState extends State<WardrobeItemDetailsScreen> {
     AppLogger.info(
       'WardrobeItemDetails: open id=${item.id} title="${item.title}"',
     );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final wardrobe = context.read<WardrobeController>();
+      setState(() => _isFavorite = wardrobe.isFavorite(item.id));
+    });
+  }
+
+  Future<void> _toggleFavorite() async {
+    if (_isDeleting) return;
+    final wardrobe = context.read<WardrobeController>();
+    final added = await wardrobe.toggleFavorite(item.id);
+    if (!mounted) return;
+    setState(() => _isFavorite = added);
   }
 
   Future<void> _openEdit() async {
@@ -145,6 +161,16 @@ class _WardrobeItemDetailsScreenState extends State<WardrobeItemDetailsScreen> {
           ),
         ),
         centerTitle: true,
+        actions: [
+          IconButton(
+            tooltip: _isFavorite ? 'Убрать из избранного' : 'В избранное',
+            onPressed: _isDeleting ? null : _toggleFavorite,
+            icon: Icon(
+              _isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+              color: AppBrandColors.pink,
+            ),
+          ),
+        ],
       ),
       body: Stack(
         children: [

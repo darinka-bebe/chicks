@@ -26,11 +26,17 @@ abstract final class OutfitItemScorer {
     RecentOutfitSignals recentSignals = RecentOutfitSignals.empty,
   }) {
     var total = 0.0;
+    final weatherFit = analyzeWeatherFit(
+      item: item,
+      weather: weather,
+      context: context,
+    );
 
     total += _scoreOccasions(item, context.occasions) * 18;
     total += _scoreMoods(item, context.moods) * 16;
     total += _scoreWeatherTags(item, context.weather) * 14;
-    total += _scoreLiveWeather(item, weather) * 20;
+    total += weatherFit.weatherScore * 34;
+    total -= weatherFit.temperaturePenalty * 24;
     total += _scoreStyleCohesion(item, context) * 10;
     total += _scoreNeutralBasics(item) * 4;
     total += _scoreColorType(item, colorType) * 20;
@@ -60,6 +66,191 @@ abstract final class OutfitItemScorer {
     total -= _scoreRecentRepeatPenalty(item, coSelected, recentSignals) * 14;
 
     return total.clamp(0.0, 135.0);
+  }
+
+  static WeatherFitAnalysis analyzeWeatherFit({
+    required WardrobeItem item,
+    WeatherSnapshot? weather,
+    StylistRequestContext context = StylistRequestContext.empty,
+  }) {
+    if (weather == null || !weather.isAvailable) {
+      return const WeatherFitAnalysis(weatherScore: 0.5);
+    }
+
+    final title = item.title.toLowerCase();
+    final category = item.category.toLowerCase();
+    final color = item.color.toLowerCase();
+    final styles = item.styles.map((e) => e.toLowerCase()).toList();
+    final vibes = item.vibes.map((e) => e.toLowerCase()).toList();
+    final fit = item.fit.toLowerCase();
+    final slot = WardrobeSlotClassifier.classify(item);
+    final temp = weather.temperatureCelsius;
+    final isCold = temp != null && temp < 12;
+    final isVeryCold = temp != null && temp < 12;
+    final isChilly = temp != null && temp >= 12 && temp < 16;
+    final isRainy = weather.conditions.contains(WeatherCondition.rainy);
+    final isSnowy = weather.conditions.contains(WeatherCondition.snowy);
+    final isWet = isRainy || isSnowy;
+
+    var score = 0.5;
+    var temperaturePenalty = 0.0;
+    var shouldReject = false;
+    final penalties = <String>[];
+    final boosts = <String>[];
+    final boostedCategories = <String>{};
+
+    final isLightTop =
+        slot == WardrobeOutfitSlot.top &&
+        (title.contains('футбол') ||
+            title.contains('майк') ||
+            title.contains('t-shirt') ||
+            title.contains('tee') ||
+            title.contains('топ'));
+    final isShortsLike =
+        slot == WardrobeOutfitSlot.bottom &&
+        (title.contains('шорт') ||
+            title.contains('short') ||
+            title.contains('мини'));
+    final isOpenShoes =
+        slot == WardrobeOutfitSlot.shoes &&
+        (title.contains('сандал') ||
+            title.contains('босонож') ||
+            title.contains('шлёп') ||
+            title.contains('шлеп') ||
+            title.contains('сланц') ||
+            title.contains('flip'));
+    final isWarmTop = title.contains('худи') ||
+        title.contains('hoodie') ||
+        title.contains('свитер') ||
+        title.contains('джемпер') ||
+        title.contains('кардиган') ||
+        title.contains('knit') ||
+        title.contains('толстов');
+    final isOuterwear = slot == WardrobeOutfitSlot.outerwear ||
+        category.contains('верхняя') ||
+        title.contains('куртк') ||
+        title.contains('пальт') ||
+        title.contains('плащ') ||
+        title.contains('тренч') ||
+        title.contains('jacket') ||
+        title.contains('coat');
+    final hasCozySignals = styles.any(
+          (s) => s.contains('comfy') || s.contains('cozy') || s.contains('casual'),
+        ) ||
+        vibes.any((v) => v.contains('уют') || v.contains('тепл')) ||
+        fit.contains('oversized') ||
+        context.moods.any(
+          (m) => m.toLowerCase().contains('comfy') || m.toLowerCase().contains('cozy'),
+        );
+    final isDarkPalette = color.contains('чёрн') ||
+        color.contains('черн') ||
+        color.contains('графит') ||
+        color.contains('сер') ||
+        color.contains('син') ||
+        color.contains('бордо') ||
+        color.contains('корич');
+    final isVeryLightPalette = color.contains('бел') ||
+        color.contains('молоч') ||
+        color.contains('крем') ||
+        color.contains('пастел');
+    final isProtectedShoes = slot == WardrobeOutfitSlot.shoes &&
+        !isOpenShoes &&
+        (title.contains('бот') ||
+            title.contains('крос') ||
+            title.contains('кед') ||
+            title.contains('лофер') ||
+            title.contains('boot') ||
+            title.contains('sneaker'));
+
+    if (isCold || isVeryCold) {
+      if (isLightTop) {
+        score -= 0.4;
+        temperaturePenalty += 0.45;
+        penalties.add('light-top-in-cold');
+        if (isVeryCold || isWet) shouldReject = true;
+      }
+      if (isShortsLike) {
+        score -= 0.35;
+        temperaturePenalty += 0.4;
+        penalties.add('shorts-in-cold');
+        if (isVeryCold) shouldReject = true;
+      }
+      if (isOpenShoes) {
+        score -= 0.45;
+        temperaturePenalty += 0.5;
+        penalties.add('open-shoes-in-cold');
+        shouldReject = true;
+      }
+      if (isWarmTop) {
+        score += 0.28;
+        boosts.add('warm-top-boost');
+        boostedCategories.add('warm-top');
+      }
+      if (isOuterwear) {
+        score += 0.35;
+        boosts.add('outerwear-boost');
+        boostedCategories.add('outerwear');
+      }
+    } else if (isChilly) {
+      if (isOpenShoes) {
+        score -= 0.2;
+        temperaturePenalty += 0.18;
+        penalties.add('open-shoes-in-chilly');
+      }
+      if (isWarmTop || isOuterwear) {
+        score += 0.18;
+        boosts.add('chilly-layer-boost');
+        boostedCategories.add(isOuterwear ? 'outerwear' : 'warm-top');
+      }
+    }
+
+    if (isWet) {
+      if (isOpenShoes) {
+        score -= 0.45;
+        temperaturePenalty += 0.35;
+        penalties.add('open-shoes-in-rain');
+        shouldReject = true;
+      }
+      if (isOuterwear) {
+        score += 0.25;
+        boosts.add('rain-outerwear-boost');
+        boostedCategories.add('outerwear');
+      }
+      if (isProtectedShoes) {
+        score += 0.2;
+        boosts.add('protected-footwear-boost');
+        boostedCategories.add('protected-footwear');
+      }
+      if (isDarkPalette) {
+        score += 0.08;
+        boosts.add('rain-dark-palette-boost');
+        boostedCategories.add('dark-palette');
+      }
+      if (isVeryLightPalette) {
+        score -= 0.08;
+        penalties.add('rain-light-palette-penalty');
+      }
+      if (hasCozySignals) {
+        score += 0.1;
+        boosts.add('rain-cozy-style-boost');
+        boostedCategories.add('cozy-style');
+      }
+    }
+
+    if ((isCold || isWet) && hasCozySignals) {
+      score += 0.1;
+      boosts.add('weather-comfort-style-boost');
+      boostedCategories.add('cozy-style');
+    }
+
+    return WeatherFitAnalysis(
+      weatherScore: score.clamp(0.0, 1.0),
+      temperaturePenalty: temperaturePenalty.clamp(0.0, 1.0),
+      isRejected: shouldReject,
+      penalties: penalties,
+      boosts: boosts,
+      boostedCategories: boostedCategories.toList(growable: false),
+    );
   }
 
   static double _scoreRecentRepeatPenalty(
@@ -365,48 +556,6 @@ abstract final class OutfitItemScorer {
     return false;
   }
 
-  static double _scoreLiveWeather(WardrobeItem item, WeatherSnapshot? weather) {
-    if (weather == null || !weather.isAvailable) return 0.5;
-
-    final temp = weather.temperatureCelsius;
-    final season = item.season.toLowerCase();
-    final category = item.category.toLowerCase();
-    var score = 0.5;
-
-    if (temp != null) {
-      if (temp < 12) {
-        if (season.contains('зим') || season.contains('осен')) score += 0.35;
-        if (category.contains('верхняя')) score += 0.25;
-        if (category == 'обувь' &&
-            !item.title.toLowerCase().contains('сандал')) {
-          score += 0.15;
-        }
-      } else if (temp > 22) {
-        if (season.contains('лет') || season.contains('весн')) score += 0.35;
-        if (category == 'верхняя одежда') score -= 0.2;
-      }
-    }
-
-    if (weather.conditions.contains(WeatherCondition.rainy)) {
-      if (category.contains('верхняя') ||
-          item.title.toLowerCase().contains('плащ') ||
-          item.title.toLowerCase().contains('тренч')) {
-        score += 0.3;
-      }
-      if (category == 'обувь' &&
-          item.title.toLowerCase().contains('сандал')) {
-        score -= 0.4;
-      }
-    }
-
-    if (weather.conditions.contains(WeatherCondition.windy) &&
-        category.contains('верхняя')) {
-      score += 0.15;
-    }
-
-    return score.clamp(0.0, 1.0);
-  }
-
   static double _scoreStyleCohesion(
     WardrobeItem item,
     StylistRequestContext context,
@@ -450,6 +599,24 @@ abstract final class OutfitItemScorer {
     }
     return 0.3;
   }
+}
+
+class WeatherFitAnalysis {
+  const WeatherFitAnalysis({
+    required this.weatherScore,
+    this.temperaturePenalty = 0,
+    this.isRejected = false,
+    this.penalties = const [],
+    this.boosts = const [],
+    this.boostedCategories = const [],
+  });
+
+  final double weatherScore;
+  final double temperaturePenalty;
+  final bool isRejected;
+  final List<String> penalties;
+  final List<String> boosts;
+  final List<String> boostedCategories;
 }
 
 class _ColorKeywordSet {

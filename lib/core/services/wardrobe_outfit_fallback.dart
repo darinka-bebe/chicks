@@ -110,7 +110,21 @@ abstract final class WardrobeOutfitFallback {
     const varietyWindow = 3.0;
 
     final scored = <({WardrobeItem item, double score})>[];
+    final weatherAnalyses = <String, WeatherFitAnalysis>{};
     for (final item in candidates) {
+      final weatherFit = OutfitItemScorer.analyzeWeatherFit(
+        item: item,
+        weather: weather,
+        context: context,
+      );
+      weatherAnalyses[item.id] = weatherFit;
+      if (weatherFit.isRejected) {
+        AppLogger.info(
+          'WardrobeOutfitFallback: rejected weather-unrealistic item '
+          '${item.title} [penalties=${weatherFit.penalties.join(',')}]',
+        );
+        continue;
+      }
       scored.add((
         item: item,
         score: OutfitItemScorer.score(
@@ -127,7 +141,32 @@ abstract final class WardrobeOutfitFallback {
       ));
     }
 
-    if (scored.isEmpty) return candidates.first;
+    if (scored.isEmpty) {
+      final softScored = <({WardrobeItem item, double score})>[];
+      for (final item in candidates) {
+        softScored.add((
+          item: item,
+          score: OutfitItemScorer.score(
+            item: item,
+            context: context,
+            weather: weather,
+            colorType: colorType,
+            bodyProfile: bodyProfile,
+            coSelected: coSelected,
+            preferenceProfile: preferenceProfile,
+            favoriteProfile: favoriteProfile,
+            recentSignals: recentSignals,
+          ),
+        ));
+      }
+      if (softScored.isEmpty) return candidates.first;
+      softScored.sort((a, b) => b.score.compareTo(a.score));
+      AppLogger.info(
+        'WardrobeOutfitFallback: all candidates hard-rejected, '
+        'using soft fallback ${softScored.first.item.title}',
+      );
+      return softScored.first.item;
+    }
 
     scored.sort((a, b) => b.score.compareTo(a.score));
     final topScore = scored.first.score;
@@ -138,11 +177,31 @@ abstract final class WardrobeOutfitFallback {
 
     for (final item in topCandidates) {
       if (!recentSignals.recentItemIds.contains(item.id)) {
+        _logPickedWeatherDiagnostics(item, weatherAnalyses[item.id]);
         return item;
       }
     }
 
+    _logPickedWeatherDiagnostics(topCandidates.first, weatherAnalyses[topCandidates.first.id]);
     return topCandidates.first;
+  }
+
+  static void _logPickedWeatherDiagnostics(
+    WardrobeItem item,
+    WeatherFitAnalysis? weatherFit,
+  ) {
+    if (weatherFit == null) return;
+    AppLogger.info(
+      'WardrobeOutfitFallback: weather score=${weatherFit.weatherScore.toStringAsFixed(2)} '
+      'temp_penalty=${weatherFit.temperaturePenalty.toStringAsFixed(2)} '
+      'item=${item.title}',
+    );
+    if (weatherFit.boostedCategories.isNotEmpty) {
+      AppLogger.info(
+        'WardrobeOutfitFallback: boosted categories '
+        '${weatherFit.boostedCategories.join(', ')}',
+      );
+    }
   }
 
   /// Injects «Состав образа» when the model left the section empty.

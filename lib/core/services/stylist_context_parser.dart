@@ -33,9 +33,15 @@ abstract final class StylistContextParser {
     final normalized = message.toLowerCase();
 
     return StylistRequestContext(
-      moods: _matchKeys(normalized, _moodKeywords),
-      weather: _matchKeys(normalized, _weatherKeywords),
-      occasions: _matchKeys(normalized, _occasionKeywords),
+      moods: StylistContextCatalog.filterMoods(
+        _matchKeys(normalized, _moodKeywords),
+      ),
+      weather: StylistContextCatalog.filterWeather(
+        _matchKeys(normalized, _weatherKeywords),
+      ),
+      occasions: StylistContextCatalog.filterOccasions(
+        _matchKeys(normalized, _occasionKeywords),
+      ),
     );
   }
 

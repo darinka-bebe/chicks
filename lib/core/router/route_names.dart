@@ -19,6 +19,7 @@ class RouteNames {
   static const String favoriteOutfitDetails = '/favorites/item';
   static const String outfitHistory = '/outfit-history';
   static const String outfitHistoryDetails = '/outfit-history/item';
+  static const String tutorial = '/tutorial';
 
   // Имена
   static const String splashName = 'splash';
@@ -40,4 +41,5 @@ class RouteNames {
   static const String favoriteOutfitDetailsName = 'favoriteOutfitDetails';
   static const String outfitHistoryName = 'outfitHistory';
   static const String outfitHistoryDetailsName = 'outfitHistoryDetails';
+  static const String tutorialName = 'tutorial';
 }

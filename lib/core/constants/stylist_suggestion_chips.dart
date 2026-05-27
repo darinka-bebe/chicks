@@ -45,6 +45,42 @@ abstract final class StylistContextCatalog {
 
   static const occasions = ['school', 'date', 'office', 'walk', 'party'];
 
+  static bool isAllowedMood(String tag) => _isAllowed(tag, moods);
+
+  static bool isAllowedWeather(String tag) => _isAllowed(tag, weather);
+
+  static bool isAllowedOccasion(String tag) => _isAllowed(tag, occasions);
+
+  static List<String> filterMoods(Iterable<String> tags) =>
+      _filter(tags, moods);
+
+  static List<String> filterWeather(Iterable<String> tags) =>
+      _filter(tags, weather);
+
+  static List<String> filterOccasions(Iterable<String> tags) =>
+      _filter(tags, occasions);
+
+  static bool _isAllowed(String tag, List<String> allowed) {
+    final needle = tag.trim().toLowerCase();
+    if (needle.isEmpty) return false;
+    return allowed.any((entry) => entry.toLowerCase() == needle);
+  }
+
+  static List<String> _filter(Iterable<String> tags, List<String> allowed) {
+    final seen = <String>{};
+    final result = <String>[];
+    for (final tag in tags) {
+      final needle = tag.trim().toLowerCase();
+      if (needle.isEmpty) continue;
+      for (final entry in allowed) {
+        if (entry.toLowerCase() != needle) continue;
+        if (seen.add(entry)) result.add(entry);
+        break;
+      }
+    }
+    return result;
+  }
+
   static const suggestionChips = [
     StylistSuggestionChip(
       emoji: '💖',

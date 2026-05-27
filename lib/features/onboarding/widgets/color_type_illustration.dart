@@ -2,30 +2,27 @@ import 'package:flutter/material.dart';
 
 import 'quiz_visual_theme.dart';
 
-/// PNG previews for the seasonal color quiz (separate from body-type assets).
-abstract final class ColorTypeIllustrationAssets {
-  static const _base = 'assets/color_quiz';
+const _colorQuizOptionIds = {
+  'eye_light_blue',
+  'eye_green_hazel',
+  'eye_warm_brown',
+  'eye_dark_brown',
+  'hair_light_blonde',
+  'hair_golden',
+  'hair_cool_brown',
+  'hair_dark',
+  'undertone_warm',
+  'undertone_cool',
+  'undertone_neutral',
+  'depth_light',
+  'depth_medium',
+  'depth_deep',
+};
 
-  static String? forOptionId(String optionId) {
-    const ids = {
-      'eye_light_blue',
-      'eye_green_hazel',
-      'eye_warm_brown',
-      'eye_dark_brown',
-      'hair_light_blonde',
-      'hair_golden',
-      'hair_cool_brown',
-      'hair_dark',
-      'undertone_warm',
-      'undertone_cool',
-      'undertone_neutral',
-      'depth_light',
-      'depth_medium',
-      'depth_deep',
-    };
-    if (!ids.contains(optionId)) return null;
-    return '$_base/$optionId.png';
-  }
+/// Asset path for a color-quiz option, or null when using another preview.
+String? colorQuizAssetPath(String optionId) {
+  if (!_colorQuizOptionIds.contains(optionId)) return null;
+  return 'assets/color_quiz/$optionId.png';
 }
 
 /// Illustration tile for color-quiz answer cards.
@@ -42,7 +39,7 @@ class ColorTypeIllustration extends StatelessWidget {
     super.key,
     this.size = QuizVisualTheme.optionPreviewSize,
     this.emphasized = false,
-  }) : assetPath = ColorTypeIllustrationAssets.forOptionId(optionId) ?? '';
+  }) : assetPath = colorQuizAssetPath(optionId) ?? '';
 
   final String assetPath;
   final double size;

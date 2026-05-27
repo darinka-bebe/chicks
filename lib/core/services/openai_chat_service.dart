@@ -32,6 +32,7 @@ import 'stylist_defaults_prompt_builder.dart';
 import 'style_insights_loader.dart';
 import 'style_insights_prompt_builder.dart';
 import 'outfit_recommendation_curator.dart';
+import 'outfit_weather_guard.dart';
 import 'openai_cost_logger.dart';
 import 'stylist_pipeline_logger.dart';
 import 'stylist_pipeline_safety.dart';
@@ -415,6 +416,21 @@ class OpenAiChatService {
         requestedIds: curatedIds,
         wardrobe: wardrobeForCuration,
       );
+
+      if (resolvedItems.isNotEmpty && weather.isAvailable) {
+        resolvedItems = OutfitWeatherGuard.repairOutfit(
+          current: resolvedItems,
+          wardrobe: wardrobeForCuration,
+          weather: weather,
+          context: requestContext,
+          colorType: styleProfile.colorType,
+          bodyProfile: styleProfile.bodyProfile,
+          preferenceProfile: styleProfile.dislikeProfile,
+          favoriteProfile: styleProfile.favoriteProfile,
+          recentSignals: recentSignals,
+        );
+        curatedIds = resolvedItems.map((item) => item.id).toList();
+      }
 
       if (resolvedItems.isEmpty && wardrobeForCuration.isNotEmpty) {
         resolvedItems = WardrobeOutfitFallback.build(

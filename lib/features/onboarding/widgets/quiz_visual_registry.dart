@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/constants/seasonal_palette_catalog.dart';
 import '../../../core/models/body_shape_type.dart';
 import '../../../core/models/seasonal_color_type.dart';
 import 'body_type_illustration.dart';
@@ -7,6 +8,7 @@ import 'color_type_illustration.dart';
 import 'contrast_level_illustration.dart';
 import 'quiz_color_preview.dart';
 import 'quiz_icon_preview.dart';
+import 'seasonal_palette_swatch.dart';
 import 'quiz_visual_theme.dart';
 
 /// Maps every quiz option id → consistent vector preview.
@@ -60,14 +62,15 @@ abstract final class QuizVisualRegistry {
       );
     }
 
-    final asset = ColorTypeIllustrationAssets.forOptionId(optionId);
-    if (asset != null) {
+    final assetPath = colorQuizAssetPath(optionId);
+    if (assetPath != null) {
       return ColorTypeIllustration(
-        assetPath: asset,
+        assetPath: assetPath,
         size: size,
         emphasized: emphasized,
       );
     }
+
     final colors = _colorsForOption(optionId);
     if (colors != null) {
       return QuizColorPreview(
@@ -77,6 +80,7 @@ abstract final class QuizVisualRegistry {
         emphasized: emphasized,
       );
     }
+
     return QuizIconPreview(
       icon: Icons.palette_outlined,
       size: size,
@@ -92,9 +96,10 @@ abstract final class QuizVisualRegistry {
     );
   }
 
+  /// Premium palette block — only for the final color type result.
   static Widget forColorResult(SeasonalColorType type, {double size = 112}) {
-    return QuizColorPreview(
-      colors: _paletteForSeason(type),
+    return SeasonalPaletteSwatch(
+      colors: SeasonalPaletteCatalog.colorsFor(type.paletteId),
       size: size,
       emphasized: true,
     );
@@ -130,29 +135,5 @@ abstract final class QuizVisualRegistry {
         'undertone_warm' => const Color(0xFFFFE4C4),
         'undertone_cool' => const Color(0xFFE8F0FF),
         _ => null,
-      };
-
-  static List<Color> _paletteForSeason(SeasonalColorType type) =>
-      switch (type) {
-        SeasonalColorType.lightSpring => const [
-            Color(0xFFFFB6C8),
-            Color(0xFF98D8C8),
-            Color(0xFFFFF0A8),
-          ],
-        SeasonalColorType.warmAutumn => const [
-            Color(0xFFC8860A),
-            Color(0xFF8B5A2B),
-            Color(0xFF6B8F3A),
-          ],
-        SeasonalColorType.softSummer => const [
-            Color(0xFFB8C5E8),
-            Color(0xFFE8C4D8),
-            Color(0xFFD4E8F0),
-          ],
-        SeasonalColorType.coolWinter => const [
-            Color(0xFF4169E1),
-            Color(0xFF9370DB),
-            Color(0xFF2F4F4F),
-          ],
       };
 }

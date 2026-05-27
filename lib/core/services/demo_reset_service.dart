@@ -1,6 +1,7 @@
 import '../../data/repositories/chat_history_repository.dart';
 import '../../data/repositories/favorites_repository.dart';
 import '../../data/repositories/onboarding_repository.dart';
+import '../../data/repositories/tutorial_repository.dart';
 import '../../data/repositories/outfit_dislike_repository.dart';
 import '../../data/repositories/outfit_history_repository.dart';
 import '../../data/repositories/user_profile_repository.dart';
@@ -39,6 +40,7 @@ abstract final class DemoResetService {
   static Future<void> resetAllIncludingQuizzes() async {
     await resetDemoData();
     await OnboardingRepository.instance.setCompleted(completed: false);
+    await TutorialRepository.instance.setCompleted(completed: false);
     await UserProfileRepository.instance.setColorTypeQuizCompleted(
       completed: false,
     );

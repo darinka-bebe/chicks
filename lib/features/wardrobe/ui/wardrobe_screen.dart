@@ -10,9 +10,13 @@ import '../../../core/utils/logger.dart';
 import '../../../data/models/wardrobe_item.dart';
 import '../../../data/repositories/wardrobe_repository.dart';
 import '../wardrobe_controller.dart';
+import '../data/wardrobe_filter.dart';
 import '../widgets/wardrobe_empty_state.dart';
+import '../widgets/wardrobe_filter_bar.dart';
 import '../widgets/wardrobe_insights_banner.dart';
 import '../widgets/wardrobe_item_card.dart';
+import '../widgets/wardrobe_no_results_state.dart';
+import '../widgets/wardrobe_search_bar.dart';
 
 class WardrobeScreen extends StatefulWidget {
   const WardrobeScreen({
@@ -39,6 +43,9 @@ class _WardrobeScreenState extends State<WardrobeScreen>
   double _deleteAnimValue = 1;
 
   final Map<String, AnimationController> _insertControllers = {};
+
+  final _searchController = TextEditingController();
+  WardrobeFilterCriteria _filterCriteria = const WardrobeFilterCriteria();
 
   WardrobeController? _wardrobe;
 
@@ -69,6 +76,7 @@ class _WardrobeScreenState extends State<WardrobeScreen>
 
   @override
   void dispose() {
+    _searchController.dispose();
     _entranceController?.dispose();
     _deleteController?.dispose();
     for (final c in _insertControllers.values) {
@@ -166,6 +174,7 @@ class _WardrobeScreenState extends State<WardrobeScreen>
   }
 
   Future<void> _runDeleteAnimation(String itemId) async {
+    final controller = context.read<WardrobeController>();
     _deleteController?.dispose();
     _deleteController = AnimationController(
       vsync: this,
@@ -188,7 +197,8 @@ class _WardrobeScreenState extends State<WardrobeScreen>
     await _deleteController!.forward();
     if (!mounted) return;
 
-    await context.read<WardrobeController>().onItemDeleted(itemId);
+    await controller.onItemDeleted(itemId);
+    if (!mounted) return;
 
     setState(() {
       _deletingItemId = null;
@@ -199,9 +209,7 @@ class _WardrobeScreenState extends State<WardrobeScreen>
     _deleteController = null;
 
     _entranceAnimations = List.generate(
-      context.read<WardrobeController>().items.isEmpty
-          ? 1
-          : context.read<WardrobeController>().items.length,
+      controller.items.isEmpty ? 1 : controller.items.length,
       (_) => const AlwaysStoppedAnimation<double>(1.0),
     );
   }
@@ -280,7 +288,81 @@ class _WardrobeScreenState extends State<WardrobeScreen>
     return 1;
   }
 
-  Widget _buildGrid(List<WardrobeItem> items) {
+  void _updateFilter(WardrobeFilterCriteria next) {
+    setState(() => _filterCriteria = next);
+    AppLogger.debug(
+      'WardrobeScreen: filters updated '
+      'search="${next.query}" category=${next.category} season=${next.season} '
+      'color=${next.color} style=${next.style} favoritesOnly=${next.favoritesOnly}',
+    );
+  }
+
+  void _clearFilters() {
+    _searchController.clear();
+    setState(() {
+      _filterCriteria = _filterCriteria.cleared().copyWith(
+            favoriteIds: _filterCriteria.favoriteIds,
+          );
+    });
+    AppLogger.debug('WardrobeScreen: filters cleared');
+  }
+
+  List<WardrobeItem> _filteredItems(
+    List<WardrobeItem> source,
+    Set<String> favoriteIds,
+  ) {
+    return WardrobeFilterEngine.apply(
+      items: source,
+      criteria: _filterCriteria.copyWith(favoriteIds: favoriteIds),
+    );
+  }
+
+  Widget _buildBrowseHeader({
+    required int totalCount,
+    required int visibleCount,
+    required Set<String> availableColors,
+    required Set<String> availableStyles,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          child: WardrobeSearchBar(
+            controller: _searchController,
+            onChanged: (value) =>
+                _updateFilter(_filterCriteria.copyWith(query: value)),
+            onClear: _clearFilters,
+          ),
+        ),
+        WardrobeFilterBar(
+          criteria: _filterCriteria,
+          availableColors: availableColors,
+          availableStyles: availableStyles,
+          onCriteriaChanged: _updateFilter,
+          onClearAll: _clearFilters,
+        ),
+        const SizedBox(height: 12),
+        _buildCountLabel(visibleCount, totalCount: totalCount),
+        const WardrobeInsightsBanner(),
+      ],
+    );
+  }
+
+  Widget _buildGrid(
+    List<WardrobeItem> items, {
+    required WardrobeEmptyFilterReason emptyReason,
+    required bool showFavoritesToggle,
+    required bool Function(String id) isFavorite,
+    Future<void> Function(String id)? onFavoriteToggle,
+  }) {
+    if (items.isEmpty && emptyReason != WardrobeEmptyFilterReason.none) {
+      return WardrobeNoResultsState(
+        reason: emptyReason,
+        onClearFilters: _clearFilters,
+      );
+    }
+
     if (items.isEmpty) {
       return WardrobeEmptyState(onAddPressed: _openAddItem);
     }
@@ -295,9 +377,9 @@ class _WardrobeScreenState extends State<WardrobeScreen>
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 88),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          childAspectRatio: 0.72,
+          crossAxisSpacing: 14,
+          mainAxisSpacing: 14,
+          childAspectRatio: 0.7,
         ),
         itemCount: items.length,
         itemBuilder: (context, index) {
@@ -306,6 +388,10 @@ class _WardrobeScreenState extends State<WardrobeScreen>
             key: ValueKey<String>(wardrobeItem.id),
             item: wardrobeItem,
             animationValue: _cardAnimationValue(wardrobeItem, index, items),
+            isFavorite: isFavorite(wardrobeItem.id),
+            onFavoriteToggle: showFavoritesToggle && onFavoriteToggle != null
+                ? () => onFavoriteToggle(wardrobeItem.id)
+                : null,
             onTap: () => _openItemDetails(wardrobeItem),
           );
         },
@@ -333,70 +419,162 @@ class _WardrobeScreenState extends State<WardrobeScreen>
   @override
   Widget build(BuildContext context) {
     if (widget.items != null) {
-      final items = widget.items!;
+      final allItems = widget.items!;
+      final filtered = _filteredItems(allItems, {});
+      final emptyReason = WardrobeFilterEngine.emptyReason(
+        criteria: _filterCriteria,
+        totalCount: allItems.length,
+        filteredCount: filtered.length,
+      );
+
       return Scaffold(
         backgroundColor: AppBrandColors.background,
-        appBar: _buildAppBar(context, hasItems: items.isNotEmpty),
+        appBar: _buildAppBar(context, hasItems: allItems.isNotEmpty),
         floatingActionButton: _buildFab(context),
         body: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildCountLabel(items.length),
-            const WardrobeInsightsBanner(),
-            Expanded(child: _buildGrid(items)),
+            if (allItems.isNotEmpty)
+              _buildBrowseHeader(
+                totalCount: allItems.length,
+                visibleCount: filtered.length,
+                availableColors: WardrobeFilterEngine.uniqueColors(allItems),
+                availableStyles: WardrobeFilterEngine.uniqueStyles(allItems),
+              ),
+            Expanded(
+              child: _buildGrid(
+                filtered,
+                emptyReason: emptyReason,
+                showFavoritesToggle: false,
+                isFavorite: (_) => false,
+              ),
+            ),
           ],
         ),
       );
     }
 
     final wardrobe = context.watch<WardrobeController>();
-    final items = wardrobe.items;
+    final allItems = wardrobe.items;
+    final filtered = _filteredItems(allItems, wardrobe.favoriteIds);
+    final emptyReason = WardrobeFilterEngine.emptyReason(
+      criteria: _filterCriteria.copyWith(favoriteIds: wardrobe.favoriteIds),
+      totalCount: allItems.length,
+      filteredCount: filtered.length,
+    );
 
-    if (!wardrobe.isLoaded && wardrobe.isLoading) {
-      return Scaffold(
-        backgroundColor: AppBrandColors.background,
-        appBar: _buildAppBar(context, hasItems: false),
-        floatingActionButton: _buildFab(context),
-        body: const ChicksWardrobeGridSkeleton(),
-      );
+    if (_filterCriteria.favoriteIds != wardrobe.favoriteIds) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() {
+          _filterCriteria = _filterCriteria.copyWith(
+            favoriteIds: wardrobe.favoriteIds,
+          );
+        });
+      });
     }
 
-    if (wardrobe.loadError != null) {
-      return Scaffold(
-        backgroundColor: AppBrandColors.background,
-        appBar: _buildAppBar(context, hasItems: false),
-        floatingActionButton: _buildFab(context),
-        body: ChicksRefreshableScroll(
-          onRefresh: wardrobe.refresh,
-          child: ChicksErrorState(
-            message: wardrobe.loadError!,
-            onRetry: wardrobe.refresh,
+    final isInitialLoading = !wardrobe.isLoaded && wardrobe.isLoading;
+    final hasError = wardrobe.loadError != null;
+    final hasItems = allItems.isNotEmpty;
+
+    Widget body;
+    if (isInitialLoading) {
+      body = const ChicksWardrobeGridSkeleton(key: ValueKey('wardrobe-loading'));
+    } else if (hasError) {
+      body = ChicksRefreshableScroll(
+        key: const ValueKey('wardrobe-error'),
+        onRefresh: wardrobe.refresh,
+        child: ChicksErrorState(
+          message: wardrobe.loadError!,
+          onRetry: wardrobe.refresh,
+        ),
+      );
+    } else if (!hasItems) {
+      body = ChicksRefreshableScroll(
+        key: const ValueKey('wardrobe-empty'),
+        onRefresh: wardrobe.refresh,
+        child: WardrobeEmptyState(onAddPressed: _openAddItem),
+      );
+    } else {
+      body = RefreshIndicator(
+        key: const ValueKey('wardrobe-list'),
+        color: AppBrandColors.pink,
+        onRefresh: wardrobe.refresh,
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
           ),
+          slivers: [
+            SliverToBoxAdapter(
+              child: _buildBrowseHeader(
+                totalCount: allItems.length,
+                visibleCount: filtered.length,
+                availableColors: WardrobeFilterEngine.uniqueColors(allItems),
+                availableStyles: WardrobeFilterEngine.uniqueStyles(allItems),
+              ),
+            ),
+            if (filtered.isEmpty &&
+                emptyReason != WardrobeEmptyFilterReason.none)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: WardrobeNoResultsState(
+                  reason: emptyReason,
+                  onClearFilters: _clearFilters,
+                ),
+              )
+            else if (filtered.isEmpty)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: WardrobeEmptyState(onAddPressed: _openAddItem),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 88),
+                sliver: SliverGrid(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 14,
+                    mainAxisSpacing: 14,
+                    childAspectRatio: 0.7,
+                  ),
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final wardrobeItem = filtered[index];
+                      return WardrobeItemCard(
+                        key: ValueKey<String>(wardrobeItem.id),
+                        item: wardrobeItem,
+                        animationValue: _cardAnimationValue(
+                          wardrobeItem,
+                          index,
+                          filtered,
+                        ),
+                        isFavorite: wardrobe.isFavorite(wardrobeItem.id),
+                        onFavoriteToggle: () async {
+                          await wardrobe.toggleFavorite(wardrobeItem.id);
+                        },
+                        onTap: () => _openItemDetails(wardrobeItem),
+                      );
+                    },
+                    childCount: filtered.length,
+                  ),
+                ),
+              ),
+          ],
         ),
       );
     }
 
     return Scaffold(
       backgroundColor: AppBrandColors.background,
-      appBar: _buildAppBar(context, hasItems: items.isNotEmpty),
+      appBar: _buildAppBar(context, hasItems: hasItems),
       floatingActionButton: _buildFab(context),
-      body: items.isEmpty
-          ? ChicksRefreshableScroll(
-              onRefresh: wardrobe.refresh,
-              child: WardrobeEmptyState(onAddPressed: _openAddItem),
-            )
-          : RefreshIndicator(
-              color: AppBrandColors.pink,
-              onRefresh: wardrobe.refresh,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildCountLabel(items.length),
-                  const WardrobeInsightsBanner(),
-                  Expanded(child: _buildGrid(items)),
-                ],
-              ),
-            ),
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 260),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        child: body,
+      ),
     );
   }
 
@@ -447,11 +625,14 @@ class _WardrobeScreenState extends State<WardrobeScreen>
     );
   }
 
-  Widget _buildCountLabel(int count) {
+  Widget _buildCountLabel(int count, {int? totalCount}) {
+    final label = totalCount != null && totalCount != count
+        ? '$count из $totalCount ${_itemsLabel(totalCount)}'
+        : '$count ${_itemsLabel(count)}';
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
       child: Text(
-        '$count ${_itemsLabel(count)}',
+        label,
         style: TextStyle(
           fontSize: 14,
           color: Colors.grey[600],

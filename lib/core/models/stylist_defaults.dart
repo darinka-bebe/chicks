@@ -1,3 +1,4 @@
+import '../constants/stylist_suggestion_chips.dart';
 import 'stylist_request_context.dart';
 
 /// Learned stylist context — moods, occasions, weather from chat usage.
@@ -30,11 +31,51 @@ class StylistDefaults {
       weatherCounts.isNotEmpty ||
       styleNotes.trim().isNotEmpty;
 
-  List<String> topMoods({int limit = 3}) => _topKeys(moodCounts, limit);
+  List<String> topMoods({int limit = 3}) =>
+      _topKeys(sanitized().moodCounts, limit);
 
-  List<String> topOccasions({int limit = 3}) => _topKeys(occasionCounts, limit);
+  List<String> topOccasions({int limit = 3}) =>
+      _topKeys(sanitized().occasionCounts, limit);
 
-  List<String> topWeather({int limit = 2}) => _topKeys(weatherCounts, limit);
+  List<String> topWeather({int limit = 2}) =>
+      _topKeys(sanitized().weatherCounts, limit);
+
+  /// Drops legacy tags (e.g. removed moods) that are no longer in the catalog.
+  StylistDefaults sanitized() {
+    return StylistDefaults(
+      moodCounts: _filterCounts(moodCounts, StylistContextCatalog.moods),
+      occasionCounts:
+          _filterCounts(occasionCounts, StylistContextCatalog.occasions),
+      weatherCounts: _filterCounts(weatherCounts, StylistContextCatalog.weather),
+      recentMoods: StylistContextCatalog.filterMoods(recentMoods),
+      recentOccasions: StylistContextCatalog.filterOccasions(recentOccasions),
+      recentWeather: StylistContextCatalog.filterWeather(recentWeather),
+      styleNotes: styleNotes,
+      updatedAt: updatedAt,
+    );
+  }
+
+  bool get hasDeprecatedContextTags {
+    final clean = sanitized();
+    return moodCounts.length != clean.moodCounts.length ||
+        occasionCounts.length != clean.occasionCounts.length ||
+        weatherCounts.length != clean.weatherCounts.length ||
+        recentMoods.length != clean.recentMoods.length ||
+        recentOccasions.length != clean.recentOccasions.length ||
+        recentWeather.length != clean.recentWeather.length;
+  }
+
+  static Map<String, int> _filterCounts(
+    Map<String, int> source,
+    List<String> allowed,
+  ) {
+    final allow = allowed.map((e) => e.toLowerCase()).toSet();
+    return Map.fromEntries(
+      source.entries.where(
+        (entry) => allow.contains(entry.key.trim().toLowerCase()),
+      ),
+    );
+  }
 
   static List<String> _topKeys(Map<String, int> map, int limit) {
     final entries = map.entries.toList()
@@ -44,13 +85,18 @@ class StylistDefaults {
 
   StylistDefaults mergeInteraction(StylistRequestContext context) {
     final now = DateTime.now();
+    final base = sanitized();
+    final moods = StylistContextCatalog.filterMoods(context.moods);
+    final occasions = StylistContextCatalog.filterOccasions(context.occasions);
+    final weather = StylistContextCatalog.filterWeather(context.weather);
+
     return StylistDefaults(
-      moodCounts: _increment(moodCounts, context.moods),
-      occasionCounts: _increment(occasionCounts, context.occasions),
-      weatherCounts: _increment(weatherCounts, context.weather),
-      recentMoods: _prependUnique(recentMoods, context.moods, 5),
-      recentOccasions: _prependUnique(recentOccasions, context.occasions, 5),
-      recentWeather: _prependUnique(recentWeather, context.weather, 3),
+      moodCounts: _increment(base.moodCounts, moods),
+      occasionCounts: _increment(base.occasionCounts, occasions),
+      weatherCounts: _increment(base.weatherCounts, weather),
+      recentMoods: _prependUnique(base.recentMoods, moods, 5),
+      recentOccasions: _prependUnique(base.recentOccasions, occasions, 5),
+      recentWeather: _prependUnique(base.recentWeather, weather, 3),
       styleNotes: styleNotes,
       updatedAt: now,
     );

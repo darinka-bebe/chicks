@@ -609,9 +609,10 @@ class CloudSyncService {
   Future<Map<String, dynamic>> _buildLocalProfile(String uid) async {
     final colorType = await _userProfileRepository.getColorType();
     final bodyProfile = await _userProfileRepository.getBodyProfile();
-    final stylistDefaults = await _userPreferencesRepository.getStylistDefaults(
+    final stylistDefaults = (await _userPreferencesRepository.getStylistDefaults(
       uid: uid,
-    );
+    ))
+        .sanitized();
 
     return {
       'id': CollectionNames.profileMainDocId,
@@ -675,7 +676,8 @@ class CloudSyncService {
     if (stylistRaw is Map && uid.isNotEmpty) {
       await _userPreferencesRepository.saveStylistDefaultsLocally(
         uid,
-        StylistDefaults.fromJson(Map<String, dynamic>.from(stylistRaw)),
+        StylistDefaults.fromJson(Map<String, dynamic>.from(stylistRaw))
+            .sanitized(),
       );
     }
   }

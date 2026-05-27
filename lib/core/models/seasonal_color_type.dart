@@ -1,3 +1,5 @@
+import '../constants/seasonal_palette_catalog.dart';
+
 /// Approximate seasonal color type (rule-based quiz, no image analysis).
 enum SeasonalColorType {
   lightSpring,
@@ -29,26 +31,19 @@ extension SeasonalColorTypeX on SeasonalColorType {
   String get englishLabel => switch (this) {
         SeasonalColorType.lightSpring => 'Light Spring',
         SeasonalColorType.warmAutumn => 'Warm Autumn',
-        SeasonalColorType.softSummer => 'Soft Summer',
-        SeasonalColorType.coolWinter => 'Cool Winter',
+        SeasonalColorType.softSummer => 'Cool Summer',
+        SeasonalColorType.coolWinter => 'Bright Winter',
       };
 
   /// Russian UI label.
-  String get displayNameRu => switch (this) {
-        SeasonalColorType.lightSpring => 'Светлая весна',
-        SeasonalColorType.warmAutumn => 'Тёплая осень',
-        SeasonalColorType.softSummer => 'Мягкое лето',
-        SeasonalColorType.coolWinter => 'Холодная зима',
-      };
+  String get displayNameRu => paletteId.displayNameRu;
 
-  String get shortDescriptionRu => switch (this) {
-        SeasonalColorType.lightSpring =>
-          'Светлые тёплые оттенки, воздушные и свежие сочетания.',
-        SeasonalColorType.warmAutumn =>
-          'Тёплые природные тона: терракота, олива, карамель, горчица.',
-        SeasonalColorType.softSummer =>
-          'Приглушённые прохладные оттенки с мягким контрастом.',
-        SeasonalColorType.coolWinter =>
-          'Чистые холодные цвета и выраженный контраст в образе.',
+  String get shortDescriptionRu => paletteId.shortDescriptionRu;
+
+  SeasonalPaletteId get paletteId => switch (this) {
+        SeasonalColorType.lightSpring => SeasonalPaletteId.lightSpring,
+        SeasonalColorType.warmAutumn => SeasonalPaletteId.warmAutumn,
+        SeasonalColorType.softSummer => SeasonalPaletteId.coolSummer,
+        SeasonalColorType.coolWinter => SeasonalPaletteId.brightWinter,
       };
 }
