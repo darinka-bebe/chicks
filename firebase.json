@@ -1,5 +1,1 @@
-{
-  "firestore": {
-    "rules": "firestore.rules"
-  }
-}
+{"firestore":{"rules":"firestore.rules"},"flutter":{"platforms":{"android":{"default":{"projectId":"darinka-4ae33","appId":"1:69128218383:android:33b84cd73da7a2878e807a","fileOutput":"android/app/google-services.json"}},"ios":{"default":{"projectId":"darinka-4ae33","appId":"1:69128218383:ios:b1e4121e1066806f8e807a","uploadDebugSymbols":false,"fileOutput":"ios/Runner/GoogleService-Info.plist"}},"dart":{"lib/firebase_options.dart":{"projectId":"darinka-4ae33","configurations":{"android":"1:69128218383:android:33b84cd73da7a2878e807a","ios":"1:69128218383:ios:b1e4121e1066806f8e807a"}}}}}}
