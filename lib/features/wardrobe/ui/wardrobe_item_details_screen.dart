@@ -140,7 +140,7 @@ class _WardrobeItemDetailsScreenState extends State<WardrobeItemDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final hasImage = item.imagePath?.trim().isNotEmpty == true;
+    final hasImage = item.hasDisplayImage;
 
     return Scaffold(
       backgroundColor: AppBrandColors.background,

@@ -13,6 +13,7 @@ class WeatherSnapshot extends Equatable {
     this.fetchedAt,
     this.latitude,
     this.longitude,
+    this.cityName,
   });
 
   final bool isAvailable;
@@ -23,6 +24,7 @@ class WeatherSnapshot extends Equatable {
   final DateTime? fetchedAt;
   final double? latitude;
   final double? longitude;
+  final String? cityName;
 
   static const unavailable = WeatherSnapshot(isAvailable: false);
 
@@ -37,6 +39,11 @@ class WeatherSnapshot extends Equatable {
     if (!isAvailable) return '';
 
     final parts = <String>[];
+    final city = cityName?.trim() ?? '';
+    if (city.isNotEmpty) {
+      parts.add(city);
+    }
+
     final emoji = _primaryEmoji;
     final temp = temperatureCelsius;
     if (temp != null) {
@@ -106,5 +113,6 @@ class WeatherSnapshot extends Equatable {
         fetchedAt,
         latitude,
         longitude,
+        cityName,
       ];
 }

@@ -20,7 +20,10 @@ import '../sync/sync_merge_engine.dart';
 import '../sync/sync_meta_storage.dart';
 import '../sync/sync_scope.dart';
 import '../utils/logger.dart';
+import '../utils/wardrobe_image_diagnostics.dart';
+import '../../features/wardrobe/data/mock_wardrobe_data.dart';
 import 'collection_names.dart';
+import 'wardrobe_cloud_image_storage.dart';
 import 'wardrobe_sync_service.dart';
 
 /// Pull/push user data between Hive/SharedPreferences and Firestore.
@@ -165,6 +168,10 @@ class CloudSyncService {
       'CloudSyncService._pullWardrobe: remoteRaw=${remoteRaw.length} '
       'remoteFiltered=${remote.length} uid=$uid',
     );
+    WardrobeImageDiagnostics.logFirestorePayload(
+      '_pullWardrobe',
+      remote.map((doc) => doc.payload).toList(),
+    );
 
     final local = await _wardrobeRepository.loadItems();
     final timestamps = SyncMetaStorage.readTimestamps(SyncScope.wardrobe);
@@ -184,14 +191,32 @@ class CloudSyncService {
       toJson: (item) => item.toJson(),
     );
 
-    await _wardrobeRepository.saveItemsLocally(merged.items);
+    final repairedItems = WardrobeImageDiagnostics.preserveLocalPhotos(
+      merged: merged.items,
+      localBeforeMerge: local,
+    );
+    final withoutDemo = MockWardrobeData.excludeDemo(repairedItems);
+    if (withoutDemo.length != repairedItems.length) {
+      AppLogger.info(
+        'CloudSyncService._pullWardrobe: skipped '
+        '${repairedItems.length - withoutDemo.length} demo item(s) from cloud',
+      );
+    }
+    WardrobeImageDiagnostics.logItems('_pullWardrobe(afterMerge)', withoutDemo);
+
+    await _wardrobeRepository.saveItemsLocally(withoutDemo);
     await SyncMetaStorage.touchAll(
       SyncScope.wardrobe,
-      merged.items.map((item) => item.id),
+      withoutDemo.map((item) => item.id),
     );
 
     _logRestored(SyncScope.wardrobe, merged.restoredCount, merged.conflictCount);
-    return merged;
+    return SyncMergeResult(
+      items: withoutDemo,
+      restoredCount: merged.restoredCount,
+      conflictCount: merged.conflictCount,
+      removedCount: merged.removedCount,
+    );
   }
 
   Future<SyncMergeResult<FavoriteOutfit>> _pullFavorites(String uid) async {
@@ -350,7 +375,16 @@ class CloudSyncService {
   }
 
   Future<int> _pushWardrobe(String uid) async {
-    final items = await _wardrobeRepository.loadItems();
+    var items = await _wardrobeRepository.loadItems();
+    final withUrls = await WardrobeCloudImageStorage.syncAllItems(
+      items: items,
+      uid: uid,
+    );
+    if (_wardrobeImagesChanged(items, withUrls)) {
+      await _wardrobeRepository.saveItemsLocally(withUrls);
+      items = withUrls;
+    }
+
     final pendingDeletes = SyncMetaStorage.readPendingDeletes(SyncScope.wardrobe);
 
   if (pendingDeletes.isNotEmpty) {
@@ -415,7 +449,7 @@ class CloudSyncService {
       docs.add(
         SyncDocument(
           id: item.firestoreDocId,
-          payload: item.toJson(),
+          payload: item.toFirestoreJson(),
           updatedAt: updatedAt.isAfter(
             DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
           )
@@ -626,6 +660,9 @@ class CloudSyncService {
       'username': uid.isEmpty
           ? ''
           : await _profilePreferencesRepository.getUsername(uid),
+      'city': uid.isEmpty
+          ? ''
+          : await _profilePreferencesRepository.getCity(uid),
       'displayName': AuthRepository.instance.currentUser.displayName,
       'stylistDefaults': stylistDefaults.toJson(),
     };
@@ -672,6 +709,14 @@ class CloudSyncService {
       );
     }
 
+    final city = profile['city'] as String? ?? '';
+    if (uid.isNotEmpty) {
+      await _profilePreferencesRepository.saveCity(
+        uid: uid,
+        city: city,
+      );
+    }
+
     final stylistRaw = profile['stylistDefaults'];
     if (stylistRaw is Map && uid.isNotEmpty) {
       await _userPreferencesRepository.saveStylistDefaultsLocally(
@@ -686,6 +731,18 @@ class CloudSyncService {
     AppLogger.info(
       'CloudSyncService: restored scope=$scope count=$restored conflicts=$conflicts',
     );
+  }
+
+  static bool _wardrobeImagesChanged(
+    List<WardrobeItem> before,
+    List<WardrobeItem> after,
+  ) {
+    if (before.length != after.length) return true;
+    for (var i = 0; i < before.length; i++) {
+      if (before[i].id != after[i].id) return true;
+      if (before[i].imageUrl != after[i].imageUrl) return true;
+    }
+    return false;
   }
 }
 

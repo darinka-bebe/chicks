@@ -410,6 +410,7 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
         occasions: List<String>.from(_selectedOccasions),
         vibes: List<String>.from(_selectedVibes),
         imagePath: _imagePath ?? editing?.imagePath,
+        imageUrl: editing?.imageUrl,
       );
 
       AppLogger.debug(

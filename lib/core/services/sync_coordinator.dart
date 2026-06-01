@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import '../../data/repositories/auth_repository.dart';
 import '../sync/cloud_sync_hooks.dart';
@@ -7,6 +8,7 @@ import '../sync/sync_scope.dart';
 import '../sync/sync_state.dart';
 import '../utils/logger.dart';
 import 'cloud_sync_service.dart';
+import 'firebase_auth_service.dart';
 import 'firebase_bootstrap.dart';
 import 'wardrobe_sync_service.dart';
 
@@ -26,6 +28,7 @@ class SyncCoordinator {
 
   SyncState _state = const SyncState();
   Timer? _debounceTimer;
+  Timer? _bannerResetTimer;
   bool _suppressUpload = false;
   bool _isSyncing = false;
 
@@ -118,6 +121,18 @@ class SyncCoordinator {
       return;
     }
 
+    if (!await _isCloudReachable()) {
+      AppLogger.warning(
+        'SyncCoordinator: skip $reason — firestore.googleapis.com unreachable',
+      );
+      return;
+    }
+
+    if (!await _ensureAuthReady()) {
+      AppLogger.warning('SyncCoordinator: skip $reason — auth token not ready');
+      return;
+    }
+
     _isSyncing = true;
     _emit(
       _state.copyWith(
@@ -176,7 +191,7 @@ class SyncCoordinator {
               : permissionDenied
                   ? 'Нет доступа к Firestore — настройте правила в Firebase Console'
                   : offline
-                      ? 'Нет сети — используются локальные данные'
+                      ? 'Облако недоступно — используются локальные данные'
                       : 'Ошибка синхронизации',
         ),
       );
@@ -193,6 +208,18 @@ class SyncCoordinator {
   Future<void> _pushOnly({required String uid, SyncScope? scope}) async {
     if (_suppressUpload) return;
     if (_isSyncing && scope == null) return;
+
+    if (!await _isCloudReachable()) {
+      AppLogger.warning(
+        'SyncCoordinator: skip push — firestore.googleapis.com unreachable',
+      );
+      return;
+    }
+
+    if (!await _ensureAuthReady()) {
+      AppLogger.warning('SyncCoordinator: skip push — auth token not ready');
+      return;
+    }
 
     final scopedDuringSync = _isSyncing && scope != null;
     if (!scopedDuringSync) {
@@ -234,7 +261,7 @@ class SyncCoordinator {
           uid: uid,
           lastError: '$e',
           message: offline
-              ? 'Нет сети — изменения сохранены локально'
+              ? 'Облако недоступно — изменения сохранены локально'
               : 'Не удалось отправить в облако',
         ),
       );
@@ -261,6 +288,17 @@ class SyncCoordinator {
     if (!_stateController.isClosed) {
       _stateController.add(next);
     }
+
+    _bannerResetTimer?.cancel();
+    if (next.phase == SyncPhase.offline ||
+        next.phase == SyncPhase.error ||
+        next.phase == SyncPhase.success) {
+      _bannerResetTimer = Timer(const Duration(seconds: 5), () {
+        if (_state.phase != SyncPhase.syncing) {
+          _emit(_state.copyWith(phase: SyncPhase.idle, clearMessage: true));
+        }
+      });
+    }
   }
 
   bool _looksOffline(Object error) {
@@ -272,8 +310,29 @@ class SyncCoordinator {
         text.contains('connection');
   }
 
+  Future<bool> _isCloudReachable() async {
+    try {
+      final addresses = await InternetAddress.lookup('firestore.googleapis.com')
+          .timeout(const Duration(seconds: 2));
+      return addresses.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> _ensureAuthReady() async {
+    try {
+      await FirebaseAuthService.instance.ensureIdTokenReady();
+      return FirebaseAuthService.instance.currentFirebaseUser != null;
+    } catch (e) {
+      AppLogger.warning('SyncCoordinator: ensureAuthReady failed ($e)');
+      return false;
+    }
+  }
+
   void dispose() {
     _debounceTimer?.cancel();
+    _bannerResetTimer?.cancel();
     _stateController.close();
     _refreshController.close();
   }

@@ -20,6 +20,13 @@ class FirebaseAuthService {
 
   User? get currentFirebaseUser => _auth.currentUser;
 
+  /// Ensures Firestore requests have a fresh auth token (avoids early permission-denied).
+  Future<void> ensureIdTokenReady() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+    await user.getIdToken(true);
+  }
+
   UserModel? currentUserModel() {
     final user = _auth.currentUser;
     if (user == null) return null;

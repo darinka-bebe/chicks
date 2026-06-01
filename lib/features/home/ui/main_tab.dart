@@ -16,6 +16,7 @@ import '../../../core/widgets/chicks_skeleton.dart';
 import '../../../core/widgets/iphone_layout.dart';
 import '../../../data/models/outfit_history_entry.dart';
 import '../../../data/repositories/tutorial_repository.dart';
+import '../../../data/repositories/profile_preferences_repository.dart';
 import '../../../features/app/bloc/app_bloc.dart';
 import '../../../features/favorites/favorites_controller.dart';
 import '../../../features/home/widgets/welcome_name_sheet.dart';
@@ -127,12 +128,19 @@ class _MainTabState extends State<MainTab> with SingleTickerProviderStateMixin {
   Future<void> _openNameEdit() async {
     final user = context.read<AppBloc>().state.user;
     if (user.isEmpty) return;
-    await ProfileEditSheet.show(
+    final city =
+        await ProfilePreferencesRepository.instance.getCity(user.uid);
+    if (!mounted) return;
+    final saved = await ProfileEditSheet.show(
       context,
       displayName: user.displayName,
       username: user.username,
       uid: user.uid,
+      city: city,
     );
+    if (saved && mounted) {
+      await _loadDashboardData();
+    }
   }
 
   Future<void> _refreshAll() async {

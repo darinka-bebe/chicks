@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../sync/sync_document.dart';
+import '../utils/async_guard.dart';
 import '../utils/logger.dart';
 import 'firebase_bootstrap.dart';
 
@@ -241,9 +243,25 @@ class FirestoreService {
     for (var attempt = 1; attempt <= 3; attempt++) {
       try {
         await FirestoreBootstrap.ensureReady();
-        return await action();
+        return await AsyncGuard.withTimeout(
+          label: 'FirestoreService.$operation',
+          timeout: AsyncGuard.firestoreTimeout,
+          action: action,
+        );
       } catch (e, stack) {
         lastError = e;
+        if (FirestoreBootstrap.isPermissionDenied(e) && attempt < 3) {
+          AppLogger.warning(
+            'FirestoreService.$operation: permission retry $attempt/3 — refresh token',
+          );
+          try {
+            await FirebaseAuth.instance.currentUser?.getIdToken(true);
+          } catch (_) {
+            // ignore token refresh errors
+          }
+          await Future<void>.delayed(Duration(milliseconds: 500 * attempt));
+          continue;
+        }
         if (!FirestoreBootstrap.isChannelError(e) || attempt == 3) {
           AppLogger.error(
             'FirestoreService.$operation failed',

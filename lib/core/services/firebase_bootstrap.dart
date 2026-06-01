@@ -59,9 +59,9 @@ abstract final class FirestoreBootstrap {
     for (var attempt = 1; attempt <= 4; attempt++) {
       try {
         final firestore = FirebaseFirestore.instance;
-        firestore.settings = const Settings(
-          persistenceEnabled: true,
-          cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+        firestore.settings = Settings(
+          persistenceEnabled: !kDebugMode,
+          cacheSizeBytes: kDebugMode ? 10 * 1024 * 1024 : 50 * 1024 * 1024,
         );
         _ready = true;
         AppLogger.info('FirestoreBootstrap: native channel ready');

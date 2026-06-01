@@ -1,6 +1,7 @@
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/user_preferences_repository.dart';
 import '../services/sync_coordinator.dart';
+import '../utils/async_guard.dart';
 import '../utils/logger.dart';
 
 /// Restores persisted profile-related data on cold start / after login.
@@ -8,7 +9,11 @@ abstract final class ProfileBootstrapService {
   static Future<void> restoreOnStartup() async {
     try {
       await AuthRepository.instance.initialize();
-      await restoreUserData();
+      // Cloud sync must not block the startup spinner — run in background.
+      AsyncGuard.runInBackground(
+        label: 'ProfileBootstrapService.restoreUserData',
+        action: restoreUserData,
+      );
     } catch (e, stack) {
       AppLogger.error(
         'ProfileBootstrapService.restoreOnStartup failed',
@@ -25,8 +30,16 @@ abstract final class ProfileBootstrapService {
       await UserPreferencesRepository.instance.restoreAllCaches();
 
       if (AuthRepository.instance.isLoggedIn) {
-        await SyncCoordinator.instance.restoreAfterLogin(
-          uid: AuthRepository.instance.currentUser.uid,
+        AppLogger.info(
+          'ProfileBootstrapService: starting cloud restore '
+          'uid=${AuthRepository.instance.currentUser.uid}',
+        );
+        await AsyncGuard.withTimeout(
+          label: 'SyncCoordinator.restoreAfterLogin',
+          timeout: AsyncGuard.syncTimeout,
+          action: () => SyncCoordinator.instance.restoreAfterLogin(
+            uid: AuthRepository.instance.currentUser.uid,
+          ),
         );
       }
     } catch (e, stack) {

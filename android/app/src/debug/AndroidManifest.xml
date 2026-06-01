@@ -1,7 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- The INTERNET permission is required for development. Specifically,
-         the Flutter tool needs it to communicate with the running application
-         to allow setting breakpoints, to provide hot reload, etc.
-    -->
+    <!-- Flutter tool needs INTERNET for hot reload / DevTools. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+
+    <application>
+        <!-- Impeller + x86_64 emulator GPU often crash the whole AVD on Windows. -->
+        <meta-data
+            android:name="io.flutter.embedding.android.EnableImpeller"
+            android:value="false" />
+    </application>
 </manifest>

@@ -24,7 +24,9 @@ abstract final class WardrobeChatImageCache {
     }
 
     final ImageProvider<Object> base;
-    if (WardrobeItemImage.isAssetPath(path)) {
+    if (WardrobeItemImage.looksLikeRemoteUrl(path)) {
+      base = NetworkImage(path);
+    } else if (WardrobeItemImage.isAssetPath(path)) {
       base = AssetImage(path);
     } else {
       base = FileImage(File(path));

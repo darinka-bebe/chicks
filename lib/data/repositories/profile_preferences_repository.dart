@@ -14,6 +14,7 @@ class ProfilePreferencesRepository {
       ProfilePreferencesRepository._();
 
   static String _usernameKey(String uid) => 'profile_username_$uid';
+  static String _cityKey(String uid) => 'profile_city_$uid';
   static String _namePromptDismissedKey(String uid) =>
       'profile_name_prompt_dismissed_$uid';
 
@@ -59,5 +60,31 @@ class ProfilePreferencesRepository {
     );
     CloudSyncHooks.onLocalDataChanged(SyncScope.profile);
     AppLogger.info('ProfilePreferencesRepository: username saved');
+  }
+
+  Future<String> getCity(String uid) async {
+    if (uid.isEmpty) return '';
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_cityKey(uid))?.trim() ?? '';
+  }
+
+  Future<void> saveCity({
+    required String uid,
+    required String city,
+  }) async {
+    if (uid.isEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    final trimmed = city.trim();
+    if (trimmed.isEmpty) {
+      await prefs.remove(_cityKey(uid));
+    } else {
+      await prefs.setString(_cityKey(uid), trimmed);
+    }
+    await SyncMetaStorage.touch(
+      SyncScope.profile,
+      CollectionNames.profileMainDocId,
+    );
+    CloudSyncHooks.onLocalDataChanged(SyncScope.profile);
+    AppLogger.info('ProfilePreferencesRepository: city saved "$trimmed"');
   }
 }

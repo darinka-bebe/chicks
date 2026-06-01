@@ -10,6 +10,7 @@ import '../../data/models/wardrobe_item.dart';
 import '../models/stylist_request_context.dart';
 import '../models/stylist_response.dart';
 import '../utils/logger.dart';
+import '../utils/openai_key_diagnostics.dart';
 import 'stylist_context_parser.dart';
 import 'stylist_response_parser.dart';
 import '../models/weather_snapshot.dart';
@@ -92,7 +93,7 @@ class OpenAiChatService {
 - Не давай медицинских и правовых советов. Не обсуждай темы вне моды и стиля.
 ''';
 
-  String? get _apiKey => dotenv.env['OPENAI_API_KEY'];
+  String? get _apiKey => OpenAiKeyDiagnostics.normalize(dotenv.env['OPENAI_API_KEY']);
 
   /// Builds system messages: persona, wardrobe, styling context. Never throws.
   Future<List<Map<String, String>>> buildSystemMessages({
@@ -273,6 +274,9 @@ class OpenAiChatService {
     WeatherSnapshot? liveWeather,
   }) async {
     final apiKey = _apiKey;
+    AppLogger.info(
+      'OpenAiChatService: apiKey ${OpenAiKeyDiagnostics.describe(apiKey)}',
+    );
     if (apiKey == null || apiKey.trim().isEmpty) {
       throw const OpenAiChatException(
         'OPENAI_API_KEY не задан. Добавьте ключ в файл .env в корне проекта.',
@@ -356,6 +360,10 @@ class OpenAiChatService {
         bodyBytes: requestBody.length,
         model: _model,
       );
+      AppLogger.info(
+        'OpenAiChatService: sending POST $_endpoint '
+        'Authorization=Bearer ${OpenAiKeyDiagnostics.describe(apiKey)}',
+      );
 
       final response = await http
           .post(
@@ -373,6 +381,13 @@ class OpenAiChatService {
         bodyBytes: response.bodyBytes.length,
       );
 
+      if (response.statusCode != 200) {
+        AppLogger.warning(
+          'OpenAiChatService: OpenAI HTTP ${response.statusCode} '
+          'body=${response.body}',
+        );
+      }
+
       if (response.statusCode == 200) {
         OpenAiCostLogger.logFromResponse(
           feature: 'stylist_chat',
@@ -384,9 +399,6 @@ class OpenAiChatService {
       }
 
       if (response.statusCode != 200) {
-        AppLogger.debug(
-          'StylistPipeline: error body=${_preview(response.body)}',
-        );
         throw OpenAiChatException(_parseErrorMessage(response));
       }
 
@@ -497,9 +509,12 @@ class OpenAiChatService {
     } catch (e, stack) {
       StylistPipelineLogger.logFailure('completeConversation', e, stack);
       AppLogger.warning(
-        'OpenAiChatService: returning in-app fallback (${e.runtimeType})',
+        'OpenAiChatService: pipeline error (${e.runtimeType}): $e',
       );
-      return StylistPipelineSafety.fallbackResponse();
+      if (e is OpenAiChatException) rethrow;
+      throw OpenAiChatException(
+        'Не удалось получить ответ стилиста: $e',
+      );
     }
   }
 
@@ -572,12 +587,6 @@ class OpenAiChatService {
         return const [];
       }
     }
-  }
-
-  static String _preview(String text) {
-    final normalized = text.replaceAll(RegExp(r'\s+'), ' ').trim();
-    if (normalized.length <= 300) return normalized;
-    return '${normalized.substring(0, 300)}…';
   }
 
   static String _parseErrorMessage(http.Response response) {

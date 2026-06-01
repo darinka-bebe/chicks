@@ -13,7 +13,7 @@ import 'wardrobe_sync_service.dart';
 
 /// Resets local demo data for QA / presentations (keeps auth session).
 abstract final class DemoResetService {
-  /// Clears chat, favorites, history, dislikes and re-seeds demo wardrobe.
+  /// Clears chat, favorites, history, dislikes and empties wardrobe.
   static Future<void> resetDemoData() async {
     AppLogger.info('DemoResetService: resetDemoData start');
 

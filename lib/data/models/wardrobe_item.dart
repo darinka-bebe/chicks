@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
@@ -17,6 +18,7 @@ class WardrobeItem extends Equatable {
   final List<String> occasions;
   final List<String> vibes;
   final String? imagePath;
+  final String? imageUrl;
 
   const WardrobeItem({
     required this.id,
@@ -29,6 +31,7 @@ class WardrobeItem extends Equatable {
     this.occasions = const [],
     this.vibes = const [],
     this.imagePath,
+    this.imageUrl,
   });
 
   IconData get placeholderIcon => WardrobeCatalog.iconForCategory(category);
@@ -48,6 +51,25 @@ class WardrobeItem extends Equatable {
       fit.isNotEmpty ||
       vibes.isNotEmpty;
 
+  /// Best source for UI: cloud URL first, then local/asset path.
+  String? get displayImageSource {
+    final url = imageUrl?.trim() ?? '';
+    if (url.isNotEmpty) return url;
+    final path = imagePath?.trim() ?? '';
+    return path.isEmpty ? null : path;
+  }
+
+  bool get hasDisplayImage {
+    final url = imageUrl?.trim() ?? '';
+    if (url.startsWith('http://') || url.startsWith('https://')) return true;
+
+    final path = imagePath?.trim() ?? '';
+    if (path.isEmpty) return false;
+    if (path.startsWith('assets/')) return true;
+    if (path.startsWith('http://') || path.startsWith('https://')) return true;
+    return File(path).existsSync();
+  }
+
   Map<String, dynamic> toJson() => {
         'id': id,
         'firestoreDocId': firestoreDocId,
@@ -60,7 +82,15 @@ class WardrobeItem extends Equatable {
         'occasions': occasions,
         'vibes': vibes,
         'imagePath': imagePath,
+        'imageUrl': imageUrl,
       };
+
+  /// Firestore payload — never sync device-local [imagePath].
+  Map<String, dynamic> toFirestoreJson() {
+    final json = Map<String, dynamic>.from(toJson());
+    json.remove('imagePath');
+    return json;
+  }
 
   /// Hive / JSON may store ids as int (e.g. microsecond timestamps).
   static String readIdFromJson(dynamic value) {
@@ -79,7 +109,9 @@ class WardrobeItem extends Equatable {
     List<String>? occasions,
     List<String>? vibes,
     String? imagePath,
+    String? imageUrl,
     bool clearImagePath = false,
+    bool clearImageUrl = false,
   }) {
     return WardrobeItem(
       id: id ?? this.id,
@@ -92,6 +124,7 @@ class WardrobeItem extends Equatable {
       occasions: occasions ?? this.occasions,
       vibes: vibes ?? this.vibes,
       imagePath: clearImagePath ? null : (imagePath ?? this.imagePath),
+      imageUrl: clearImageUrl ? null : (imageUrl ?? this.imageUrl),
     );
   }
 
@@ -107,6 +140,7 @@ class WardrobeItem extends Equatable {
       occasions: _parseStringList(json['occasions']),
       vibes: _parseStringList(json['vibes']),
       imagePath: json['imagePath'] as String?,
+      imageUrl: json['imageUrl'] as String?,
     );
   }
 
@@ -146,5 +180,6 @@ class WardrobeItem extends Equatable {
         occasions,
         vibes,
         imagePath,
+        imageUrl,
       ];
 }

@@ -9,6 +9,7 @@ import '../core/services/sync_coordinator.dart';
 import '../core/storage/local_hive_storage.dart';
 import '../core/theme/app_brand_colors.dart';
 import '../core/utils/logger.dart';
+import '../core/utils/openai_key_diagnostics.dart';
 
 /// Runs async startup AFTER [runApp] so Android plugins are registered on the engine.
 class AppStartupGate extends StatefulWidget {
@@ -24,6 +25,10 @@ class _AppStartupGateState extends State<AppStartupGate> {
   static Future<void> _runStartup() async {
     try {
       await dotenv.load(fileName: '.env');
+      final key = OpenAiKeyDiagnostics.normalize(dotenv.env['OPENAI_API_KEY']);
+      AppLogger.info(
+        'AppStartupGate: OPENAI_API_KEY ${OpenAiKeyDiagnostics.describe(key)}',
+      );
     } catch (e, stack) {
       AppLogger.error(
         'AppStartupGate: .env not loaded',
@@ -32,10 +37,14 @@ class _AppStartupGateState extends State<AppStartupGate> {
       );
     }
 
+    AppLogger.info('AppStartupGate: begin startup');
     await FirebaseBootstrap.ensureInitialized();
+    AppLogger.info('AppStartupGate: firebase ready');
     await LocalHiveStorage.initialize();
+    AppLogger.info('AppStartupGate: hive ready');
     SyncCoordinator.instance.initialize();
     await ProfileBootstrapService.restoreOnStartup();
+    AppLogger.info('AppStartupGate: startup complete (sync runs in background)');
   }
 
   @override

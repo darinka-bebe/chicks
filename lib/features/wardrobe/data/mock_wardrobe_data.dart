@@ -118,4 +118,10 @@ abstract final class MockWardrobeData {
   static final Map<String, WardrobeItem> byId = {
     for (final item in items) item.id: item,
   };
+
+  static bool isDemoItem(WardrobeItem item) => byId.containsKey(item.id);
+
+  static List<WardrobeItem> excludeDemo(Iterable<WardrobeItem> items) {
+    return items.where((item) => !isDemoItem(item)).toList();
+  }
 }

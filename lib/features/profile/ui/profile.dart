@@ -14,6 +14,7 @@ import '../../../core/models/seasonal_color_type.dart';
 import '../../../data/models/user_model.dart';
 import '../../../core/models/user_preferences_bundle.dart';
 import '../../../data/repositories/user_preferences_repository.dart';
+import '../../../data/repositories/profile_preferences_repository.dart';
 import '../../../features/favorites/favorites_controller.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../app/bloc/app_bloc.dart';
@@ -600,11 +601,15 @@ class _ProfileHeader extends StatelessWidget {
 
   Future<void> _openEdit(BuildContext context) async {
     if (user.isEmpty) return;
+    final city =
+        await ProfilePreferencesRepository.instance.getCity(user.uid);
+    if (!context.mounted) return;
     await ProfileEditSheet.show(
       context,
       displayName: user.displayName,
       username: user.username,
       uid: user.uid,
+      city: city,
     );
   }
 

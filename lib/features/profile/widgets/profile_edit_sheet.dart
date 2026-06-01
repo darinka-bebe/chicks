@@ -1,20 +1,24 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/services/weather/weather_repository.dart';
 import '../../../core/theme/app_brand_colors.dart';
 import '../../../core/theme/chicks_input_styles.dart';
 import '../../../data/repositories/auth_repository.dart';
+import '../../../data/repositories/profile_preferences_repository.dart';
 
-/// Edit display name and optional username (local + Firebase display name).
+/// Edit display name, city (weather), and optional username.
 class ProfileEditSheet extends StatefulWidget {
   const ProfileEditSheet({
     super.key,
     required this.initialDisplayName,
     required this.initialUsername,
+    required this.initialCity,
     required this.uid,
   });
 
   final String initialDisplayName;
   final String initialUsername;
+  final String initialCity;
   final String uid;
 
   static Future<bool> show(
@@ -22,6 +26,7 @@ class ProfileEditSheet extends StatefulWidget {
     required String displayName,
     required String username,
     required String uid,
+    String city = '',
   }) async {
     final saved = await showModalBottomSheet<bool>(
       context: context,
@@ -37,6 +42,7 @@ class ProfileEditSheet extends StatefulWidget {
         child: ProfileEditSheet(
           initialDisplayName: displayName,
           initialUsername: username,
+          initialCity: city,
           uid: uid,
         ),
       ),
@@ -51,6 +57,7 @@ class ProfileEditSheet extends StatefulWidget {
 class _ProfileEditSheetState extends State<ProfileEditSheet> {
   late final TextEditingController _nameController;
   late final TextEditingController _usernameController;
+  late final TextEditingController _cityController;
   bool _isSaving = false;
 
   @override
@@ -58,12 +65,14 @@ class _ProfileEditSheetState extends State<ProfileEditSheet> {
     super.initState();
     _nameController = TextEditingController(text: widget.initialDisplayName);
     _usernameController = TextEditingController(text: widget.initialUsername);
+    _cityController = TextEditingController(text: widget.initialCity);
   }
 
   @override
   void dispose() {
     _nameController.dispose();
     _usernameController.dispose();
+    _cityController.dispose();
     super.dispose();
   }
 
@@ -79,12 +88,34 @@ class _ProfileEditSheetState extends State<ProfileEditSheet> {
       return;
     }
 
+    final city = _cityController.text.trim();
+    if (city.length < 2) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Введите город (минимум 2 символа)'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isSaving = true);
     try {
+      final cityChanged = city != widget.initialCity.trim();
+
       await AuthRepository.instance.updateProfileDetails(
         displayName: name,
         username: _usernameController.text,
       );
+
+      if (cityChanged) {
+        await ProfilePreferencesRepository.instance.saveCity(
+          uid: widget.uid,
+          city: city,
+        );
+        WeatherRepository.instance.clearCache();
+      }
+
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } on AuthException catch (e) {
@@ -137,6 +168,16 @@ class _ProfileEditSheetState extends State<ProfileEditSheet> {
             textCapitalization: TextCapitalization.words,
             decoration: ChicksInputStyles.decoration(
               hintText: 'Имя',
+              borderRadius: 12,
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _cityController,
+            style: ChicksInputStyles.value,
+            textCapitalization: TextCapitalization.words,
+            decoration: ChicksInputStyles.decoration(
+              hintText: 'Город (для погоды)',
               borderRadius: 12,
             ),
           ),

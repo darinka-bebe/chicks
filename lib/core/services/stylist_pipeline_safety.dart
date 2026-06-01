@@ -38,6 +38,7 @@ recommendedItemIds: [].''';
             occasions: _cleanList(item.occasions),
             vibes: _cleanList(item.vibes),
             imagePath: item.imagePath,
+            imageUrl: item.imageUrl,
           ),
         );
       } catch (e) {

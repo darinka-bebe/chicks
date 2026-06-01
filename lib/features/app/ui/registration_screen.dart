@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/chicks_input_styles.dart';
 import '../../../data/repositories/auth_repository.dart';
+import '../../../data/repositories/profile_preferences_repository.dart';
+import '../../../core/services/weather/weather_repository.dart';
 import '../../../features/app/bloc/app_bloc.dart';
 import '../../../features/app/bloc/auth_state.dart';
 import '../../../ui_kit/ui_kit.dart';
@@ -18,6 +20,7 @@ class RegistrationScreen extends StatefulWidget {
 
 class _RegistrationScreenState extends State<RegistrationScreen> {
   final _nameController = TextEditingController();
+  final _cityController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
@@ -29,6 +32,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _cityController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -47,6 +51,14 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         email: _emailController.text,
         password: _passwordController.text,
       );
+      final uid = AuthRepository.instance.currentUser.uid;
+      if (uid.isNotEmpty) {
+        await ProfilePreferencesRepository.instance.saveCity(
+          uid: uid,
+          city: _cityController.text,
+        );
+        WeatherRepository.instance.clearCache();
+      }
     } on AuthException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -148,6 +160,20 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     const SizedBox(height: 14),
 
                     _AuthTextField(
+                      controller: _cityController,
+                      hintText: 'Город (для погоды)',
+                      textCapitalization: TextCapitalization.words,
+                      validator: (v) {
+                        if (v == null || v.trim().length < 2) {
+                          return 'Введите город';
+                        }
+                        return null;
+                      },
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    _AuthTextField(
                       controller: _emailController,
                       hintText: 'Email',
                       keyboardType: TextInputType.emailAddress,
@@ -230,6 +256,7 @@ class _AuthTextField extends StatelessWidget {
   final TextEditingController controller;
   final String hintText;
   final TextInputType keyboardType;
+  final TextCapitalization textCapitalization;
   final bool obscureText;
   final Widget? suffixIcon;
   final String? Function(String?)? validator;
@@ -238,6 +265,7 @@ class _AuthTextField extends StatelessWidget {
     required this.controller,
     required this.hintText,
     this.keyboardType = TextInputType.text,
+    this.textCapitalization = TextCapitalization.none,
     this.obscureText = false,
     this.suffixIcon,
     this.validator,
@@ -248,6 +276,7 @@ class _AuthTextField extends StatelessWidget {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
+      textCapitalization: textCapitalization,
       obscureText: obscureText,
       validator: validator,
       style: ChicksInputStyles.value,
