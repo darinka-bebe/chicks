@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
@@ -5,7 +7,7 @@ import '../../data/models/wardrobe_item.dart';
 import '../theme/app_brand_colors.dart';
 import '../utils/logger.dart';
 
-/// Wardrobe photo from Firebase Storage URL ([CachedNetworkImage]) or assets.
+/// Wardrobe photo: cloud URL, local file (pending upload), or bundled asset.
 class WardrobeItemImage extends StatelessWidget {
   const WardrobeItemImage({
     super.key,
@@ -55,9 +57,20 @@ class WardrobeItemImage extends StatelessWidget {
       );
     }
 
-    if (WardrobeItem.hasPendingLocalUpload(item)) {
-      AppLogger.debug(
-        'WardrobeItemImage: pending cloud upload item=${item.id}',
+    final localPath = WardrobeItem.pendingLocalPath(item);
+    if (localPath != null) {
+      return Image.file(
+        File(localPath),
+        fit: fit,
+        width: double.infinity,
+        height: double.infinity,
+        gaplessPlayback: true,
+        errorBuilder: (_, error, __) {
+          AppLogger.warning(
+            'WardrobeItemImage: local file failed item=${item.id} path=$localPath error=$error',
+          );
+          return _placeholder();
+        },
       );
     }
 

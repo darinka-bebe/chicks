@@ -87,20 +87,23 @@ class WardrobeItem extends Equatable {
     return null;
   }
 
-  /// For chat thumbnail cache — cloud URL or asset path only.
+  /// Resolvable image source for chat thumbnails (never a missing local path).
   String? get displayImageSource {
+    if (!hasDisplayImage) return null;
+
     final url = displayImageUrl;
     if (url != null) return url;
 
     final path = imagePath?.trim() ?? '';
     if (isAssetPath(path)) return path;
 
-    return null;
+    return pendingLocalPath(this);
   }
 
   bool get hasDisplayImage {
     if (displayImageUrl != null) return true;
-    return isAssetPath(imagePath);
+    if (isAssetPath(imagePath)) return true;
+    return hasPendingLocalUpload(this);
   }
 
   /// Normalizes legacy fields (URL stored in [imagePath], etc.).

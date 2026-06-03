@@ -23,19 +23,21 @@ class ChatWardrobeThumbnail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final source = item.displayImageSource;
-    final hasImage = source != null && source.isNotEmpty;
+    final imageProvider = source == null
+        ? null
+        : WardrobeChatImageCache.tryProvider(
+            source,
+            cacheWidth: cacheWidth,
+          );
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(OutfitPreviewMetrics.imageRadius),
       child: SizedBox(
         width: width,
         height: height,
-        child: hasImage
+        child: imageProvider != null
             ? Image(
-                image: WardrobeChatImageCache.provider(
-                  source,
-                  cacheWidth: cacheWidth,
-                ),
+                image: imageProvider,
                 fit: BoxFit.cover,
                 alignment: Alignment.topCenter,
                 width: width,

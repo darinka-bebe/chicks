@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/painting.dart';
 
@@ -10,27 +12,23 @@ abstract final class WardrobeChatImageCache {
 
   static final Map<String, ImageProvider> _providers = {};
 
-  static ImageProvider provider(
+  /// Returns a cached provider, or `null` when [source] cannot be loaded.
+  static ImageProvider? tryProvider(
     String source, {
     int cacheWidth = defaultCacheWidth,
   }) {
-    final key = '$source|$cacheWidth';
+    final trimmed = source.trim();
+    if (trimmed.isEmpty) return null;
+
+    final key = '$trimmed|$cacheWidth';
     final existing = _providers[key];
     if (existing != null) return existing;
 
+    final ImageProvider<Object>? base = _baseProvider(trimmed);
+    if (base == null) return null;
+
     if (_providers.length >= _maxEntries) {
       _providers.remove(_providers.keys.first);
-    }
-
-    final ImageProvider<Object> base;
-    if (WardrobeItem.isHttpUrl(source)) {
-      base = CachedNetworkImageProvider(source);
-    } else if (WardrobeItem.isAssetPath(source)) {
-      base = AssetImage(source);
-    } else {
-      throw ArgumentError(
-        'WardrobeChatImageCache: only cloud URL or asset paths are supported: $source',
-      );
     }
 
     final provider = ResizeImage(
@@ -40,6 +38,30 @@ abstract final class WardrobeChatImageCache {
     );
     _providers[key] = provider;
     return provider;
+  }
+
+  static ImageProvider provider(
+    String source, {
+    int cacheWidth = defaultCacheWidth,
+  }) {
+    final resolved = tryProvider(source, cacheWidth: cacheWidth);
+    if (resolved != null) return resolved;
+    throw ArgumentError(
+      'WardrobeChatImageCache: unsupported image source: $source',
+    );
+  }
+
+  static ImageProvider<Object>? _baseProvider(String source) {
+    if (WardrobeItem.isHttpUrl(source)) {
+      return CachedNetworkImageProvider(source);
+    }
+    if (WardrobeItem.isAssetPath(source)) {
+      return AssetImage(source);
+    }
+    if (File(source).existsSync()) {
+      return FileImage(File(source));
+    }
+    return null;
   }
 
   static void clear() => _providers.clear();
