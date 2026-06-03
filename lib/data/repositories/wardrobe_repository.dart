@@ -1,3 +1,4 @@
+import '../../core/services/wardrobe_image_migration_service.dart';
 import '../../core/services/wardrobe_sync_service.dart';
 import '../../core/services/wardrobe_image_storage.dart';
 import '../../core/services/wardrobe_cloud_image_storage.dart';
@@ -84,9 +85,13 @@ class WardrobeRepository {
       }
 
       final withoutDemo = await _removeMockSeedItems(normalized);
-      WardrobeImageDiagnostics.logItems('loadItems', withoutDemo);
-      _logItemIds('loadItems', withoutDemo);
-      return withoutDemo;
+      final migrated = await WardrobeImageMigrationService.migrateAll(withoutDemo);
+      if (_imageFieldsChanged(withoutDemo, migrated)) {
+        await saveItemsLocally(migrated);
+      }
+      WardrobeImageDiagnostics.logItems('loadItems', migrated);
+      _logItemIds('loadItems', migrated);
+      return migrated;
     } catch (e, stack) {
       AppLogger.error(
         'WardrobeRepository.loadItems: corrupt data',
@@ -192,9 +197,7 @@ class WardrobeRepository {
   }
 
   Future<WardrobeItem> _uploadImageIfNeeded(WardrobeItem item) async {
-    final uid = AuthRepository.instance.currentUser.uid;
-    if (uid.isEmpty) return item;
-    return WardrobeCloudImageStorage.syncItemImage(item: item, uid: uid);
+    return WardrobeImageMigrationService.migrateItem(item);
   }
 
   /// Finds an item by persisted id (string-normalized for Hive int ids).
@@ -304,6 +307,22 @@ class WardrobeRepository {
     }
 
     return result;
+  }
+
+  static bool _imageFieldsChanged(
+    List<WardrobeItem> before,
+    List<WardrobeItem> after,
+  ) {
+    if (before.length != after.length) return true;
+    final afterById = {for (final item in after) item.id: item};
+    for (final item in before) {
+      final next = afterById[item.id];
+      if (next == null) return true;
+      if (item.imageUrl != next.imageUrl || item.imagePath != next.imagePath) {
+        return true;
+      }
+    }
+    return false;
   }
 
   static bool _idsChanged(List<WardrobeItem> before, List<WardrobeItem> after) {

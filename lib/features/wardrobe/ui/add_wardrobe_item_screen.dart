@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -409,8 +410,8 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
         styles: List<String>.from(_selectedStyles),
         occasions: List<String>.from(_selectedOccasions),
         vibes: List<String>.from(_selectedVibes),
-        imagePath: _imagePath ?? editing?.imagePath,
-        imageUrl: editing?.imageUrl,
+        imagePath: _imagePath,
+        imageUrl: _imagePath == null ? editing?.imageUrl : null,
       );
 
       AppLogger.debug(
@@ -478,6 +479,7 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
               opacity: _fadeAnimation,
               child: _ImagePickerCard(
                 imagePath: _imagePath,
+                imageUrl: _imagePath == null ? _editingItem?.imageUrl : null,
                 isAnalyzing: _isAnalyzing,
                 analysisFailed: _visionAnalysisFailed,
                 onPick: _isAnalyzing ? null : _pickImage,
@@ -800,12 +802,14 @@ class _VisionRetryBanner extends StatelessWidget {
 class _ImagePickerCard extends StatelessWidget {
   const _ImagePickerCard({
     required this.imagePath,
+    this.imageUrl,
     required this.onPick,
     this.isAnalyzing = false,
     this.analysisFailed = false,
   });
 
   final String? imagePath;
+  final String? imageUrl;
   final VoidCallback? onPick;
   final bool isAnalyzing;
   final bool analysisFailed;
@@ -813,7 +817,10 @@ class _ImagePickerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final path = imagePath;
-    final hasImage = path != null && path.isNotEmpty;
+    final url = imageUrl?.trim() ?? '';
+    final hasLocal = path != null && path.isNotEmpty;
+    final hasRemote = WardrobeItem.isHttpUrl(url);
+    final hasImage = hasLocal || hasRemote;
 
     return Material(
       color: Colors.transparent,
@@ -841,14 +848,24 @@ class _ImagePickerCard extends StatelessWidget {
                 ? Stack(
                     fit: StackFit.expand,
                     children: [
-                      Image.file(
-                        File(path),
-                        fit: BoxFit.cover,
-                        width: double.infinity,
-                        height: double.infinity,
-                        gaplessPlayback: true,
-                        errorBuilder: (_, __, ___) => _placeholder(),
-                      ),
+                      if (hasLocal)
+                        Image.file(
+                          File(path),
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: double.infinity,
+                          gaplessPlayback: true,
+                          errorBuilder: (_, __, ___) => _placeholder(),
+                        )
+                      else
+                        CachedNetworkImage(
+                          imageUrl: url,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: double.infinity,
+                          placeholder: (_, __) => _placeholder(),
+                          errorWidget: (_, __, ___) => _placeholder(),
+                        ),
                       if (isAnalyzing)
                         Container(
                           color: Colors.black.withValues(alpha: 0.35),

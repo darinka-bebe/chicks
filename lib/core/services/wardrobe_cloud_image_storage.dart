@@ -4,45 +4,56 @@ import 'package:firebase_storage/firebase_storage.dart';
 
 import '../../data/models/wardrobe_item.dart';
 import '../utils/logger.dart';
-import '../widgets/wardrobe_item_image.dart';
+import 'wardrobe_image_storage.dart';
 
-/// Uploads wardrobe photos to Firebase Storage and returns download URLs.
+/// Firebase Storage is the source of truth for wardrobe photos.
+///
+/// Object path: `users/{uid}/wardrobe/{itemId}.jpg`
 abstract final class WardrobeCloudImageStorage {
-  static const _folder = 'wardrobe_images';
+  static const _collectionFolder = 'wardrobe';
 
   static Reference _objectRef(String uid, String itemId) {
-    return FirebaseStorage.instance.ref('users/$uid/$_folder/$itemId.jpg');
+    return FirebaseStorage.instance
+        .ref('users/$uid/$_collectionFolder/$itemId.jpg');
   }
 
-  /// Uploads a local file when needed; returns item with [WardrobeItem.imageUrl].
+  /// Uploads a pending local file and returns item with [WardrobeItem.imageUrl].
   static Future<WardrobeItem> syncItemImage({
     required WardrobeItem item,
     required String uid,
   }) async {
     if (uid.trim().isEmpty) return item;
 
-    final localPath = item.imagePath?.trim() ?? '';
-    if (!_shouldUpload(localPath)) return item;
+    final normalized = WardrobeItem.normalizeImageFields(item);
+
+    if (WardrobeItem.hasCloudImageUrl(normalized) &&
+        !WardrobeItem.hasPendingLocalUpload(normalized)) {
+      return normalized;
+    }
+
+    final localPath = WardrobeItem.pendingLocalPath(normalized);
+    if (localPath == null) return normalized;
 
     try {
       final url = await _uploadFile(
         uid: uid,
-        itemId: item.id,
+        itemId: normalized.id,
         localPath: localPath,
       );
-      if (url == null || url.isEmpty) return item;
+      if (url == null || url.isEmpty) return normalized;
 
       AppLogger.info(
-        'WardrobeCloudImageStorage: uploaded item=${item.id} url=$url',
+        'WardrobeCloudImageStorage: uploaded item=${normalized.id}',
       );
-      return item.copyWith(imageUrl: url);
+      await WardrobeImageStorage.deleteIfStored(localPath);
+      return normalized.copyWith(imageUrl: url, clearImagePath: true);
     } catch (e, stack) {
       AppLogger.error(
-        'WardrobeCloudImageStorage: upload failed item=${item.id}',
+        'WardrobeCloudImageStorage: upload failed item=${normalized.id}',
         error: e,
         stackTrace: stack,
       );
-      return item;
+      return normalized;
     }
   }
 
@@ -65,30 +76,35 @@ abstract final class WardrobeCloudImageStorage {
   }) async {
     if (uid.trim().isEmpty || itemId.trim().isEmpty) return;
 
-    try {
-      await _objectRef(uid, itemId).delete();
-      AppLogger.info(
-        'WardrobeCloudImageStorage: deleted storage object item=$itemId',
-      );
-    } on FirebaseException catch (e) {
-      if (e.code == 'object-not-found') return;
-      AppLogger.warning(
-        'WardrobeCloudImageStorage: delete failed item=$itemId code=${e.code}',
-      );
-    } catch (e, stack) {
-      AppLogger.error(
-        'WardrobeCloudImageStorage: delete failed item=$itemId',
-        error: e,
-        stackTrace: stack,
-      );
+    for (final ref in _deleteRefs(uid, itemId)) {
+      try {
+        await ref.delete();
+        AppLogger.info(
+          'WardrobeCloudImageStorage: deleted ${ref.fullPath}',
+        );
+      } on FirebaseException catch (e) {
+        if (e.code == 'object-not-found') continue;
+        AppLogger.warning(
+          'WardrobeCloudImageStorage: delete failed '
+          'path=${ref.fullPath} code=${e.code}',
+        );
+      } catch (e, stack) {
+        AppLogger.error(
+          'WardrobeCloudImageStorage: delete failed path=${ref.fullPath}',
+          error: e,
+          stackTrace: stack,
+        );
+      }
     }
   }
 
-  static bool _shouldUpload(String localPath) {
-    if (localPath.isEmpty) return false;
-    if (WardrobeItemImage.isAssetPath(localPath)) return false;
-    if (WardrobeItemImage.looksLikeRemoteUrl(localPath)) return false;
-    return File(localPath).existsSync();
+  /// Legacy path `wardrobe_images/` + current `wardrobe/`.
+  static List<Reference> _deleteRefs(String uid, String itemId) {
+    return [
+      _objectRef(uid, itemId),
+      FirebaseStorage.instance
+          .ref('users/$uid/wardrobe_images/$itemId.jpg'),
+    ];
   }
 
   static Future<String?> _uploadFile({
@@ -97,7 +113,12 @@ abstract final class WardrobeCloudImageStorage {
     required String localPath,
   }) async {
     final file = File(localPath);
-    if (!await file.exists()) return null;
+    if (!await file.exists()) {
+      AppLogger.warning(
+        'WardrobeCloudImageStorage: local file missing $localPath',
+      );
+      return null;
+    }
 
     final ref = _objectRef(uid, itemId);
     await ref.putFile(

@@ -1,8 +1,7 @@
-import 'dart:io';
-
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/painting.dart';
 
-import '../widgets/wardrobe_item_image.dart';
+import '../../data/models/wardrobe_item.dart';
 
 /// Reuses decoded thumbnail [ImageProvider]s for chat outfit cards.
 abstract final class WardrobeChatImageCache {
@@ -12,10 +11,10 @@ abstract final class WardrobeChatImageCache {
   static final Map<String, ImageProvider> _providers = {};
 
   static ImageProvider provider(
-    String path, {
+    String source, {
     int cacheWidth = defaultCacheWidth,
   }) {
-    final key = '$path|$cacheWidth';
+    final key = '$source|$cacheWidth';
     final existing = _providers[key];
     if (existing != null) return existing;
 
@@ -24,12 +23,14 @@ abstract final class WardrobeChatImageCache {
     }
 
     final ImageProvider<Object> base;
-    if (WardrobeItemImage.looksLikeRemoteUrl(path)) {
-      base = NetworkImage(path);
-    } else if (WardrobeItemImage.isAssetPath(path)) {
-      base = AssetImage(path);
+    if (WardrobeItem.isHttpUrl(source)) {
+      base = CachedNetworkImageProvider(source);
+    } else if (WardrobeItem.isAssetPath(source)) {
+      base = AssetImage(source);
     } else {
-      base = FileImage(File(path));
+      throw ArgumentError(
+        'WardrobeChatImageCache: only cloud URL or asset paths are supported: $source',
+      );
     }
 
     final provider = ResizeImage(

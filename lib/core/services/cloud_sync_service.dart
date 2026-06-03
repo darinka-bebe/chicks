@@ -21,9 +21,9 @@ import '../sync/sync_meta_storage.dart';
 import '../sync/sync_scope.dart';
 import '../utils/logger.dart';
 import '../utils/wardrobe_image_diagnostics.dart';
+import 'wardrobe_image_migration_service.dart';
 import '../../features/wardrobe/data/mock_wardrobe_data.dart';
 import 'collection_names.dart';
-import 'wardrobe_cloud_image_storage.dart';
 import 'wardrobe_sync_service.dart';
 
 /// Pull/push user data between Hive/SharedPreferences and Firestore.
@@ -191,11 +191,10 @@ class CloudSyncService {
       toJson: (item) => item.toJson(),
     );
 
-    final repairedItems = WardrobeImageDiagnostics.preserveLocalPhotos(
-      merged: merged.items,
-      localBeforeMerge: local,
+    final withoutDemo = MockWardrobeData.excludeDemo(merged.items);
+    final repairedItems = await WardrobeImageMigrationService.migrateAll(
+      withoutDemo,
     );
-    final withoutDemo = MockWardrobeData.excludeDemo(repairedItems);
     if (withoutDemo.length != repairedItems.length) {
       AppLogger.info(
         'CloudSyncService._pullWardrobe: skipped '
@@ -376,10 +375,7 @@ class CloudSyncService {
 
   Future<int> _pushWardrobe(String uid) async {
     var items = await _wardrobeRepository.loadItems();
-    final withUrls = await WardrobeCloudImageStorage.syncAllItems(
-      items: items,
-      uid: uid,
-    );
+    final withUrls = await WardrobeImageMigrationService.migrateAll(items);
     if (_wardrobeImagesChanged(items, withUrls)) {
       await _wardrobeRepository.saveItemsLocally(withUrls);
       items = withUrls;
@@ -741,6 +737,7 @@ class CloudSyncService {
     for (var i = 0; i < before.length; i++) {
       if (before[i].id != after[i].id) return true;
       if (before[i].imageUrl != after[i].imageUrl) return true;
+      if (before[i].imagePath != after[i].imagePath) return true;
     }
     return false;
   }

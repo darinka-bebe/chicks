@@ -38,6 +38,7 @@ dependencies:
   firebase_auth: ^6.5.1
   cloud_firestore: ^6.0.0
   firebase_storage: ^13.0.0
+  cached_network_image: ^3.4.1
   google_sign_in: ^6.2.2
   crop_your_image: ^2.0.0
   image: ^4.5.0

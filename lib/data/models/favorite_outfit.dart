@@ -14,6 +14,7 @@ class FavoriteOutfit extends Equatable {
   final List<String> moods;
   final List<String> occasions;
   final List<String> weather;
+  final List<String> recommendedItemIds;
 
   const FavoriteOutfit({
     required this.id,
@@ -24,7 +25,10 @@ class FavoriteOutfit extends Equatable {
     this.moods = const [],
     this.occasions = const [],
     this.weather = const [],
+    this.recommendedItemIds = const [],
   });
+
+  bool get hasRecommendations => recommendedItemIds.isNotEmpty;
 
   bool get hasContext =>
       moods.isNotEmpty || occasions.isNotEmpty || weather.isNotEmpty;
@@ -38,6 +42,8 @@ class FavoriteOutfit extends Equatable {
         'moods': moods,
         'occasions': occasions,
         'weather': weather,
+        if (recommendedItemIds.isNotEmpty)
+          'recommendedItemIds': recommendedItemIds,
       };
 
   factory FavoriteOutfit.fromJson(Map<String, dynamic> json) {
@@ -83,6 +89,30 @@ class FavoriteOutfit extends Equatable {
     return jsonEncode(items.map((item) => item.toJson()).toList());
   }
 
+  FavoriteOutfit copyWith({
+    String? id,
+    String? title,
+    String? recommendation,
+    String? contentHash,
+    DateTime? createdAt,
+    List<String>? moods,
+    List<String>? occasions,
+    List<String>? weather,
+    List<String>? recommendedItemIds,
+  }) {
+    return FavoriteOutfit(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      recommendation: recommendation ?? this.recommendation,
+      contentHash: contentHash ?? this.contentHash,
+      createdAt: createdAt ?? this.createdAt,
+      moods: moods ?? this.moods,
+      occasions: occasions ?? this.occasions,
+      weather: weather ?? this.weather,
+      recommendedItemIds: recommendedItemIds ?? this.recommendedItemIds,
+    );
+  }
+
   @override
   List<Object?> get props => [
         id,
@@ -93,5 +123,6 @@ class FavoriteOutfit extends Equatable {
         moods,
         occasions,
         weather,
+        recommendedItemIds,
       ];
 }

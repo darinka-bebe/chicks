@@ -7,6 +7,9 @@ import 'package:flutter/material.dart';
 import '../../core/constants/wardrobe_catalog.dart';
 
 /// A clothing item in the user's digital wardrobe.
+///
+/// Cloud photos: [imageUrl] (Firebase Storage download URL).
+/// [imagePath] is only a temporary local staging path before upload.
 class WardrobeItem extends Equatable {
   final String id;
   final String title;
@@ -36,13 +39,10 @@ class WardrobeItem extends Equatable {
 
   IconData get placeholderIcon => WardrobeCatalog.iconForCategory(category);
 
-  /// Stable local identifier (Hive key).
   String get localId => id;
 
-  /// Same as [localId]; used as the Firestore document id.
   String get firestoreDocId => id;
 
-  /// Full Firestore path: `users/{uid}/wardrobe/{firestoreDocId}`.
   String firestorePath(String uid) => 'users/$uid/wardrobe/$firestoreDocId';
 
   bool get hasStyleMetadata =>
@@ -51,23 +51,80 @@ class WardrobeItem extends Equatable {
       fit.isNotEmpty ||
       vibes.isNotEmpty;
 
-  /// Best source for UI: cloud URL first, then local/asset path.
-  String? get displayImageSource {
+  static bool isHttpUrl(String? value) {
+    final trimmed = value?.trim() ?? '';
+    return trimmed.startsWith('http://') || trimmed.startsWith('https://');
+  }
+
+  static bool isAssetPath(String? value) {
+    final trimmed = value?.trim() ?? '';
+    return trimmed.startsWith('assets/');
+  }
+
+  static bool hasCloudImageUrl(WardrobeItem item) => isHttpUrl(item.imageUrl);
+
+  static bool hasPendingLocalUpload(WardrobeItem item) {
+    final path = pendingLocalPath(item);
+    if (path == null) return false;
+    return File(path).existsSync();
+  }
+
+  /// Local file awaiting upload (never shown on other devices).
+  static String? pendingLocalPath(WardrobeItem item) {
+    final path = item.imagePath?.trim() ?? '';
+    if (path.isEmpty || isAssetPath(path) || isHttpUrl(path)) return null;
+    return path;
+  }
+
+  /// URL used by UI widgets ([CachedNetworkImage]).
+  String? get displayImageUrl {
     final url = imageUrl?.trim() ?? '';
-    if (url.isNotEmpty) return url;
+    if (isHttpUrl(url)) return url;
+
     final path = imagePath?.trim() ?? '';
-    return path.isEmpty ? null : path;
+    if (isHttpUrl(path)) return path;
+
+    return null;
+  }
+
+  /// For chat thumbnail cache — cloud URL or asset path only.
+  String? get displayImageSource {
+    final url = displayImageUrl;
+    if (url != null) return url;
+
+    final path = imagePath?.trim() ?? '';
+    if (isAssetPath(path)) return path;
+
+    return null;
   }
 
   bool get hasDisplayImage {
-    final url = imageUrl?.trim() ?? '';
-    if (url.startsWith('http://') || url.startsWith('https://')) return true;
+    if (displayImageUrl != null) return true;
+    return isAssetPath(imagePath);
+  }
 
-    final path = imagePath?.trim() ?? '';
-    if (path.isEmpty) return false;
-    if (path.startsWith('assets/')) return true;
-    if (path.startsWith('http://') || path.startsWith('https://')) return true;
-    return File(path).existsSync();
+  /// Normalizes legacy fields (URL stored in [imagePath], etc.).
+  static WardrobeItem normalizeImageFields(WardrobeItem item) {
+    var url = item.imageUrl?.trim() ?? '';
+    var path = item.imagePath?.trim() ?? '';
+
+    if (!isHttpUrl(url) && isHttpUrl(path)) {
+      url = path;
+      path = '';
+    }
+
+    if (isHttpUrl(url) && path.isNotEmpty && !isAssetPath(path)) {
+      path = '';
+    }
+
+    if (url == item.imageUrl && path == item.imagePath) return item;
+
+    return item.copyWith(
+      imageUrl: url.isEmpty ? null : url,
+      imagePath: path.isEmpty ? null : path,
+      clearImageUrl: url.isEmpty,
+      clearImagePath: path.isEmpty,
+    );
   }
 
   Map<String, dynamic> toJson() => {
@@ -81,18 +138,20 @@ class WardrobeItem extends Equatable {
         'styles': styles,
         'occasions': occasions,
         'vibes': vibes,
-        'imagePath': imagePath,
-        'imageUrl': imageUrl,
+        if (imageUrl != null && imageUrl!.trim().isNotEmpty) 'imageUrl': imageUrl,
+        if (!hasCloudImageUrl(this) &&
+            imagePath != null &&
+            imagePath!.trim().isNotEmpty)
+          'imagePath': imagePath,
       };
 
-  /// Firestore payload — never sync device-local [imagePath].
+  /// Firestore — only [imageUrl], never device-local [imagePath].
   Map<String, dynamic> toFirestoreJson() {
     final json = Map<String, dynamic>.from(toJson());
     json.remove('imagePath');
     return json;
   }
 
-  /// Hive / JSON may store ids as int (e.g. microsecond timestamps).
   static String readIdFromJson(dynamic value) {
     if (value == null) return '';
     return value.toString().trim();
@@ -129,18 +188,20 @@ class WardrobeItem extends Equatable {
   }
 
   factory WardrobeItem.fromJson(Map<String, dynamic> json) {
-    return WardrobeItem(
-      id: readIdFromJson(json['id']),
-      title: json['title'] as String? ?? '',
-      category: json['category'] as String? ?? '',
-      color: json['color'] as String? ?? '',
-      season: json['season'] as String? ?? '',
-      fit: json['fit'] as String? ?? '',
-      styles: _parseStringList(json['styles']),
-      occasions: _parseStringList(json['occasions']),
-      vibes: _parseStringList(json['vibes']),
-      imagePath: json['imagePath'] as String?,
-      imageUrl: json['imageUrl'] as String?,
+    return normalizeImageFields(
+      WardrobeItem(
+        id: readIdFromJson(json['id']),
+        title: json['title'] as String? ?? '',
+        category: json['category'] as String? ?? '',
+        color: json['color'] as String? ?? '',
+        season: json['season'] as String? ?? '',
+        fit: json['fit'] as String? ?? '',
+        styles: _parseStringList(json['styles']),
+        occasions: _parseStringList(json['occasions']),
+        vibes: _parseStringList(json['vibes']),
+        imagePath: json['imagePath'] as String?,
+        imageUrl: json['imageUrl'] as String?,
+      ),
     );
   }
 

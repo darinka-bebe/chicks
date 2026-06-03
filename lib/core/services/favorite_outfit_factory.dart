@@ -9,6 +9,7 @@ abstract final class FavoriteOutfitFactory {
   static FavoriteOutfit fromAiRecommendation({
     required String recommendation,
     String? userPrompt,
+    List<String> recommendedItemIds = const [],
   }) {
     final trimmed = recommendation.trim();
     final promptContext = userPrompt != null && userPrompt.trim().isNotEmpty
@@ -27,6 +28,10 @@ abstract final class FavoriteOutfitFactory {
       moods: merged.moods,
       occasions: merged.occasions,
       weather: merged.weather,
+      recommendedItemIds: recommendedItemIds
+          .map((id) => id.trim())
+          .where((id) => id.isNotEmpty)
+          .toList(),
     );
   }
 }

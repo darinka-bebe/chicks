@@ -104,6 +104,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       final nowSaved = await favorites.toggleRecommendation(
         recommendation: aiMessage.content,
         userPrompt: userPrompt,
+        recommendedItemIds: aiMessage.recommendedItemIds,
       );
       if (nowSaved) {
         await preferences.removeDislike(aiMessage.content);
