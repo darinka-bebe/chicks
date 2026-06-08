@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 
+import '../localization/app_locale.dart';
 import 'weather_condition.dart';
 
 /// Current weather used by the AI stylist and chat UI.
@@ -54,12 +55,22 @@ class WeatherSnapshot extends Equatable {
       parts.add(emoji);
     }
 
-    final summary = _conditionsSummaryRu;
+    final summary = _conditionsSummary;
     if (summary.isNotEmpty) {
       parts.add(summary);
     }
 
     return parts.join(' • ');
+  }
+
+  String get _conditionsSummary {
+    if (conditions.isEmpty) return '';
+
+    final labels = <String>[];
+    for (final condition in conditions) {
+      labels.add(_label(condition));
+    }
+    return labels.take(2).join(', ');
   }
 
   String get _primaryEmoji {
@@ -72,14 +83,11 @@ class WeatherSnapshot extends Equatable {
     return '🌤️';
   }
 
-  String get _conditionsSummaryRu {
-    if (conditions.isEmpty) return '';
-
-    final labels = <String>[];
-    for (final condition in conditions) {
-      labels.add(_labelRu(condition));
-    }
-    return labels.take(2).join(', ');
+  static String _label(WeatherCondition condition) {
+    return AppLocale.pick(
+      ru: _labelRu(condition),
+      en: _labelEn(condition),
+    );
   }
 
   static String _labelRu(WeatherCondition condition) {
@@ -93,12 +101,40 @@ class WeatherSnapshot extends Equatable {
     };
   }
 
+  static String _labelEn(WeatherCondition condition) {
+    return switch (condition) {
+      WeatherCondition.sunny => 'Sunny',
+      WeatherCondition.cloudy => 'Cloudy',
+      WeatherCondition.rainy => 'Rain',
+      WeatherCondition.snowy => 'Snow',
+      WeatherCondition.windy => 'Wind',
+      WeatherCondition.foggy => 'Fog',
+    };
+  }
+
+  static String dayPhaseLabel(DayPhase? phase) {
+    return AppLocale.pick(
+      ru: dayPhaseRu(phase),
+      en: dayPhaseEn(phase),
+    );
+  }
+
   static String dayPhaseRu(DayPhase? phase) {
     return switch (phase) {
       DayPhase.morning => 'утро',
       DayPhase.afternoon => 'день',
       DayPhase.evening => 'вечер',
       DayPhase.night => 'ночь',
+      null => '',
+    };
+  }
+
+  static String dayPhaseEn(DayPhase? phase) {
+    return switch (phase) {
+      DayPhase.morning => 'morning',
+      DayPhase.afternoon => 'afternoon',
+      DayPhase.evening => 'evening',
+      DayPhase.night => 'night',
       null => '',
     };
   }

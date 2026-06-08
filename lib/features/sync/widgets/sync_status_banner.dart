@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/localization/app_locale.dart';
 import '../../../core/sync/sync_state.dart';
 import '../../../core/theme/app_brand_colors.dart';
 import '../sync_state_controller.dart';
@@ -30,12 +31,24 @@ class SyncStatusBanner extends StatelessWidget {
 
         final text = state.message ??
             (isSyncing
-                ? 'Синхронизируем данные…'
+                ? AppLocale.pick(
+                    ru: 'Синхронизируем данные…',
+                    en: 'Syncing data…',
+                  )
                 : isError
-                    ? 'Не удалось синхронизировать. Попробуй снова.'
+                    ? AppLocale.pick(
+                        ru: 'Не удалось синхронизировать. Попробуй снова.',
+                        en: 'Could not sync. Try again.',
+                      )
                     : isOffline
-                        ? 'Нет сети. Продолжаем работать локально.'
-                        : 'Синхронизация завершена');
+                        ? AppLocale.pick(
+                            ru: 'Нет сети. Продолжаем работать локально.',
+                            en: 'No network. Working offline.',
+                          )
+                        : AppLocale.pick(
+                            ru: 'Синхронизация завершена',
+                            en: 'Sync complete',
+                          ));
 
         final background = isError || isOffline
             ? const Color(0xFFFFF1F4)
@@ -96,7 +109,9 @@ class SyncStatusBanner extends StatelessWidget {
                       if (canRetry)
                         TextButton(
                           onPressed: context.read<SyncStateController>().retry,
-                          child: const Text('Retry'),
+                          child: Text(
+                            AppLocale.pick(ru: 'Повторить', en: 'Retry'),
+                          ),
                         ),
                     ],
                   ),

@@ -5,6 +5,7 @@ import '../../../core/theme/app_brand_colors.dart';
 import '../../../core/theme/chicks_input_styles.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../data/repositories/profile_preferences_repository.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 /// Edit display name, city (weather), and optional username.
 class ProfileEditSheet extends StatefulWidget {
@@ -77,11 +78,12 @@ class _ProfileEditSheetState extends State<ProfileEditSheet> {
   }
 
   Future<void> _save() async {
+    final loc = AppLocalizations.of(context);
     final name = _nameController.text.trim();
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Введите имя'),
+        SnackBar(
+          content: Text(loc.profileEditNameRequired),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -91,8 +93,8 @@ class _ProfileEditSheetState extends State<ProfileEditSheet> {
     final city = _cityController.text.trim();
     if (city.length < 2) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Введите город (минимум 2 символа)'),
+        SnackBar(
+          content: Text(loc.profileEditCityRequired),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -136,6 +138,7 @@ class _ProfileEditSheetState extends State<ProfileEditSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 12, 24, 28),
       child: Column(
@@ -153,9 +156,9 @@ class _ProfileEditSheetState extends State<ProfileEditSheet> {
             ),
           ),
           const SizedBox(height: 20),
-          const Text(
-            'Редактировать профиль',
-            style: TextStyle(
+          Text(
+            loc.profileEditTitle,
+            style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,
               color: AppBrandColors.title,
@@ -167,7 +170,7 @@ class _ProfileEditSheetState extends State<ProfileEditSheet> {
             style: ChicksInputStyles.value,
             textCapitalization: TextCapitalization.words,
             decoration: ChicksInputStyles.decoration(
-              hintText: 'Имя',
+              hintText: loc.profileEditNameHint,
               borderRadius: 12,
             ),
           ),
@@ -177,7 +180,7 @@ class _ProfileEditSheetState extends State<ProfileEditSheet> {
             style: ChicksInputStyles.value,
             textCapitalization: TextCapitalization.words,
             decoration: ChicksInputStyles.decoration(
-              hintText: 'Город (для погоды)',
+              hintText: loc.profileEditCityHint,
               borderRadius: 12,
             ),
           ),
@@ -186,13 +189,13 @@ class _ProfileEditSheetState extends State<ProfileEditSheet> {
             controller: _usernameController,
             style: ChicksInputStyles.value,
             decoration: ChicksInputStyles.decoration(
-              hintText: 'Имя пользователя (необязательно)',
+              hintText: loc.profileEditUsernameHint,
               borderRadius: 12,
             ),
           ),
           const SizedBox(height: 8),
           Text(
-            'Email меняется только в аккаунте Google',
+            loc.profileEditEmailNote,
             style: TextStyle(fontSize: 12, color: Colors.grey[600]),
           ),
           const SizedBox(height: 20),
@@ -215,7 +218,7 @@ class _ProfileEditSheetState extends State<ProfileEditSheet> {
                       color: Colors.white,
                     ),
                   )
-                : const Text('Сохранить'),
+                : Text(loc.profileEditSave),
           ),
         ],
       ),

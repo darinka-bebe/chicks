@@ -45,6 +45,8 @@ android/app/profile/
 android/app/release/
 android/app/*.apk
 android/app/*.aab
+Chicks.apk
+*.apk
 
 # Android Studio / IntelliJ
 android/.idea/
@@ -144,6 +146,9 @@ firebase_options.dart
 # ============================================================
 # Miscellaneous
 # ============================================================
+
+# Local JDK for Android builds (Java 25 is unsupported by Gradle/Kotlin)
+.jdk/
 
 # Logs
 *.log

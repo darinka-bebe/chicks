@@ -1,4 +1,5 @@
 import '../../data/models/wardrobe_item.dart';
+import '../localization/outfit_display.dart';
 import '../models/body_profile.dart';
 import '../models/favorite_preference_profile.dart';
 import '../models/outfit_preference_profile.dart';
@@ -8,6 +9,7 @@ import '../models/stylist_request_context.dart';
 import '../models/wardrobe_outfit_slot.dart';
 import '../models/weather_snapshot.dart';
 import '../utils/logger.dart';
+import 'outfit_base_slot_rules.dart';
 import 'outfit_item_scorer.dart';
 import 'wardrobe_slot_classifier.dart';
 
@@ -35,6 +37,7 @@ abstract final class WardrobeOutfitFallback {
 
     final picked = <WardrobeOutfitSlot, WardrobeItem>{};
     final order = [
+      WardrobeOutfitSlot.set,
       WardrobeOutfitSlot.dress,
       WardrobeOutfitSlot.top,
       WardrobeOutfitSlot.bottom,
@@ -44,13 +47,7 @@ abstract final class WardrobeOutfitFallback {
     ];
 
     for (final slot in order) {
-      if (slot == WardrobeOutfitSlot.top &&
-          picked.containsKey(WardrobeOutfitSlot.dress)) {
-        continue;
-      }
-      if ((slot == WardrobeOutfitSlot.top ||
-              slot == WardrobeOutfitSlot.bottom) &&
-          picked.containsKey(WardrobeOutfitSlot.dress)) {
+      if (OutfitBaseSlotRules.shouldSkipTopOrBottom(slot, picked)) {
         continue;
       }
 
@@ -76,12 +73,7 @@ abstract final class WardrobeOutfitFallback {
       if (item != null) result.add(item);
     }
 
-    if (picked.containsKey(WardrobeOutfitSlot.dress)) {
-      add(WardrobeOutfitSlot.dress);
-    } else {
-      add(WardrobeOutfitSlot.top);
-      add(WardrobeOutfitSlot.bottom);
-    }
+    OutfitBaseSlotRules.appendBaseItems(picked, add);
     add(WardrobeOutfitSlot.outerwear);
     add(WardrobeOutfitSlot.shoes);
     add(WardrobeOutfitSlot.accessory);
@@ -214,31 +206,24 @@ abstract final class WardrobeOutfitFallback {
     final hasQuotedItems = RegExp(r'«[^»]+»').hasMatch(message);
     if (hasQuotedItems) return message;
 
+    final heading = OutfitDisplay.compositionHeading();
     final lines = items.map((item) {
       final slot = WardrobeSlotClassifier.classify(item);
-      final label = _slotLabelRu(slot);
+      final label = slot.compositionLabel;
       return '• $label: «${item.title}»';
     }).join('\n');
 
-    final block = '**Состав образа:**\n$lines';
+    final block = '**$heading:**\n$lines';
 
-    if (message.contains('Состав образа') || message.contains('Образ:')) {
+    if (message.contains('Состав образа') ||
+        message.contains('Outfit breakdown') ||
+        message.contains('Образ:')) {
       return message.replaceFirst(
-        RegExp(r'(Состав образа|Образ)\s*:?\s*\n?'),
+        RegExp(r'(Состав образа|Outfit breakdown|Образ)\s*:?\s*\n?'),
         '$block\n\n',
       );
     }
 
     return '$block\n\n$message';
   }
-
-  static String _slotLabelRu(WardrobeOutfitSlot slot) => switch (slot) {
-        WardrobeOutfitSlot.top => 'Верх',
-        WardrobeOutfitSlot.bottom => 'Низ',
-        WardrobeOutfitSlot.dress => 'Платье',
-        WardrobeOutfitSlot.outerwear => 'Верхняя одежда',
-        WardrobeOutfitSlot.shoes => 'Обувь',
-        WardrobeOutfitSlot.accessory => 'Аксессуар',
-        WardrobeOutfitSlot.unknown => 'Вещь',
-      };
 }

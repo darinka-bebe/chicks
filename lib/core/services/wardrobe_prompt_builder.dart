@@ -1,5 +1,6 @@
 import '../../core/utils/logger.dart';
 import '../../data/models/wardrobe_item.dart';
+import '../localization/app_locale.dart';
 import '../models/stylist_request_context.dart';
 import '../models/wardrobe_outfit_slot.dart';
 import 'stylist_pipeline_safety.dart';
@@ -41,9 +42,16 @@ abstract final class WardrobePromptBuilder {
     required WardrobePromptSelection selection,
   }) {
     if (selection.totalCount == 0) {
-      return '''
+      if (AppLocale.isRussian()) {
+        return '''
 АКТУАЛЬНОСТЬ ГАРДЕРОБА (ревизия $revision):
-Гардероб пуст. Не ссылайся на вещи из прошлых сообщений в этом чате — их больше нет в данных приложения.''';
+Гардероб пуст. Не ссылайся на вещи из прошлых сообщений в этом чате.
+recommendedItemIds: [] — карточки вещей не показывай.''';
+      }
+      return '''
+WARDROBE FRESHNESS (revision $revision):
+Wardrobe is empty. Do not reference items from older chat turns.
+recommendedItemIds: [] — do not show outfit item cards.''';
     }
 
     final truncation = selection.wasTruncated
@@ -67,7 +75,7 @@ abstract final class WardrobePromptBuilder {
       final resolved = selection ??
           WardrobePromptSelector.select(items, context: context);
       if (resolved.totalCount == 0) {
-        return _emptyWardrobePrompt;
+        return StylistPipelineSafety.emptyWardrobeSection;
       }
 
       final promptItems = resolved.items;
@@ -128,38 +136,87 @@ abstract final class WardrobePromptBuilder {
     bool hasColorType = false,
     bool hasBodyType = false,
   }) {
+    return AppLocale.isRussian()
+        ? _buildResponseFormatSectionRu(
+            hasColorType: hasColorType,
+            hasBodyType: hasBodyType,
+          )
+        : _buildResponseFormatSectionEn(
+            hasColorType: hasColorType,
+            hasBodyType: hasBodyType,
+          );
+  }
+
+  static String _buildResponseFormatSectionRu({
+    required bool hasColorType,
+    required bool hasBodyType,
+  }) {
     final colorTypeHint = hasColorType
         ? '- 1 пункт: цветотип — почему палитра образа подходит пользователю.\n'
         : '';
     final bodyTypeHint = hasBodyType
-        ? '- 1 пункт: тип фигуры — почему силуэт/пропорции образа подходят '
-            '(например: «оверсайз-худи балансирует грушу»).\n'
+        ? '- 1 пункт: тип фигуры — почему силуэт/пропорции образа подходят.\n'
         : '';
 
     return '''
 ФОРМАТ ОТВЕТА (строго JSON, без markdown-обёртки):
 {
-  "message": "текст ответа пользователю на русском",
+  "message": "текст ответа на русском",
   "recommendedItemIds": ["id1", "id2", "id3"]
 }
 
 Правила JSON:
-- "message" — ответ профессионального стилиста: связный ОБРАЗ, не случайный набор вещей.
-- В тексте message называй ТОЛЬКО вещи из recommendedItemIds (в кавычках «…» — точные названия из гардероба). Не упоминай удалённые или выдуманные вещи.
-- Структура message (рекомендуется):
-  1) «Состав образа» — перечисли вещи «…» по слотам (верх/низ или платье, верхняя одежда, обувь, аксессуар).
-  2) «Почему это работает» — 3–5 коротких пунктов: запрос, погода, цвета, силуэт, повод.
-$colorTypeHint$bodyTypeHint  3) При необходимости — 1 практичный совет (слой, обувь, аксессуар).
-- "recommendedItemIds" — id из гардероба в порядке сборки образа.
-- СТРОГО не более ОДНОЙ вещи на слот:
-  • максимум 1 верх ИЛИ 1 платье (платье заменяет верх+низ)
-  • максимум 1 низ (только если нет платья)
-  • максимум 1 верхняя одежда
-  • максимум 1 обувь
-  • максимум 1 аксессуар
-- НИКОГДА не указывай два худи, две рубашки, две пары обуви и т.п.
-- Если в слоте нет подходящей вещи — пропусти слот, не дублируй другую категорию.
-- Только существующие id; не выдумывай. Без дубликатов id. Обычно 3–5 вещей в образе.''';
+- "message" — короткий текст; вещи пользователь увидит на фото в карточках приложения.
+- Лимит message: до 450 символов. Без воды и повторов.
+- Если recommendedItemIds НЕ пуст (есть цельный образ из гардероба):
+  • 1–2 предложения вступления, БЕЗ «Состав образа» и БЕЗ списка вещей.
+  • затем «Почему это работает» — 2–3 пункта (до 12 слов каждый).
+$colorTypeHint$bodyTypeHint- Если из гардероба НЕЛЬЗЯ собрать подходящий образ (пустой гардероб, мало вещей, нет слотов, не подходит под повод/погоду):
+  • recommendedItemIds: [] — обязательно пустой массив, карточки не показывай.
+  • Честно скажи, что из твоих вещей сейчас нечего надеть / образ собрать не получается.
+  • Дай прямой совет по запросу: что надеть в целом (типы вещей, цвета, слои) — без названий вещей из гардероба.
+  • Без блока «Почему это работает» и без «Состав образа».
+- Не называй вещи, которых нет в recommendedItemIds.
+- "recommendedItemIds" — только id из гардероба. Не заполняй «для галочки».
+- СТРОГО не более ОДНОЙ вещи на слот (верх/платье, низ, верхняя одежда, обувь, аксессуар).
+- Если цельный образ собрать нельзя — recommendedItemIds: [], а не частичный набор.
+- Только существующие id; не выдумывай. Обычно 3–5 вещей в образе.''';
+  }
+
+  static String _buildResponseFormatSectionEn({
+    required bool hasColorType,
+    required bool hasBodyType,
+  }) {
+    final colorTypeHint = hasColorType
+        ? '- 1 bullet: seasonal color type — why the palette fits.\n'
+        : '';
+    final bodyTypeHint = hasBodyType
+        ? '- 1 bullet: body type — why the silhouette works.\n'
+        : '';
+
+    return '''
+RESPONSE FORMAT (strict JSON, no markdown wrapper):
+{
+  "message": "reply text in English",
+  "recommendedItemIds": ["id1", "id2", "id3"]
+}
+
+JSON rules:
+- "message" — short; item photos appear in app cards when ids are set.
+- Max 450 characters. No filler.
+- If recommendedItemIds is NOT empty (a complete wardrobe outfit):
+  • 1–2 intro sentences only — no item list.
+  • then "Why this works" — 2–3 bullets (max 12 words each).
+$colorTypeHint$bodyTypeHint- If you CANNOT build a suitable outfit from the wardrobe (empty, too few items, missing slots, wrong for occasion/weather):
+  • recommendedItemIds: [] — required empty array, no item cards.
+  • Say honestly there is nothing to wear from their wardrobe right now.
+  • Give direct styling advice for the request (garment types, colors, layers) — no wardrobe item names.
+  • No "Why this works" block and no outfit composition list.
+- Do not name items that are not in recommendedItemIds.
+- "recommendedItemIds" — wardrobe ids only. Never fill ids just to show cards.
+- At most ONE item per slot (top/dress, bottom, outerwear, shoes, accessory).
+- If a complete outfit is impossible — recommendedItemIds: [], not a partial pick.
+- Only real ids from the list; never invent. Usually 3–5 items per outfit.''';
   }
 
   /// Mood / weather / occasion guidance for the current user message.
@@ -274,11 +331,6 @@ ${sections.join('\n\n')}''';
     }
     return null;
   }
-
-  static const _emptyWardrobePrompt = '''
-ГАРДЕРОБ ПОЛЬЗОВАТЕЛЯ:
-Список вещей пуст. Дай универсальные советы по стилю и мягко предложи добавить вещи в раздел «Твой гардероб».
-Не называй конкретные вещи пользователя. recommendedItemIds: [].''';
 
   static const _compactWardrobeRules = '''
 Правила: только id из списка ниже; 1 вещь на слот; платье заменяет верх+низ.''';

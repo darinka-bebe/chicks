@@ -142,7 +142,9 @@ abstract final class WardrobeFilterEngine {
     final colors = <String>{};
     for (final item in items) {
       final value = item.color.trim();
-      if (value.isNotEmpty && value != 'Не указан') colors.add(value);
+      if (value.isNotEmpty && value != WardrobeCatalog.unspecifiedColor) {
+        colors.add(value);
+      }
     }
     final list = colors.toList()..sort();
     return list.toSet();

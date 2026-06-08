@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_brand_colors.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 class WardrobeSearchBar extends StatelessWidget {
   const WardrobeSearchBar({
@@ -16,6 +17,7 @@ class WardrobeSearchBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context);
     return ValueListenableBuilder<TextEditingValue>(
       valueListenable: controller,
       builder: (context, value, _) {
@@ -43,7 +45,7 @@ class WardrobeSearchBar extends StatelessWidget {
             onChanged: onChanged,
             textInputAction: TextInputAction.search,
             decoration: InputDecoration(
-              hintText: 'Поиск по названию, цвету, стилю…',
+              hintText: loc.wardrobeSearchHint,
               hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
               prefixIcon: Icon(
                 Icons.search_rounded,

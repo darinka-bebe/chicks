@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/localization/app_locale.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_brand_colors.dart';
 import '../../../data/repositories/tutorial_repository.dart';
@@ -22,7 +23,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
   final _pageController = PageController();
   int _currentPage = 0;
 
-  static const _pages = TutorialPages.slides;
+  List<TutorialPageData> get _pages => TutorialPages.slides;
 
   @override
   void dispose() {
@@ -54,7 +55,8 @@ class _TutorialScreenState extends State<TutorialScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isLastPage = _currentPage == _pages.length - 1;
+    final pages = _pages;
+    final isLastPage = _currentPage == pages.length - 1;
 
     return Scaffold(
       backgroundColor: AppBrandColors.background,
@@ -77,7 +79,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
                   TextButton(
                     onPressed: _finish,
                     child: Text(
-                      'Пропустить',
+                      AppLocale.pick(ru: 'Пропустить', en: 'Skip'),
                       style: TextStyle(
                         color: Colors.grey[600],
                         fontWeight: FontWeight.w600,
@@ -102,7 +104,10 @@ class _TutorialScreenState extends State<TutorialScreen> {
                   ),
                   const Spacer(),
                   Text(
-                    'Знакомство с Chicks',
+                    AppLocale.pick(
+                      ru: 'Знакомство с Chicks',
+                      en: 'Getting to know Chicks',
+                    ),
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
@@ -115,11 +120,11 @@ class _TutorialScreenState extends State<TutorialScreen> {
             Expanded(
               child: PageView.builder(
                 controller: _pageController,
-                itemCount: _pages.length,
+                itemCount: pages.length,
                 onPageChanged: (index) => setState(() => _currentPage = index),
                 itemBuilder: (context, index) {
                   return _TutorialSlide(
-                    data: _pages[index],
+                    data: pages[index],
                     pageIndex: index,
                     isActive: index == _currentPage,
                   );
@@ -127,7 +132,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
               ),
             ),
             TutorialProgressIndicator(
-              count: _pages.length,
+              count: pages.length,
               index: _currentPage,
             ),
             const SizedBox(height: 20),
@@ -147,7 +152,12 @@ class _TutorialScreenState extends State<TutorialScreen> {
                     elevation: 0,
                   ),
                   child: Text(
-                    isLastPage ? 'Начать стиль ✨' : 'Далее',
+                    isLastPage
+                        ? AppLocale.pick(
+                            ru: 'Начать стиль ✨',
+                            en: 'Start styling ✨',
+                          )
+                        : AppLocale.pick(ru: 'Далее', en: 'Next'),
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,

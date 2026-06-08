@@ -57,8 +57,8 @@ class WardrobeItemImage extends StatelessWidget {
       );
     }
 
-    final localPath = WardrobeItem.pendingLocalPath(item);
-    if (localPath != null) {
+    if (WardrobeItem.hasPendingLocalUpload(item)) {
+      final localPath = WardrobeItem.pendingLocalPath(item)!;
       return Image.file(
         File(localPath),
         fit: fit,

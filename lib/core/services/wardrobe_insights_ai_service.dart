@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
+import '../localization/app_locale.dart';
 import '../models/wardrobe_analysis_snapshot.dart';
 import '../models/wardrobe_insight.dart';
 import '../utils/logger.dart';
@@ -21,21 +22,32 @@ abstract final class WardrobeInsightsAiService {
     if (apiKey == null || apiKey.isEmpty) return const [];
     if (snapshot.totalItems < 3) return const [];
 
+    final isRu = AppLocale.isRussian();
+    final systemPrompt = isRu
+        ? '''
+Ты fashion-аналитик. По КРАТКОЙ сводке гардероба дай 1–2 коротких совета на русском.
+Тон: дружелюбный стилист, не робот. Без markdown.
+JSON: {"insights":[{"title":"...","body":"..."}]}
+title ≤ 50 символов, body ≤ 180 символов. Только практичные наблюдения, не выдумывай вещи.'''
+        : '''
+You are a fashion analyst. From a SHORT wardrobe summary, give 1–2 brief tips in English.
+Tone: friendly stylist, not robotic. No markdown.
+JSON: {"insights":[{"title":"...","body":"..."}]}
+title ≤ 50 chars, body ≤ 180 chars. Only practical observations — do not invent items.''';
+
     final body = jsonEncode({
       'model': _model,
       'response_format': const {'type': 'json_object'},
       'messages': [
         {
           'role': 'system',
-          'content': '''
-Ты fashion-аналитик. По КРАТКОЙ сводке гардероба дай 1–2 коротких совета на русском.
-Тон: дружелюбный стилист, не робот. Без markdown.
-JSON: {"insights":[{"title":"...","body":"..."}]}
-title ≤ 50 символов, body ≤ 180 символов. Только практичные наблюдения, не выдумывай вещи.''',
+          'content': systemPrompt,
         },
         {
           'role': 'user',
-          'content': 'Сводка: ${snapshot.compactSummary}',
+          'content': isRu
+              ? 'Сводка: ${snapshot.compactSummary}'
+              : 'Summary: ${snapshot.compactSummary}',
         },
       ],
     });

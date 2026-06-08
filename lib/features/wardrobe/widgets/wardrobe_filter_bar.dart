@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/constants/wardrobe_catalog.dart';
 import '../../../core/theme/app_brand_colors.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../data/wardrobe_filter.dart';
 
 class WardrobeFilterBar extends StatelessWidget {
@@ -22,6 +23,7 @@ class WardrobeFilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -32,7 +34,7 @@ class WardrobeFilterBar extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             children: [
               _FilterChip(
-                label: 'Избранное',
+                label: loc.wardrobeFilterFavorites,
                 icon: Icons.favorite_rounded,
                 selected: criteria.favoritesOnly,
                 onTap: () => onCriteriaChanged(
@@ -41,9 +43,10 @@ class WardrobeFilterBar extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               _DropdownChip(
-                label: 'Категория',
+                label: loc.wardrobeFilterCategory,
                 value: criteria.category,
                 options: WardrobeCatalog.categories,
+                optionLabel: WardrobeCatalog.displayCategory,
                 onSelected: (value) => onCriteriaChanged(
                   criteria.copyWith(
                     category: value,
@@ -53,9 +56,10 @@ class WardrobeFilterBar extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               _DropdownChip(
-                label: 'Сезон',
+                label: loc.wardrobeFilterSeason,
                 value: criteria.season,
                 options: WardrobeCatalog.seasons,
+                optionLabel: WardrobeCatalog.displaySeason,
                 onSelected: (value) => onCriteriaChanged(
                   criteria.copyWith(
                     season: value,
@@ -66,9 +70,10 @@ class WardrobeFilterBar extends StatelessWidget {
               if (availableColors.isNotEmpty) ...[
                 const SizedBox(width: 8),
                 _DropdownChip(
-                  label: 'Цвет',
+                  label: loc.wardrobeFilterColor,
                   value: criteria.color,
                   options: availableColors.toList(),
+                  optionLabel: WardrobeCatalog.displayColor,
                   onSelected: (value) => onCriteriaChanged(
                     criteria.copyWith(
                       color: value,
@@ -80,9 +85,10 @@ class WardrobeFilterBar extends StatelessWidget {
               if (availableStyles.isNotEmpty) ...[
                 const SizedBox(width: 8),
                 _DropdownChip(
-                  label: 'Стиль',
+                  label: loc.wardrobeFilterStyle,
                   value: criteria.style,
                   options: availableStyles.toList(),
+                  optionLabel: WardrobeCatalog.displayMetadata,
                   onSelected: (value) => onCriteriaChanged(
                     criteria.copyWith(
                       style: value,
@@ -104,7 +110,7 @@ class WardrobeFilterBar extends StatelessWidget {
                   child: Wrap(
                     spacing: 8,
                     runSpacing: 6,
-                    children: _activeTags(),
+                    children: _activeTags(loc),
                   ),
                 ),
                 TextButton(
@@ -113,8 +119,8 @@ class WardrobeFilterBar extends StatelessWidget {
                     foregroundColor: AppBrandColors.pink,
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                   ),
-                  child: const Text(
-                    'Сбросить',
+                  child: Text(
+                    loc.wardrobeFilterReset,
                     style: TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ),
@@ -126,22 +132,30 @@ class WardrobeFilterBar extends StatelessWidget {
     );
   }
 
-  List<Widget> _activeTags() {
+  List<Widget> _activeTags(AppLocalizations loc) {
     final tags = <Widget>[];
     if (criteria.favoritesOnly) {
-      tags.add(_ActiveTag(label: 'Избранное'));
+      tags.add(_ActiveTag(label: loc.wardrobeFilterFavorites));
     }
     if (criteria.category != null && criteria.category!.isNotEmpty) {
-      tags.add(_ActiveTag(label: criteria.category!));
+      tags.add(
+        _ActiveTag(label: WardrobeCatalog.displayCategory(criteria.category!)),
+      );
     }
     if (criteria.season != null && criteria.season!.isNotEmpty) {
-      tags.add(_ActiveTag(label: criteria.season!));
+      tags.add(
+        _ActiveTag(label: WardrobeCatalog.displaySeason(criteria.season!)),
+      );
     }
     if (criteria.color != null && criteria.color!.isNotEmpty) {
-      tags.add(_ActiveTag(label: criteria.color!));
+      tags.add(
+        _ActiveTag(label: WardrobeCatalog.displayColor(criteria.color!)),
+      );
     }
     if (criteria.style != null && criteria.style!.isNotEmpty) {
-      tags.add(_ActiveTag(label: criteria.style!));
+      tags.add(
+        _ActiveTag(label: WardrobeCatalog.displayMetadata(criteria.style!)),
+      );
     }
     if (criteria.query.trim().isNotEmpty) {
       tags.add(_ActiveTag(label: '«${criteria.query.trim()}»'));
@@ -212,15 +226,20 @@ class _DropdownChip extends StatelessWidget {
     required this.value,
     required this.options,
     required this.onSelected,
+    this.optionLabel,
   });
 
   final String label;
   final String? value;
   final List<String> options;
   final ValueChanged<String?> onSelected;
+  final String Function(String value)? optionLabel;
+
+  String _labelFor(String option) => optionLabel?.call(option) ?? option;
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context);
     final selected = value != null && value!.isNotEmpty;
     return PopupMenuButton<String?>(
       onSelected: onSelected,
@@ -230,7 +249,7 @@ class _DropdownChip extends StatelessWidget {
         PopupMenuItem<String?>(
           value: null,
           child: Text(
-            'Все',
+            loc.wardrobeFilterAll,
             style: TextStyle(
               color: selected ? Colors.grey[600] : AppBrandColors.pink,
               fontWeight: FontWeight.w600,
@@ -241,7 +260,7 @@ class _DropdownChip extends StatelessWidget {
           (option) => PopupMenuItem<String?>(
             value: option,
             child: Text(
-              option,
+              _labelFor(option),
               style: TextStyle(
                 fontWeight: value == option ? FontWeight.w700 : FontWeight.w500,
                 color: value == option
@@ -258,7 +277,7 @@ class _DropdownChip extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              selected ? value! : label,
+              selected ? _labelFor(value!) : label,
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: selected ? FontWeight.w600 : FontWeight.w500,

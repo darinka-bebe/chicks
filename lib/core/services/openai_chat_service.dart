@@ -9,6 +9,7 @@ import '../../data/models/chat_message.dart';
 import '../../data/models/wardrobe_item.dart';
 import '../models/stylist_request_context.dart';
 import '../models/stylist_response.dart';
+import '../localization/app_locale.dart';
 import '../utils/logger.dart';
 import '../utils/openai_key_diagnostics.dart';
 import 'stylist_context_parser.dart';
@@ -37,6 +38,7 @@ import 'outfit_weather_guard.dart';
 import 'openai_cost_logger.dart';
 import 'stylist_pipeline_logger.dart';
 import 'stylist_pipeline_safety.dart';
+import 'outfit_why_section_parser.dart';
 import 'wardrobe_message_content_sanitizer.dart';
 import 'wardrobe_outfit_fallback.dart';
 import 'wardrobe_recommendation_resolver.dart';
@@ -58,7 +60,10 @@ class OpenAiChatService {
   final WardrobeAiContext _wardrobeAiContext;
   final WeatherRepository _weatherRepository;
 
-  static const _baseSystemPrompt = '''
+  static String get _baseSystemPrompt =>
+      AppLocale.isRussian() ? _baseSystemPromptRu : _baseSystemPromptEn;
+
+  static const _baseSystemPromptRu = '''
 Ты — персональный fashion-стилист приложения Chicks: умный ассистент по стилю, гардеробу и образам.
 
 Роль и тон:
@@ -67,30 +72,56 @@ class OpenAiChatService {
 - Иногда добавляй уместные эмодзи (1–2 на ответ), не перегружай текст.
 
 Как отвечать:
-- Всегда на русском языке.
-- Кратко и по делу: 2–5 абзацев или списки, без воды.
-- Структурируй ответ: заголовки/пункты, если советов несколько.
-- Учитывай актуальные тренды, но предлагай носибельные и практичные варианты.
-- Давай конкретные советы по сочетаниям: цвета, фактуры, силуэты, обувь, аксессуары.
-- При нехватке данных задай 1 уточняющий вопрос вместо длинной лекции.
+- Always respond in Russian.
+- МАЛО ТЕКСТА: пользователь видит фото вещей в карточках — не дублируй их длинным описанием.
+- Если собираешь образ (recommendedItemIds): 1–2 коротких предложения вступления, без перечисления вещей.
+- Если образа нет: до 3 коротких абзацев или списка, без воды.
+- При нехватке данных — 1 уточняющий вопрос, не лекция.
 
-Объясняй ПОЧЕМУ образ работает (обязательно):
-- Не ограничивайся списком вещей — после состава образа дай короткое стильное объяснение логики.
-- Цвета: почему оттенки гармонируют.
-- Силуэт и посадка: как вещи балансируют друг друга.
-- Настроение: как образ передаёт нужный вайб.
-- Погода и повод: почему выбор практичен для контекста.
-- 2–4 естественные фразы с «почему» достаточно.
+Объясняй ПОЧЕМУ образ работает (кратко):
+- Блок «Почему это работает» — ровно 2–3 пункта, каждый до 12 слов.
+- Не повторяй названия вещей из карточек — только логика (цвет, силуэт, погода, повод).
 
 Приоритет гардероба (критично):
 - В системных сообщениях передан актуальный гардероб, сгруппированный по слотам образа.
 - Собирай ЦЕЛОСТНЫЙ лук: максимум 1 вещь на слот (верх ИЛИ платье, низ, верхняя одежда, обувь, аксессуар).
 - НИКОГДА не рекомендуй две вещи одной категории.
-- Если слота нет — пропусти, не подставляй дубликат.
 - Не выдумывай вещи — только id из списка.
+
+Если образ из гардероба собрать нельзя:
+- recommendedItemIds: [] — не показывай карточки вещей.
+- Честно скажи, что из сохранённых вещей сейчас нечего надеть.
+- Дай прямой совет по запросу: что надеть в целом (типы одежды, цвета, слои), без выдуманных вещей из гардероба.
 
 Ограничения:
 - Не давай медицинских и правовых советов. Не обсуждай темы вне моды и стиля.
+''';
+
+  static const _baseSystemPromptEn = '''
+You are Chicks — a personal fashion stylist inside a wardrobe app.
+
+Tone: friendly, modern, confident, practical — never preachy.
+
+How to reply:
+- Always respond in English.
+- Keep text SHORT: the user sees outfit item photos in cards — do not repeat them in prose.
+- When recommending an outfit (recommendedItemIds): 1–2 short intro sentences only — no item list.
+- Otherwise: up to 3 short paragraphs max. One clarifying question if needed.
+
+Why it works (brief):
+- Section "Why this works" — exactly 2–3 bullet points, max 12 words each.
+- Do not repeat item names from cards — explain color, silhouette, weather, occasion.
+
+Wardrobe rules (critical):
+- Use only item ids from the wardrobe list. One item per slot max.
+- Never invent items or duplicate categories.
+
+If you cannot build an outfit from the wardrobe:
+- recommendedItemIds: [] — do not show item cards.
+- Say honestly there is nothing to wear from their saved clothes.
+- Give direct styling advice for the request (garment types, colors, layers) — no fake wardrobe items.
+
+Stay on fashion topics only.
 ''';
 
   String? get _apiKey => OpenAiKeyDiagnostics.normalize(dotenv.env['OPENAI_API_KEY']);
@@ -444,25 +475,6 @@ class OpenAiChatService {
         curatedIds = resolvedItems.map((item) => item.id).toList();
       }
 
-      if (resolvedItems.isEmpty && wardrobeForCuration.isNotEmpty) {
-        resolvedItems = WardrobeOutfitFallback.build(
-          wardrobe: wardrobeForCuration,
-          context: requestContext,
-          weather: weather.isAvailable ? weather : null,
-          colorType: styleProfile.colorType,
-          bodyProfile: styleProfile.bodyProfile,
-          preferenceProfile: styleProfile.dislikeProfile,
-          favoriteProfile: styleProfile.favoriteProfile,
-          recentSignals: recentSignals,
-        );
-        curatedIds = resolvedItems.map((item) => item.id).toList();
-        if (curatedIds.isNotEmpty) {
-          AppLogger.info(
-            'OpenAiChatService: wardrobe fallback outfit ids=$curatedIds',
-          );
-        }
-      }
-
       var messageText = parsed.message.isNotEmpty
           ? parsed.message
           : StylistPipelineSafety.fallbackAssistantMessage;
@@ -472,6 +484,15 @@ class OpenAiChatService {
           message: messageText,
           items: resolvedItems,
         );
+      } else {
+        curatedIds = const [];
+        messageText = OutfitWhySectionParser.stripOutfitOnlySections(messageText);
+        if (parsed.recommendedItemIds.isNotEmpty) {
+          AppLogger.info(
+            'OpenAiChatService: dropped ${parsed.recommendedItemIds.length} '
+            'invalid id(s) — advice-only reply',
+          );
+        }
       }
 
       final cleanedMessage = WardrobeMessageContentSanitizer.alignWithValidItems(

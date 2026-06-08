@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/localization/app_locale.dart';
 import '../../../core/models/body_profile.dart';
+import '../../../core/router/post_auth_navigation.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/services/body_shape_calculator.dart';
 import '../../../core/theme/app_brand_colors.dart';
@@ -33,7 +35,7 @@ class _BodyTypeQuizScreenState extends State<BodyTypeQuizScreen> {
   bool _showResult = false;
   BodyProfile? _resultProfile;
 
-  static const _questions = BodyTypeQuizQuestions.questions;
+  List<BodyTypeQuizQuestion> get _questions => BodyTypeQuizQuestions.questions;
 
   @override
   void dispose() {
@@ -94,7 +96,7 @@ class _BodyTypeQuizScreenState extends State<BodyTypeQuizScreen> {
       completed: true,
     );
     if (!mounted) return;
-    _goNext();
+    await _goNext();
   }
 
   Future<void> _saveAndContinue() async {
@@ -106,18 +108,21 @@ class _BodyTypeQuizScreenState extends State<BodyTypeQuizScreen> {
       completed: true,
     );
     if (!mounted) return;
-    _goNext();
+    await _goNext();
   }
 
-  void _goNext() {
+  Future<void> _goNext() async {
     if (widget.fromProfile) {
       context.pop(true);
       return;
     }
-    final destination = AuthRepository.instance.isLoggedIn
-        ? RouteNames.main
-        : RouteNames.login;
-    context.go(destination);
+    if (AuthRepository.instance.isLoggedIn) {
+      final destination = await PostAuthNavigation.destinationAfterAuth();
+      if (!mounted) return;
+      context.go(destination);
+      return;
+    }
+    context.go(RouteNames.login);
   }
 
   @override
@@ -140,11 +145,11 @@ class _BodyTypeQuizScreenState extends State<BodyTypeQuizScreen> {
                     )
                   else
                     const SizedBox(width: 48),
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Тип фигуры',
+                      AppLocale.pick(ru: 'Тип фигуры', en: 'Body shape'),
                       textAlign: TextAlign.center,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w700,
                         color: AppBrandColors.title,
@@ -154,7 +159,7 @@ class _BodyTypeQuizScreenState extends State<BodyTypeQuizScreen> {
                   TextButton(
                     onPressed: _skip,
                     child: Text(
-                      'Позже',
+                      AppLocale.pick(ru: 'Позже', en: 'Later'),
                       style: TextStyle(
                         color: Colors.grey[600],
                         fontWeight: FontWeight.w600,
@@ -166,9 +171,12 @@ class _BodyTypeQuizScreenState extends State<BodyTypeQuizScreen> {
             ),
             if (!_showResult) ...[
               if (!widget.fromProfile)
-                const OnboardingFunnelHeader(
+                OnboardingFunnelHeader(
                   step: OnboardingFunnel.stepBodyQuiz,
-                  title: 'Тип фигуры и посадка',
+                  title: AppLocale.pick(
+                    ru: 'Тип фигуры и посадка',
+                    en: 'Body shape & fit',
+                  ),
                 ),
               Padding(
                 padding: EdgeInsets.fromLTRB(
@@ -179,7 +187,10 @@ class _BodyTypeQuizScreenState extends State<BodyTypeQuizScreen> {
                 ),
                 child: QuizProgressBar(
                   progress: (_currentIndex + 1) / _questions.length,
-                  label: 'Вопрос ${_currentIndex + 1} из ${_questions.length}',
+                  label: AppLocale.pick(
+                    ru: 'Вопрос ${_currentIndex + 1} из ${_questions.length}',
+                    en: 'Question ${_currentIndex + 1} of ${_questions.length}',
+                  ),
                 ),
               ),
               const SizedBox(height: 8),
@@ -228,7 +239,12 @@ class _BodyTypeQuizScreenState extends State<BodyTypeQuizScreen> {
                     ),
                   ),
                   child: Text(
-                    _showResult ? 'Сохранить и продолжить' : 'Далее',
+                    _showResult
+                        ? AppLocale.pick(
+                            ru: 'Сохранить и продолжить',
+                            en: 'Save and continue',
+                          )
+                        : AppLocale.pick(ru: 'Далее', en: 'Next'),
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -330,7 +346,7 @@ class _ResultPanel extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           Text(
-            shape.displayNameRu,
+            shape.displayName,
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontSize: 28,
@@ -338,14 +354,9 @@ class _ResultPanel extends StatelessWidget {
               color: AppBrandColors.title,
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            shape.englishLabel,
-            style: TextStyle(color: Colors.grey[500], fontWeight: FontWeight.w600),
-          ),
           const SizedBox(height: 16),
           Text(
-            shape.shortDescriptionRu,
+            shape.shortDescription,
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 15,
@@ -355,7 +366,12 @@ class _ResultPanel extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'Стилист будет балансировать силуэт и учитывать посадку: ${profile.fitPreference.isNotEmpty ? profile.fitPreference : "универсальная"}.',
+            AppLocale.pick(
+              ru:
+                  'Стилист будет балансировать силуэт и учитывать посадку: ${profile.displayFitPreference}.',
+              en:
+                  'Your stylist will balance silhouette and fit preference: ${profile.displayFitPreference}.',
+            ),
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 13, color: Colors.grey[600], height: 1.45),
           ),

@@ -1,4 +1,6 @@
 import '../../data/models/wardrobe_item.dart';
+import '../constants/wardrobe_catalog.dart';
+import '../localization/app_locale.dart';
 import '../models/body_profile.dart';
 import '../models/seasonal_color_type.dart';
 import '../models/stylist_defaults.dart';
@@ -10,13 +12,15 @@ import 'wardrobe_analyzer.dart';
 
 /// Local style analytics — wardrobe + color/body type + taste signals (no AI).
 abstract final class StyleInsightsEngine {
+  static String _l(String ru, String en) => AppLocale.pick(ru: ru, en: en);
+
   static List<WardrobeInsight> build({
     required List<WardrobeItem> items,
     required UserPreferencesBundle preferences,
     int favoritesCount = 0,
   }) {
     final snapshot = WardrobeAnalyzer.analyze(items);
-  final fitCounts = _fitCounts(items);
+    final fitCounts = _fitCounts(items);
     final categoryCounts = _categoryCounts(items);
     final vibes = _topVibes(items);
 
@@ -38,18 +42,26 @@ abstract final class StyleInsightsEngine {
 
   static List<WardrobeInsight> _emptyInsights(UserPreferencesBundle prefs) {
     final colorHint = prefs.colorType != null
-        ? ' Цветотип «${prefs.colorType!.displayNameRu}» уже задан — добавь вещи, и я подстрою советы.'
+        ? _l(
+            ' Цветотип «${prefs.colorType!.displayName}» уже задан — добавь вещи, и я подстрою советы.',
+            ' Color type «${prefs.colorType!.displayName}» is set — add items and I will tailor tips.',
+          )
         : '';
     final bodyHint = prefs.bodyProfile != null
-        ? ' Силуэт «${prefs.bodyProfile!.shape.displayNameRu}» учту в рекомендациях.'
+        ? _l(
+            ' Силуэт «${prefs.bodyProfile!.shape.displayName}» учту в рекомендациях.',
+            ' Body shape «${prefs.bodyProfile!.shape.displayName}» will shape recommendations.',
+          )
         : '';
 
     return [
       WardrobeInsight(
         id: 'empty_style',
-        title: 'Гардероб пока пуст',
-        body:
-            'Добавь несколько любимых вещей — я покажу доминирующий стиль, палитру и пробелы.$colorHint$bodyHint',
+        title: _l('Гардероб пока пуст', 'Wardrobe is empty'),
+        body: _l(
+          'Добавь несколько любимых вещей — я покажу доминирующий стиль, палитру и пробелы.$colorHint$bodyHint',
+          'Add a few favorite pieces — I will show your dominant style, palette, and gaps.$colorHint$bodyHint',
+        ),
         kind: WardrobeInsightKind.tip,
       ),
     ];
@@ -67,14 +79,25 @@ abstract final class StyleInsightsEngine {
     final moods = defaults.topMoods(limit: 2);
 
     final stylePart = topStyles.isNotEmpty
-        ? 'В гардеробе чаще встречаются направления: ${_joinRu(topStyles)}.'
-        : 'Стили пока не размечены — отметь mood при добавлении вещей.';
+        ? _l(
+            'В гардеробе чаще встречаются направления: ${_joinStyles(topStyles)}.',
+            'Your wardrobe leans toward: ${_joinStyles(topStyles)}.',
+          )
+        : _l(
+            'Стили пока не размечены — отметь mood при добавлении вещей.',
+            'Styles are not tagged yet — add a mood when you save items.',
+          );
 
     final moodPart = moods.isNotEmpty
-        ? ' В чате ты часто выбираешь настроение: ${_joinRu(moods)}.'
+        ? _l(
+            ' В чате ты часто выбираешь настроение: ${_joinStyles(moods)}.',
+            ' In chat you often pick mood: ${_joinStyles(moods)}.',
+          )
         : '';
 
-    final vibePart = vibes.isNotEmpty ? ' Вайб: ${_joinRu(vibes)}.' : '';
+    final vibePart = vibes.isNotEmpty
+        ? _l(' Вайб: ${_joinStyles(vibes)}.', ' Vibe: ${_joinStyles(vibes)}.')
+        : '';
 
     return WardrobeInsight(
       id: 'dominant_style',
@@ -89,18 +112,21 @@ abstract final class StyleInsightsEngine {
     List<String> moods,
   ) {
     if (styles.contains('casual') || moods.contains('comfy')) {
-      return 'Casual и уютный стиль';
+      return _l('Casual и уютный стиль', 'Casual and cozy style');
     }
     if (styles.contains('old money') || styles.contains('feminine')) {
-      return 'Элегантный повседневный стиль';
+      return _l('Элегантный повседневный стиль', 'Elegant everyday style');
     }
     if (styles.contains('sporty')) {
-      return 'Спортивный и casual-мix';
+      return _l('Спортивный и casual-мix', 'Sporty casual mix');
     }
     if (styles.isNotEmpty) {
-      return 'Доминирует ${_labelStyle(styles.first)}';
+      return _l(
+        'Доминирует ${_labelStyle(styles.first)}',
+        'Dominant: ${_labelStyle(styles.first)}',
+      );
     }
-    return 'Твой стиль формируется';
+    return _l('Твой стиль формируется', 'Your style is taking shape');
   }
 
   static WardrobeInsight _colorPaletteInsight(
@@ -113,25 +139,40 @@ abstract final class StyleInsightsEngine {
     final topColors = colorEntries.take(3).map((e) => e.key).toList();
 
     final palettePart = neutralRatio >= 0.45
-        ? 'В гардеробе много нейтральных и тёплых базовых оттенков — это упрощает сочетания.'
+        ? _l(
+            'В гардеробе много нейтральных и тёплых базовых оттенков — это упрощает сочетания.',
+            'Lots of neutral and warm base shades — easy to mix and match.',
+          )
         : topColors.isNotEmpty
-            ? 'Чаще всего встречаются: ${_joinRu(topColors)}.'
-            : 'Палитра пока разнообразная без явного лидера.';
+            ? _l(
+                'Чаще всего встречаются: ${_joinColors(topColors)}.',
+                'Most common colors: ${_joinColors(topColors)}.',
+              )
+            : _l(
+                'Палитра пока разнообразная без явного лидера.',
+                'Your palette is varied with no clear leader yet.',
+              );
 
     final darkPart = snapshot.darkToneCount >=
             (snapshot.totalItems * 0.5).ceil()
-        ? ' Преобладают тёмные тона — добавь светлый акцент для контраста.'
+        ? _l(
+            ' Преобладают тёмные тона — добавь светлый акцент для контраста.',
+            ' Dark tones dominate — add a light accent for contrast.',
+          )
         : '';
 
     final colorTypePart = colorType != null
-        ? ' Цветотип «${colorType.displayNameRu}» — опирайся на его рекомендованную гамму.'
+        ? _l(
+            ' Цветотип «${colorType.displayName}» — опирайся на его рекомендованную гамму.',
+            ' Color type «${colorType.displayName}» — lean on its recommended palette.',
+          )
         : '';
 
     return WardrobeInsight(
       id: 'color_palette',
       title: neutralRatio >= 0.45
-          ? 'Тёплые нейтралы в основе'
-          : 'Твоя цветовая палитра',
+          ? _l('Тёплые нейтралы в основе', 'Warm neutrals at the core')
+          : _l('Твоя цветовая палитра', 'Your color palette'),
       body: '$palettePart$darkPart$colorTypePart'.trim(),
       kind: WardrobeInsightKind.color,
     );
@@ -148,14 +189,17 @@ abstract final class StyleInsightsEngine {
     if (snapshot.missingSlots.isNotEmpty) {
       final missing = snapshot.missingSlots
           .take(2)
-          .map(_slotLabelRu)
-          .join(' и ');
+          .map(_slotLabel)
+          .join(_l(' и ', ' and '));
       return WardrobeInsight(
         id: 'balance_gap',
-        title: 'Гардероб не сбалансирован',
-        body:
-            'Не хватает категорий: $missing. '
-            'Сейчас ${snapshot.totalItems} вещей — усили слабые слоты, чтобы образы собирались легче.',
+        title: _l('Гардероб не сбалансирован', 'Wardrobe is unbalanced'),
+        body: _l(
+          'Не хватает категорий: $missing. '
+          'Сейчас ${snapshot.totalItems} вещей — усили слабые слоты, чтобы образы собирались легче.',
+          'Missing categories: $missing. '
+          'You have ${snapshot.totalItems} items — fill weak slots to build looks faster.',
+        ),
         kind: WardrobeInsightKind.balance,
       );
     }
@@ -164,24 +208,33 @@ abstract final class StyleInsightsEngine {
       final slot = snapshot.overloadedSlots.first;
       return WardrobeInsight(
         id: 'balance_overload',
-        title: 'Перекос по категориям',
-        body:
-            'Много вещей в категории «${_slotLabelRu(slot)}» '
-            '(${snapshot.countFor(slot)} из ${snapshot.totalItems}). '
-            'Разбавь другими слотами — низ, обувь или аксессуары.',
+        title: _l('Перекос по категориям', 'Category imbalance'),
+        body: _l(
+          'Много вещей в категории «${_slotLabel(slot)}» '
+          '(${snapshot.countFor(slot)} из ${snapshot.totalItems}). '
+          'Разбавь другими слотами — низ, обувь или аксессуары.',
+          'Many items in «${_slotLabel(slot)}» '
+          '(${snapshot.countFor(slot)} of ${snapshot.totalItems}). '
+          'Balance with bottoms, shoes, or accessories.',
+        ),
         kind: WardrobeInsightKind.balance,
       );
     }
 
     final catPart = topCategory != null
-        ? ' Больше всего — «${topCategory.key}» (${topCategory.value} шт.).'
+        ? _l(
+            ' Больше всего — «${_displayCategory(topCategory.key)}» (${topCategory.value} шт.).',
+            ' Most items: «${_displayCategory(topCategory.key)}» (${topCategory.value}).',
+          )
         : '';
 
     return WardrobeInsight(
       id: 'balance_ok',
-      title: 'Сбалансированный гардероб',
-      body:
-          'Категории распределены ровно — можно смело комбинировать вещи без «дырок» в образе.$catPart',
+      title: _l('Сбалансированный гардероб', 'Balanced wardrobe'),
+      body: _l(
+        'Категории распределены ровно — можно смело комбинировать вещи без «дырок» в образе.$catPart',
+        'Categories are evenly spread — mix freely without gaps in your looks.$catPart',
+      ),
       kind: WardrobeInsightKind.balance,
     );
   }
@@ -197,29 +250,40 @@ abstract final class StyleInsightsEngine {
 
     var body = '';
     if (dominantFit == 'oversized' || oversized >= 2) {
-      body =
-          'Ты часто выбираешь oversize и свободную посадку — образы выглядят расслабленно и современно.';
+      body = _l(
+        'Ты часто выбираешь oversize и свободную посадку — образы выглядят расслабленно и современно.',
+        'You often pick oversized and relaxed fits — looks feel easy and modern.',
+      );
     } else if (dominantFit == 'slim' || fitted >= 2) {
-      body =
-          'В гардеробе больше приталенных силуэтов — линия фигуры читается чётче.';
+      body = _l(
+        'В гардеробе больше приталенных силуэтов — линия фигуры читается чётче.',
+        'More fitted silhouettes — your shape reads more clearly.',
+      );
     } else {
-      body =
-          'Посадка в гардеробе сбалансирована: есть и свободные, и более структурные вещи.';
+      body = _l(
+        'Посадка в гардеробе сбалансирована: есть и свободные, и более структурные вещи.',
+        'Fit is balanced: relaxed pieces and more structured ones.',
+      );
     }
 
     if (bodyProfile != null) {
-      body +=
-          ' Силуэт «${bodyProfile.shape.displayNameRu}»: ${bodyProfile.shape.shortDescriptionRu}';
+      body += _l(
+        ' Силуэт «${bodyProfile.shape.displayName}»: ${bodyProfile.shape.shortDescription}',
+        ' Shape «${bodyProfile.shape.displayName}»: ${bodyProfile.shape.shortDescription}',
+      );
       if (bodyProfile.prefersOversized) {
-        body += ' Ты отмечала любовь к oversize — это совпадает с гардеробом.';
+        body += _l(
+          ' Ты отмечала любовь к oversize — это совпадает с гардеробом.',
+          ' You prefer oversized fits — that matches your wardrobe.',
+        );
       }
     }
 
     return WardrobeInsight(
       id: 'silhouette',
       title: dominantFit == 'oversized'
-          ? 'Свободные силуэты'
-          : 'Твои силуэты',
+          ? _l('Свободные силуэты', 'Relaxed silhouettes')
+          : _l('Твои силуэты', 'Your silhouettes'),
       body: body.trim(),
       kind: WardrobeInsightKind.silhouette,
     );
@@ -235,7 +299,7 @@ abstract final class StyleInsightsEngine {
 
     return WardrobeInsight(
       id: 'aesthetic',
-      title: 'Твоя эстетика',
+      title: _l('Твоя эстетика', 'Your aesthetic'),
       body: aesthetic,
       kind: WardrobeInsightKind.highlight,
     );
@@ -250,11 +314,13 @@ abstract final class StyleInsightsEngine {
 
     if (snapshot.neutralItemCount < 2 && snapshot.totalItems >= 4) {
       cards.add(
-        const WardrobeInsight(
+        WardrobeInsight(
           id: 'rec_basics',
-          title: 'Не хватает базовых вещей',
-          body:
-              'Добавь нейтральный верх и универсальный низ (белая футболка, джинсы, бежевые брюки) — с ними образы собираются за минуту.',
+          title: _l('Не хватает базовых вещей', 'Missing wardrobe basics'),
+          body: _l(
+            'Добавь нейтральный верх и универсальный низ (белая футболка, джинсы, бежевые брюки) — с ними образы собираются за минуту.',
+            'Add a neutral top and versatile bottom (white tee, jeans, beige trousers) — looks come together fast.',
+          ),
           kind: WardrobeInsightKind.recommendation,
         ),
       );
@@ -263,11 +329,13 @@ abstract final class StyleInsightsEngine {
     if (snapshot.darkToneCount >= (snapshot.totalItems * 0.5).ceil() &&
         snapshot.totalItems >= 3) {
       cards.add(
-        const WardrobeInsight(
+        WardrobeInsight(
           id: 'rec_dark_colors',
-          title: 'Слишком много тёмных оттенков',
-          body:
-              'В гардеробе доминируют тёмные цвета — добавь светлый верх или акцент (беж, молочный, пастель), чтобы луки не выглядели тяжёлыми.',
+          title: _l('Слишком много тёмных оттенков', 'Too many dark shades'),
+          body: _l(
+            'В гардеробе доминируют тёмные цвета — добавь светлый верх или акцент (беж, молочный, пастель), чтобы луки не выглядели тяжёлыми.',
+            'Dark colors dominate — add a light top or accent (beige, cream, pastel) so looks feel lighter.',
+          ),
           kind: WardrobeInsightKind.recommendation,
         ),
       );
@@ -276,11 +344,13 @@ abstract final class StyleInsightsEngine {
     if (snapshot.countFor(WardrobeOutfitSlot.shoes) == 0 &&
         snapshot.totalItems >= 3) {
       cards.add(
-        const WardrobeInsight(
+        WardrobeInsight(
           id: 'rec_shoes',
-          title: 'Мало обуви',
-          body:
-              'Добавь хотя бы одну пару базовой обуви (кроссовки или лоферы) — без неё образы в чате часто выглядят незавершёнными.',
+          title: _l('Мало обуви', 'Not enough shoes'),
+          body: _l(
+            'Добавь хотя бы одну пару базовой обуви (кроссовки или лоферы) — без неё образы в чате часто выглядят незавершёнными.',
+            'Add at least one basic pair (sneakers or loafers) — looks in chat often feel unfinished without shoes.',
+          ),
           kind: WardrobeInsightKind.recommendation,
         ),
       );
@@ -289,43 +359,67 @@ abstract final class StyleInsightsEngine {
     final tips = <String>[];
 
     if (snapshot.neutralItemCount < 2 && snapshot.totalItems >= 4) {
-      tips.add('Добавь нейтральные базы — белый верх, джинсы или бежевый низ.');
+      tips.add(_l(
+        'Добавь нейтральные базы — белый верх, джинсы или бежевый низ.',
+        'Add neutral basics — white top, jeans, or beige bottoms.',
+      ));
     }
 
     if (snapshot.countFor(WardrobeOutfitSlot.outerwear) == 0 &&
         snapshot.totalItems >= 5) {
-      tips.add('Не хватает слоя — жакет, кардigan или trench оживят комбинации.');
+      tips.add(_l(
+        'Не хватает слоя — жакет, кардigan или trench оживят комбинации.',
+        'Add a layer — blazer, cardigan, or trench will refresh combos.',
+      ));
     }
 
     if (snapshot.formalItemCount == 0 && snapshot.totalItems >= 6) {
-      tips.add('Почти нет formal-вещей — одна более собранная позиция расширит поводы.');
+      tips.add(_l(
+        'Почти нет formal-вещей — одна более собранная позиция расширит поводы.',
+        'Few dressy pieces — one polished item opens more occasions.',
+      ));
     }
 
     final oversized = fitCounts['oversized'] ?? 0;
     final slim = (fitCounts['slim'] ?? 0) + (fitCounts['fitted'] ?? 0);
     if (oversized >= 2 && slim == 0) {
-      tips.add('Попробуй контраст: oversize-верх + более структурный низ.');
+      tips.add(_l(
+        'Попробуй контраст: oversize-верх + более структурный низ.',
+        'Try contrast: oversized top + a more structured bottom.',
+      ));
     } else if (slim >= 2 && oversized == 0) {
-      tips.add('Добавь один oversize-слой — образ станет актуальнее.');
+      tips.add(_l(
+        'Добавь один oversize-слой — образ станет актуальнее.',
+        'Add one oversized layer — the look will feel more current.',
+      ));
     }
 
     if (snapshot.countFor(WardrobeOutfitSlot.accessory) <= 1 &&
         snapshot.totalItems >= 5) {
-      tips.add('Аксессуар (сумка, ремень) часто «собирает» готовый лук.');
+      tips.add(_l(
+        'Аксессуар (сумка, ремень) часто «собирает» готовый лук.',
+        'An accessory (bag, belt) often finishes the look.',
+      ));
     }
 
     if (tips.isEmpty) {
       tips.add(
         favoritesCount > 0
-            ? 'Продолжай сохранять понравившиеся образы — я точнее пойму твой вкус.'
-            : 'Сохраняй удачные образы в избранное — стилист будет точнее.',
+            ? _l(
+                'Продолжай сохранять понравившиеся образы — я точнее пойму твой вкус.',
+                'Keep saving looks you like — I will learn your taste better.',
+              )
+            : _l(
+                'Сохраняй удачные образы в избранное — стилист будет точнее.',
+                'Save great looks to favorites — the stylist will improve.',
+              ),
       );
     }
 
     cards.add(
       WardrobeInsight(
         id: 'recommendation',
-        title: 'Рекомендация стилиста',
+        title: _l('Рекомендация стилиста', 'Stylist recommendation'),
         body: tips.first,
         kind: WardrobeInsightKind.recommendation,
       ),
@@ -380,46 +474,85 @@ abstract final class StyleInsightsEngine {
   ) {
     final casual = snapshot.styleCounts['casual'] ?? 0;
     final clean = snapshot.styleCounts['clean girl'] ?? 0;
-    final minimal = vibes.any((v) => v.contains('миним'));
+    final minimal = vibes.any((v) => v.contains('миним') || v.contains('minimal'));
 
     if (moods.contains('comfy') || moods.contains('cozy')) {
-      return 'Твой стиль ближе к comfy minimal — уют, мягкие формы и практичные сочетания.';
+      return _l(
+        'Твой стиль ближе к comfy minimal — уют, мягкие формы и практичные сочетания.',
+        'Your style leans comfy minimal — cozy shapes and practical pairings.',
+      );
     }
     if (clean >= 2 || minimal) {
-      return 'Эстетика clean girl / minimal: нейтралы, аккуратные линии, без перегруза.';
+      return _l(
+        'Эстетика clean girl / minimal: нейтралы, аккуратные линии, без перегруза.',
+        'Clean girl / minimal aesthetic: neutrals, neat lines, no clutter.',
+      );
     }
     if (casual >= 3) {
-      return 'Гардероб в духе casual streetwear — расслабленно, но собранно.';
+      return _l(
+        'Гардероб в духе casual streetwear — расслабленно, но собранно.',
+        'Casual streetwear wardrobe — relaxed but put together.',
+      );
     }
     if (snapshot.formalItemCount >= 2) {
-      return 'Есть smart-casual и более dressy вещи — стиль гибкий под разные поводы.';
+      return _l(
+        'Есть smart-casual и более dressy вещи — стиль гибкий под разные поводы.',
+        'Smart-casual and dressier pieces — flexible for different occasions.',
+      );
     }
-    return 'Стиль формируется из повседневных вещей — добавляй mood в чате, и картина станет точнее.';
+    return _l(
+      'Стиль формируется из повседневных вещей — добавляй mood в чате, и картина станет точнее.',
+      'Style is built from everyday pieces — pick moods in chat for sharper insights.',
+    );
   }
 
-  static String _joinRu(List<String> items) =>
+  static String _joinStyles(List<String> items) =>
       items.map(_labelStyle).join(', ');
 
-  static String _labelStyle(String raw) => switch (raw.toLowerCase()) {
-        'casual' => 'casual',
-        'clean girl' => 'clean girl',
-        'old money' => 'old money',
-        'feminine' => 'feminine',
-        'sporty' => 'sporty',
-        'comfy' => 'comfy',
-        'cozy' => 'cozy',
-        'romantic' => 'romantic',
-        'минимализм' => 'минимализм',
-        _ => raw,
-      };
+  static String _joinColors(List<String> items) =>
+      items.map(_displayColor).join(', ');
 
-  static String _slotLabelRu(WardrobeOutfitSlot slot) => switch (slot) {
-        WardrobeOutfitSlot.top => 'верх',
-        WardrobeOutfitSlot.bottom => 'низ',
-        WardrobeOutfitSlot.dress => 'платья',
-        WardrobeOutfitSlot.outerwear => 'верхняя одежда',
-        WardrobeOutfitSlot.shoes => 'обувь',
-        WardrobeOutfitSlot.accessory => 'аксессуары',
-        WardrobeOutfitSlot.unknown => 'прочее',
+  static String _displayColor(String raw) => WardrobeCatalog.displayColor(raw);
+
+  static String _displayCategory(String raw) =>
+      WardrobeCatalog.displayCategory(raw);
+
+  static String _labelStyle(String raw) {
+    if (WardrobeCatalog.vibes.contains(raw)) {
+      return WardrobeCatalog.displayVibe(raw);
+    }
+
+    final color = WardrobeCatalog.displayColor(raw);
+    if (color != raw) return color;
+
+    return switch (raw.toLowerCase()) {
+      'casual' => 'casual',
+      'clean girl' => 'clean girl',
+      'old money' => 'old money',
+      'feminine' => 'feminine',
+      'sporty' => 'sporty',
+      'comfy' => 'comfy',
+      'cozy' => 'cozy',
+      'romantic' => 'romantic',
+      'streetwear' => 'streetwear',
+      'минимализм' => _l('минимализм', 'minimalism'),
+      'романтичный' => WardrobeCatalog.displayVibe('романтичный'),
+      'уютный' => WardrobeCatalog.displayVibe('уютный'),
+      'дерзкий' => WardrobeCatalog.displayVibe('дерзкий'),
+      'элегантный' => WardrobeCatalog.displayVibe('элегантный'),
+      'игривый' => WardrobeCatalog.displayVibe('игривый'),
+      _ => raw,
+    };
+  }
+
+  static String _slotLabel(WardrobeOutfitSlot slot) => switch (slot) {
+        WardrobeOutfitSlot.top => _l('верх', 'tops'),
+        WardrobeOutfitSlot.bottom => _l('низ', 'bottoms'),
+        WardrobeOutfitSlot.dress => _l('платья', 'dresses'),
+        WardrobeOutfitSlot.set => _l('комплекты', 'sets'),
+        WardrobeOutfitSlot.outerwear => _l('верхняя одежда', 'outerwear'),
+        WardrobeOutfitSlot.shoes => _l('обувь', 'shoes'),
+        WardrobeOutfitSlot.accessory => _l('аксессуары', 'accessories'),
+        WardrobeOutfitSlot.unknown => _l('прочее', 'other'),
       };
 }

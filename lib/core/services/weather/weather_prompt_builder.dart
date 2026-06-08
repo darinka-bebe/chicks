@@ -28,7 +28,7 @@ abstract final class WeatherPromptBuilder {
       buffer.writeln('- Условия: $labels');
     }
 
-    final phase = WeatherSnapshot.dayPhaseRu(weather.dayPhase);
+    final phase = WeatherSnapshot.dayPhaseLabel(weather.dayPhase);
     if (phase.isNotEmpty) {
       buffer.writeln('- Время суток: $phase');
     }

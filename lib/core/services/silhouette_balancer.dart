@@ -2,6 +2,7 @@ import '../../data/models/wardrobe_item.dart';
 import '../models/body_profile.dart';
 import '../models/body_shape_type.dart';
 import '../models/wardrobe_outfit_slot.dart';
+import 'outfit_base_slot_rules.dart';
 import 'wardrobe_slot_classifier.dart';
 
 /// Outfit-level silhouette rules (combinations, not single items).
@@ -45,7 +46,7 @@ abstract final class SilhouetteBalancer {
   ) {
     var score = 0.65;
 
-    final top = outfit[WardrobeOutfitSlot.top] ?? outfit[WardrobeOutfitSlot.dress];
+    final top = OutfitBaseSlotRules.primaryBaseItem(outfit);
     final bottom = outfit[WardrobeOutfitSlot.bottom];
     final topOver = top != null && isOversized(top);
     final bottomOver = bottom != null && isOversized(bottom);

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/localization/app_locale.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_brand_colors.dart';
 
@@ -41,22 +42,28 @@ class WardrobeInsightsBanner extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 14),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Инсайты гардероба',
-                        style: TextStyle(
+                        AppLocale.pick(
+                          ru: 'Инсайты гардероба',
+                          en: 'Wardrobe insights',
+                        ),
+                        style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
                           color: AppBrandColors.title,
                         ),
                       ),
-                      SizedBox(height: 2),
+                      const SizedBox(height: 2),
                       Text(
-                        'Пробелы, баланс категорий и советы стилиста',
-                        style: TextStyle(
+                        AppLocale.pick(
+                          ru: 'Пробелы, баланс категорий и советы стилиста',
+                          en: 'Gaps, category balance, and stylist tips',
+                        ),
+                        style: const TextStyle(
                           fontSize: 12,
                           color: Colors.grey,
                           height: 1.3,

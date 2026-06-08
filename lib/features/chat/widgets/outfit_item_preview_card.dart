@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/constants/wardrobe_catalog.dart';
 import '../../../core/theme/app_brand_colors.dart';
 import '../../../data/models/wardrobe_item.dart';
 import 'chat_wardrobe_thumbnail.dart';
@@ -107,7 +108,7 @@ class OutfitItemPreviewCard extends StatelessWidget {
                                 child: Align(
                                   alignment: Alignment.topLeft,
                                   child: Text(
-                                    item.title,
+                                    WardrobeCatalog.displayItemTitle(item),
                                     maxLines: OutfitPreviewMetrics.titleMaxLines,
                                     overflow: TextOverflow.ellipsis,
                                     textHeightBehavior:
@@ -161,8 +162,12 @@ class OutfitItemPreviewCard extends StatelessWidget {
 
   static String _metaLine(WardrobeItem item) {
     final parts = <String>[];
-    if (item.category.trim().isNotEmpty) parts.add(item.category.trim());
-    if (item.color.trim().isNotEmpty) parts.add(item.color.trim());
+    if (item.category.trim().isNotEmpty) {
+      parts.add(WardrobeCatalog.displayCategory(item.category));
+    }
+    if (item.color.trim().isNotEmpty) {
+      parts.add(WardrobeCatalog.displayColor(item.color));
+    }
     return parts.join(' · ');
   }
 }

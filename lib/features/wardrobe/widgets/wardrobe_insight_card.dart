@@ -70,7 +70,7 @@ class WardrobeInsightCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          insight.categoryLabelRu,
+                          insight.categoryLabel,
                           style: const TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w700,

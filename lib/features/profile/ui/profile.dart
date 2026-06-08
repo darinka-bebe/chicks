@@ -30,6 +30,7 @@ import '../widgets/profile_editable_avatar.dart';
 import '../widgets/profile_preferences_summary_card.dart';
 import '../widgets/profile_section.dart';
 import '../widgets/profile_stat_card.dart';
+import '../widgets/profile_settings_sheet.dart';
 import '../widgets/profile_style_insights_section.dart';
 
 class ProfileTab extends StatefulWidget {
@@ -78,7 +79,7 @@ class _ProfileTabState extends State<ProfileTab> {
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _styleProfileError = 'Не удалось загрузить персонализацию профиля';
+        _styleProfileError = AppLocalizations.of(context).profileLoadStyleError;
       });
     } finally {
       if (mounted) setState(() => _isLoadingStyleProfile = false);
@@ -86,23 +87,24 @@ class _ProfileTabState extends State<ProfileTab> {
   }
 
   Future<void> _confirmSignOut() async {
+    final loc = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       barrierColor: Colors.black38,
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Выйти из аккаунта?'),
-        content: const Text('Ты уверена? Придётся входить снова 🥺'),
+        title: Text(loc.profileSignOutTitle),
+        content: Text(loc.profileSignOutBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Остаться'),
+            child: Text(loc.profileStay),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text(
-              'Выйти',
-              style: TextStyle(color: AppBrandColors.pink),
+            child: Text(
+              loc.signOut,
+              style: const TextStyle(color: AppBrandColors.pink),
             ),
           ),
         ],
@@ -114,12 +116,14 @@ class _ProfileTabState extends State<ProfileTab> {
   }
 
   void _showStylePreferences() {
+    final loc = AppLocalizations.of(context);
     final bundle = _preferences;
     final moods = bundle.stylistDefaults.topMoods();
     final occasions = bundle.stylistDefaults.topOccasions();
 
     showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -141,10 +145,10 @@ class _ProfileTabState extends State<ProfileTab> {
               ),
             ),
             const SizedBox(height: 20),
-            const Text(
-              'Стиль и настроение',
+            Text(
+              loc.profileStyleMoodTitle,
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
                 color: AppBrandColors.title,
@@ -154,26 +158,27 @@ class _ProfileTabState extends State<ProfileTab> {
             if (moods.isNotEmpty || occasions.isNotEmpty) ...[
               if (moods.isNotEmpty)
                 Text(
-                  'Частые настроения: ${moods.join(', ')}',
+                  loc.profileFrequentMoods(moods.join(', ')),
                   style: TextStyle(fontSize: 14, color: Colors.grey[700]),
                 ),
               if (occasions.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 Text(
-                  'Частые поводы: ${occasions.join(', ')}',
+                  loc.profileFrequentOccasions(occasions.join(', ')),
                   style: TextStyle(fontSize: 14, color: Colors.grey[700]),
                 ),
               ],
               const SizedBox(height: 8),
               Text(
-                'Избранных образов: ${bundle.favoritesCount} · '
-                'дизлайков: ${bundle.dislikesCount}',
+                loc.profileFavoritesDislikes(
+                  bundle.favoritesCount,
+                  bundle.dislikesCount,
+                ),
                 style: TextStyle(fontSize: 13, color: Colors.grey[600]),
               ),
             ] else
               Text(
-                'В чате выбирай подсказки (romantic, comfy, school, rainy…) — '
-                'приложение запомнит настроение и повод на этом устройстве.',
+                loc.profileStyleMoodEmpty,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
@@ -197,7 +202,7 @@ class _ProfileTabState extends State<ProfileTab> {
                     borderRadius: BorderRadius.circular(14),
                   ),
                 ),
-                child: const Text('Открыть чат со стилистом'),
+                child: Text(loc.profileOpenStylistChat),
               ),
             ),
           ],
@@ -207,99 +212,43 @@ class _ProfileTabState extends State<ProfileTab> {
   }
 
   void _showSettings() {
-    showDialog<void>(
+    showModalBottomSheet<void>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Настройки'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Chicks — твой персональный AI-стилист\nВерсия 1.0.0',
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Демо и данные',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: AppBrandColors.pink,
-                ),
-              ),
-              const SizedBox(height: 8),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Повторить обучение'),
-                subtitle: const Text(
-                  'Краткий тур по гардеробу, AI-стилисту и избранному',
-                ),
-                onTap: () {
-                  Navigator.pop(dialogContext);
-                  context.pushNamed(
-                    RouteNames.tutorialName,
-                    queryParameters: {'from': 'profile'},
-                  );
-                },
-              ),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Сбросить демо-данные'),
-                subtitle: const Text(
-                  'Гардероб, чат, избранное и история образов',
-                ),
-                onTap: () {
-                  Navigator.pop(dialogContext);
-                  _confirmDemoReset(includeQuizzes: false);
-                },
-              ),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Сбросить всё + квизы'),
-                subtitle: const Text(
-                  'Как после первой установки (онбординг заново)',
-                ),
-                onTap: () {
-                  Navigator.pop(dialogContext);
-                  _confirmDemoReset(includeQuizzes: true);
-                },
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Закрыть'),
-          ),
-        ],
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => ProfileSettingsSheet(
+        onResetDemo: () => _confirmDemoReset(includeQuizzes: false),
+        onResetAll: () => _confirmDemoReset(includeQuizzes: true),
       ),
     );
   }
 
   Future<void> _confirmDemoReset({required bool includeQuizzes}) async {
+    final loc = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(includeQuizzes ? 'Сбросить всё?' : 'Сбросить демо-данные?'),
+        title: Text(
+          includeQuizzes
+              ? loc.profileResetAllTitle
+              : loc.profileResetDemoTitle,
+        ),
         content: Text(
           includeQuizzes
-              ? 'Будут очищены гардероб, чат, избранное, история и результаты квизов. Аккаунт останется.'
-              : 'Гардероб снова заполнится демо-вещами. Чат, избранное и история будут очищены.',
+              ? loc.profileResetAllBody
+              : loc.profileResetDemoBody,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Отмена'),
+            child: Text(loc.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text(
-              'Сбросить',
-              style: TextStyle(color: AppBrandColors.pink),
+            child: Text(
+              loc.profileResetAction,
+              style: const TextStyle(color: AppBrandColors.pink),
             ),
           ),
         ],
@@ -328,8 +277,8 @@ class _ProfileTabState extends State<ProfileTab> {
           SnackBar(
             content: Text(
               includeQuizzes
-                  ? 'Данные сброшены — откроется онбординг'
-                  : 'Демо-данные восстановлены',
+                  ? loc.profileResetAllDone
+                  : loc.profileResetDemoDone,
             ),
             behavior: SnackBarBehavior.floating,
           ),
@@ -343,8 +292,8 @@ class _ProfileTabState extends State<ProfileTab> {
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(
-          const SnackBar(
-            content: Text('Не удалось сбросить данные'),
+          SnackBar(
+            content: Text(loc.profileResetFailed),
             behavior: SnackBarBehavior.floating,
             backgroundColor: Colors.redAccent,
           ),
@@ -454,7 +403,7 @@ class _ProfileTabState extends State<ProfileTab> {
                 case 9:
                   return const SizedBox(height: AppSpacing.xxl);
                 case 10:
-                  return const _SectionTitle(title: 'Быстрые действия');
+                  return _SectionTitle(title: loc.profileQuickActions);
                 case 11:
                   return Padding(
                     padding: const EdgeInsets.only(top: AppSpacing.md),
@@ -528,7 +477,7 @@ class _ProfileStatsPanelState extends State<_ProfileStatsPanel> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionTitle(title: 'Твоя статистика'),
+        _SectionTitle(title: AppLocalizations.of(context).profileYourStats),
         const SizedBox(height: 12),
         _StatsRow(stats: _stats, isLoading: _isLoading),
       ],
@@ -553,40 +502,41 @@ class _ProfileActionsBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context);
     return Column(
       children: [
         ProfileActionTile(
           icon: Icons.checkroom_outlined,
-          title: 'Мой гардероб',
-          subtitle: 'Вещи для персональных образов',
+          title: loc.profileMyWardrobe,
+          subtitle: loc.profileMyWardrobeSub,
           onTap: onWardrobe,
         ),
         const SizedBox(height: AppSpacing.md),
         ProfileActionTile(
           icon: Icons.favorite_rounded,
-          title: 'Избранные образы',
-          subtitle: 'Сохранённые рекомендации стилиста',
+          title: loc.profileFavoriteLooks,
+          subtitle: loc.profileFavoriteLooksSub,
           onTap: onFavorites,
         ),
         const SizedBox(height: AppSpacing.md),
         ProfileActionTile(
           icon: Icons.history_rounded,
-          title: 'История образов',
-          subtitle: 'Все AI-рекомендации с вещами из гардероба',
+          title: loc.profileOutfitHistory,
+          subtitle: loc.profileOutfitHistorySub,
           onTap: onHistory,
         ),
         const SizedBox(height: AppSpacing.md),
         ProfileActionTile(
           icon: Icons.auto_awesome_outlined,
-          title: 'Стиль и настроение',
-          subtitle: 'Подсказки для AI-стилиста',
+          title: loc.profileStyleMoodAction,
+          subtitle: loc.profileStyleMoodActionSub,
           onTap: onStyle,
         ),
         const SizedBox(height: AppSpacing.md),
         ProfileActionTile(
           icon: Icons.settings_outlined,
-          title: 'Настройки',
-          subtitle: 'О приложении',
+          title: loc.profileSettingsAction,
+          subtitle: loc.profileSettingsActionSub,
           onTap: onSettings,
         ),
       ],
@@ -615,8 +565,10 @@ class _ProfileHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final displayName =
-        user.displayName.isNotEmpty ? user.displayName : 'Пользователь';
+    final loc = AppLocalizations.of(context);
+    final displayName = user.displayName.isNotEmpty
+        ? user.displayName
+        : loc.profileUserFallback;
 
     return DecoratedBox(
       decoration: ProfileCardDecoration.header,
@@ -631,7 +583,7 @@ class _ProfileHeader extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.md),
             Text(
-              'Нажмите на фото — выберите и обрежьте кадр',
+              loc.profileAvatarHint,
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
@@ -725,6 +677,7 @@ class _StatsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context);
     if (isLoading) {
       return const ChicksStatsRowSkeleton();
     }
@@ -735,7 +688,7 @@ class _StatsRow extends StatelessWidget {
           child: ProfileStatCard(
             icon: Icons.checkroom_outlined,
             value: '${stats.wardrobeCount}',
-            label: 'Вещей в гардеробе',
+            label: loc.profileStatWardrobe,
           ),
         ),
         const SizedBox(width: 10),
@@ -743,7 +696,7 @@ class _StatsRow extends StatelessWidget {
           child: ProfileStatCard(
             icon: Icons.favorite_rounded,
             value: '${stats.favoritesCount}',
-            label: 'Сохранённых образов',
+            label: loc.profileStatFavoritesSaved,
           ),
         ),
         const SizedBox(width: 10),
@@ -751,7 +704,7 @@ class _StatsRow extends StatelessWidget {
           child: ProfileStatCard(
             icon: Icons.chat_bubble_outline_rounded,
             value: '${stats.stylistRequestsCount}',
-            label: 'Запросов стилисту',
+            label: loc.profileStatStylistRequests,
           ),
         ),
       ],

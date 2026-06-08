@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_brand_colors.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 /// Animated typing dots while the stylist is composing a reply.
 class ChatTypingIndicator extends StatefulWidget {
@@ -68,7 +69,7 @@ class _ChatTypingIndicatorState extends State<ChatTypingIndicator>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Стилист подбирает образ',
+                    AppLocalizations.of(context).chatTypingLabel,
                     style: TextStyle(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w600,

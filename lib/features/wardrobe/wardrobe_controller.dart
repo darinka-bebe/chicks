@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../../core/localization/app_locale.dart';
 import '../../core/services/wardrobe_sync_service.dart';
 import '../../core/services/wardrobe_ai_context.dart';
 import '../../core/utils/logger.dart';
@@ -59,7 +60,10 @@ class WardrobeController extends ChangeNotifier {
         error: e,
         stackTrace: stack,
       );
-      _loadError = 'Не удалось загрузить гардероб';
+      _loadError = AppLocale.pick(
+        ru: 'Не удалось загрузить гардероб',
+        en: 'Could not load wardrobe',
+      );
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -97,7 +101,10 @@ class WardrobeController extends ChangeNotifier {
         error: e,
         stackTrace: stack,
       );
-      _loadError = 'Не удалось загрузить гардероб';
+      _loadError = AppLocale.pick(
+        ru: 'Не удалось загрузить гардероб',
+        en: 'Could not load wardrobe',
+      );
     }
     _isLoading = false;
     AppLogger.debug(

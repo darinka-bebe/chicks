@@ -1,3 +1,4 @@
+import '../../../core/constants/wardrobe_catalog.dart';
 import '../../../data/models/wardrobe_item.dart';
 
 /// Picks up to [max] aesthetic labels from wardrobe metadata for outfit chips.
@@ -31,7 +32,18 @@ abstract final class OutfitItemTags {
     if (raw == null) return null;
     final trimmed = raw.trim();
     if (trimmed.isEmpty) return null;
-    if (trimmed.length <= 18) return trimmed;
-    return '${trimmed.substring(0, 16)}…';
+    final label = _displayLabel(trimmed);
+    if (label.length <= 18) return label;
+    return '${label.substring(0, 16)}…';
+  }
+
+  static String _displayLabel(String raw) {
+    if (WardrobeCatalog.vibes.contains(raw)) {
+      return WardrobeCatalog.displayVibe(raw);
+    }
+    if (WardrobeCatalog.styles.contains(raw)) {
+      return raw;
+    }
+    return WardrobeCatalog.displayMetadata(raw);
   }
 }

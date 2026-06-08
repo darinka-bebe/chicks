@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../../core/localization/app_locale.dart';
 import '../../core/models/wardrobe_analysis_snapshot.dart';
 import '../../core/models/wardrobe_insight.dart';
 import '../../core/services/wardrobe_analyzer.dart';
@@ -41,7 +42,10 @@ class WardrobeInsightsController extends ChangeNotifier {
         '${cards.length} insight(s), ai=$usedAi',
       );
     } catch (e, stack) {
-      error = 'Не удалось проанализировать гардероб';
+      error = AppLocale.pick(
+        ru: 'Не удалось проанализировать гардероб',
+        en: 'Could not analyze wardrobe',
+      );
       AppLogger.error(
         'WardrobeInsights: analyze failed',
         error: e,

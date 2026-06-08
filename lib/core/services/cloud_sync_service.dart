@@ -7,6 +7,7 @@ import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/chat_history_repository.dart';
 import '../../data/repositories/favorites_repository.dart';
 import '../../data/repositories/onboarding_repository.dart';
+import '../../data/repositories/tutorial_repository.dart';
 import '../../data/repositories/outfit_history_repository.dart';
 import '../../data/repositories/profile_preferences_repository.dart';
 import '../../data/repositories/user_preferences_repository.dart';
@@ -201,17 +202,17 @@ class CloudSyncService {
         '${repairedItems.length - withoutDemo.length} demo item(s) from cloud',
       );
     }
-    WardrobeImageDiagnostics.logItems('_pullWardrobe(afterMerge)', withoutDemo);
+    WardrobeImageDiagnostics.logItems('_pullWardrobe(afterMerge)', repairedItems);
 
-    await _wardrobeRepository.saveItemsLocally(withoutDemo);
+    await _wardrobeRepository.saveItemsLocally(repairedItems);
     await SyncMetaStorage.touchAll(
       SyncScope.wardrobe,
-      withoutDemo.map((item) => item.id),
+      repairedItems.map((item) => item.id),
     );
 
     _logRestored(SyncScope.wardrobe, merged.restoredCount, merged.conflictCount);
     return SyncMergeResult(
-      items: withoutDemo,
+      items: repairedItems,
       restoredCount: merged.restoredCount,
       conflictCount: merged.conflictCount,
       removedCount: merged.removedCount,
@@ -653,6 +654,9 @@ class CloudSyncService {
       'bodyQuizCompleted':
           await _userProfileRepository.isBodyTypeQuizCompleted(),
       'onboardingCompleted': await _onboardingRepository.isCompleted(),
+      'tutorialCompleted': await TutorialRepository.instance.isCompleted(
+        uid: uid,
+      ),
       'username': uid.isEmpty
           ? ''
           : await _profilePreferencesRepository.getUsername(uid),
@@ -695,6 +699,13 @@ class CloudSyncService {
 
     if (profile['onboardingCompleted'] == true) {
       await _onboardingRepository.setCompletedLocally(completed: true);
+    }
+
+    if (profile['tutorialCompleted'] == true && uid.isNotEmpty) {
+      await TutorialRepository.instance.setCompletedLocally(
+        completed: true,
+        uid: uid,
+      );
     }
 
     final username = profile['username'] as String? ?? '';

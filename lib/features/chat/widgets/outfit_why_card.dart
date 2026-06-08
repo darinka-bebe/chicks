@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../core/theme/app_brand_colors.dart';
 
 /// Highlight card for «Почему этот образ подходит» bullets from AI reply.
@@ -11,6 +12,8 @@ class OutfitWhyCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (bullets.isEmpty) return const SizedBox.shrink();
+
+    final loc = AppLocalizations.of(context);
 
     return Container(
       margin: const EdgeInsets.only(top: 12),
@@ -33,9 +36,9 @@ class OutfitWhyCard extends StatelessWidget {
                 color: AppBrandColors.pink.withValues(alpha: 0.85),
               ),
               const SizedBox(width: 6),
-              const Text(
-                'Почему этот образ подходит',
-                style: TextStyle(
+              Text(
+                loc.whyOutfitFits,
+                style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
                   color: AppBrandColors.title,

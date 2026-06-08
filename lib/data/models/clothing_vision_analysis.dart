@@ -15,6 +15,8 @@ class ClothingVisionAnalysis extends Equatable {
     this.outfitContext = '',
     this.isDuplicate = false,
     this.duplicateMatchTitle = '',
+    this.recognizable = true,
+    this.recognitionNote = '',
   });
 
   final String title;
@@ -34,6 +36,12 @@ class ClothingVisionAnalysis extends Equatable {
   /// Title of the existing wardrobe item (must match list from the prompt).
   final String duplicateMatchTitle;
 
+  /// False when the item is too blurry, cropped, or hidden to describe honestly.
+  final bool recognizable;
+
+  /// User-facing explanation when [recognizable] is false.
+  final String recognitionNote;
+
   factory ClothingVisionAnalysis.fromJson(Map<String, dynamic> json) {
     return ClothingVisionAnalysis(
       title: _str(json['title']),
@@ -49,6 +57,10 @@ class ClothingVisionAnalysis extends Equatable {
       isDuplicate: json['isDuplicate'] == true || json['is_duplicate'] == true,
       duplicateMatchTitle: _str(
         json['duplicateMatchTitle'] ?? json['duplicate_match_title'],
+      ),
+      recognizable: json['recognizable'] != false,
+      recognitionNote: _str(
+        json['recognitionNote'] ?? json['recognition_note'],
       ),
     );
   }
@@ -82,5 +94,7 @@ class ClothingVisionAnalysis extends Equatable {
         outfitContext,
         isDuplicate,
         duplicateMatchTitle,
+        recognizable,
+        recognitionNote,
       ];
 }

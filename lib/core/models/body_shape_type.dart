@@ -1,3 +1,5 @@
+import '../localization/app_locale.dart';
+
 /// Body shape types for silhouette-aware styling (rule-based, no photos).
 enum BodyShapeType {
   hourglass,
@@ -56,4 +58,25 @@ enum BodyShapeType {
         BodyShapeType.invertedTriangle =>
           'Плечи шире бёдер — смягчай верх, добавляй объём внизу.',
       };
+
+  String get shortDescriptionEn => switch (this) {
+        BodyShapeType.hourglass =>
+          'Balanced shoulders and hips with a defined waist — highlight your waistline.',
+        BodyShapeType.pear =>
+          'Hips wider than shoulders — balance proportions with your top half.',
+        BodyShapeType.rectangle =>
+          'Shoulders, waist, and hips are similar — add curves and layers.',
+        BodyShapeType.apple =>
+          'Weight in the midsection — lengthen the silhouette and structure shoulders.',
+        BodyShapeType.invertedTriangle =>
+          'Shoulders wider than hips — soften the top and add volume below.',
+      };
+
+  String get displayName =>
+      AppLocale.pick(ru: displayNameRu, en: englishLabel);
+
+  String get shortDescription => AppLocale.pick(
+        ru: shortDescriptionRu,
+        en: shortDescriptionEn,
+      );
 }

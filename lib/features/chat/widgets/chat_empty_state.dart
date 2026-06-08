@@ -1,37 +1,39 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_brand_colors.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 class ChatEmptyState extends StatelessWidget {
   const ChatEmptyState({super.key, required this.onSuggestionTap});
 
   final ValueChanged<String> onSuggestionTap;
 
-  static const _suggestions = [
-    _Suggestion(
-      emoji: '🏫',
-      title: 'Образ в школу',
-      prompt: 'Подбери comfy образ в школу из моего гардероба',
-    ),
-    _Suggestion(
-      emoji: '🌧',
-      title: 'Дождливая погода',
-      prompt: 'Что надеть в холодную дождливую погоду из моего гардероба?',
-    ),
-    _Suggestion(
-      emoji: '💖',
-      title: 'Романтичный date',
-      prompt: 'Собери романтичный образ на свидание из моих вещей',
-    ),
-    _Suggestion(
-      emoji: '✨',
-      title: 'Casual прогулка',
-      prompt: 'Собери casual outfit для прогулки из гардероба',
-    ),
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context);
+    final suggestions = [
+      _Suggestion(
+        emoji: '🏫',
+        title: loc.chatSuggestionSchoolTitle,
+        prompt: loc.chatSuggestionSchoolPrompt,
+      ),
+      _Suggestion(
+        emoji: '🌧',
+        title: loc.chatSuggestionRainTitle,
+        prompt: loc.chatSuggestionRainPrompt,
+      ),
+      _Suggestion(
+        emoji: '💖',
+        title: loc.chatSuggestionDateTitle,
+        prompt: loc.chatSuggestionDatePrompt,
+      ),
+      _Suggestion(
+        emoji: '✨',
+        title: loc.chatSuggestionCasualTitle,
+        prompt: loc.chatSuggestionCasualPrompt,
+      ),
+    ];
+
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
       child: Column(
@@ -64,10 +66,10 @@ class ChatEmptyState extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 22),
-          const Text(
-            'Привет! Я твой ИИ-стилист 💗',
+          Text(
+            loc.chatEmptyGreeting,
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w700,
               color: AppBrandColors.title,
@@ -76,7 +78,7 @@ class ChatEmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            'Соберу образ из твоего гардероба — выбери подсказку или напиши свой запрос.',
+            loc.chatEmptySubtitle,
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 14,
@@ -88,7 +90,7 @@ class ChatEmptyState extends StatelessWidget {
           Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              'Попробуй спросить',
+              loc.chatEmptyTryAsking,
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
@@ -98,7 +100,7 @@ class ChatEmptyState extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          ..._suggestions.map(
+          ...suggestions.map(
             (suggestion) => Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: _SuggestionTile(

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import '../../data/repositories/auth_repository.dart';
+import '../localization/app_locale.dart';
 import '../sync/cloud_sync_hooks.dart';
 import '../sync/sync_meta_storage.dart';
 import '../sync/sync_scope.dart';
@@ -140,7 +141,7 @@ class SyncCoordinator {
         uid: uid,
         clearError: true,
         clearMessage: true,
-        message: 'Синхронизация…',
+        message: AppLocale.pick(ru: 'Синхронизация…', en: 'Syncing…'),
       ),
     );
 
@@ -171,7 +172,10 @@ class SyncCoordinator {
           restoredCounts: pullResult?.restoredCounts ?? _state.restoredCounts,
           uploadedCounts: pushResult.uploadedCounts,
           conflictCount: pullResult?.conflictCount ?? _state.conflictCount,
-          message: 'Данные синхронизированы',
+          message: AppLocale.pick(
+            ru: 'Данные синхронизированы',
+            en: 'Data synchronized',
+          ),
           clearError: true,
         ),
       );
@@ -187,12 +191,26 @@ class SyncCoordinator {
           uid: uid,
           lastError: '$e',
           message: channel
-              ? 'Firestore не подключён — сделайте полную пересборку приложения'
+              ? AppLocale.pick(
+                  ru: 'Firestore не подключён — сделайте полную пересборку приложения',
+                  en: 'Firestore is not connected — rebuild the app',
+                )
               : permissionDenied
-                  ? 'Нет доступа к Firestore — настройте правила в Firebase Console'
+                  ? AppLocale.pick(
+                      ru:
+                          'Нет доступа к Firestore — настройте правила в Firebase Console',
+                      en:
+                          'No Firestore access — check rules in Firebase Console',
+                    )
                   : offline
-                      ? 'Облако недоступно — используются локальные данные'
-                      : 'Ошибка синхронизации',
+                      ? AppLocale.pick(
+                          ru: 'Облако недоступно — используются локальные данные',
+                          en: 'Cloud unavailable — using local data',
+                        )
+                      : AppLocale.pick(
+                          ru: 'Ошибка синхронизации',
+                          en: 'Sync error',
+                        ),
         ),
       );
       AppLogger.error(
@@ -229,7 +247,12 @@ class SyncCoordinator {
       _state.copyWith(
         phase: SyncPhase.syncing,
         uid: uid,
-        message: scope == null ? 'Отправка в облако…' : 'Отправка ${scope.name}…',
+        message: scope == null
+            ? AppLocale.pick(ru: 'Отправка в облако…', en: 'Uploading to cloud…')
+            : AppLocale.pick(
+                ru: 'Отправка ${scope.name}…',
+                en: 'Uploading ${scope.name}…',
+              ),
         clearError: true,
       ),
     );
@@ -248,7 +271,10 @@ class SyncCoordinator {
           uid: uid,
           lastSuccessAt: DateTime.now(),
           uploadedCounts: result.uploadedCounts,
-          message: 'Изменения сохранены в облаке',
+          message: AppLocale.pick(
+            ru: 'Изменения сохранены в облаке',
+            en: 'Changes saved to cloud',
+          ),
           clearError: true,
         ),
       );
@@ -261,8 +287,14 @@ class SyncCoordinator {
           uid: uid,
           lastError: '$e',
           message: offline
-              ? 'Облако недоступно — изменения сохранены локально'
-              : 'Не удалось отправить в облако',
+              ? AppLocale.pick(
+                  ru: 'Облако недоступно — изменения сохранены локально',
+                  en: 'Cloud unavailable — changes saved locally',
+                )
+              : AppLocale.pick(
+                  ru: 'Не удалось отправить в облако',
+                  en: 'Could not upload to cloud',
+                ),
         ),
       );
       AppLogger.error(

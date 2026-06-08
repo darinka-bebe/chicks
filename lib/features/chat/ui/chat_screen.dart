@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_brand_colors.dart';
 import '../../../core/widgets/chicks_skeleton.dart';
@@ -63,24 +64,23 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _confirmClearChat(BuildContext context) async {
+    final loc = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Очистить чат?'),
-        content: const Text(
-          'Вся переписка со стилистом будет удалена с этого устройства.',
-        ),
+        title: Text(loc.chatClearDialogTitle),
+        content: Text(loc.chatClearDialogBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Отмена'),
+            child: Text(loc.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text(
-              'Очистить',
-              style: TextStyle(color: AppBrandColors.pink),
+            child: Text(
+              loc.clear,
+              style: const TextStyle(color: AppBrandColors.pink),
             ),
           ),
         ],
@@ -97,6 +97,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     ChatMessage aiMessage,
     String? userPrompt,
   ) async {
+    final loc = AppLocalizations.of(context);
     final favorites = context.read<FavoritesController>();
     final preferences = context.read<OutfitPreferencesController>();
 
@@ -116,12 +117,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         ..showSnackBar(
           SnackBar(
             content: Text(
-              nowSaved ? 'Образ сохранён' : 'Удалено из избранного',
+              nowSaved ? loc.chatOutfitSaved : loc.chatOutfitRemoved,
             ),
             behavior: SnackBarBehavior.floating,
             action: nowSaved
                 ? SnackBarAction(
-                    label: 'Открыть',
+                    label: loc.chatOpenFavorites,
                     textColor: Colors.white,
                     onPressed: () =>
                         context.pushNamed(RouteNames.favoritesName),
@@ -132,8 +133,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     } catch (_) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Не удалось обновить избранное'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context).chatFavoritesUpdateFailed),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -167,8 +168,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           SnackBar(
             content: Text(
               nowDisliked
-                  ? 'Учтём: не будем предлагать похожие образы'
-                  : 'Дизлайк снят',
+                  ? AppLocalizations.of(context).chatDislikeSaved
+                  : AppLocalizations.of(context).chatDislikeRemoved,
             ),
             behavior: SnackBarBehavior.floating,
           ),
@@ -176,8 +177,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     } catch (_) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Не удалось сохранить отзыв'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context).chatFeedbackSaveFailed),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -227,6 +228,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
               prev.error != curr.error && curr.error != null,
           listener: (context, state) {
             final cubit = context.read<ChatCubit>();
+            final loc = AppLocalizations.of(context);
             ScaffoldMessenger.of(context)
               ..hideCurrentSnackBar()
               ..showSnackBar(
@@ -236,14 +238,14 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                             state.error!.contains('Network') ||
                             state.error!.contains('сеть') ||
                             state.error!.contains('интернет')
-                        ? 'Проблема с сетью — проверь подключение'
+                        ? loc.chatNetworkError
                         : state.error!,
                   ),
                   backgroundColor: const Color(0xFFE57373),
                   behavior: SnackBarBehavior.floating,
                   duration: const Duration(seconds: 6),
                   action: SnackBarAction(
-                    label: 'Повторить',
+                    label: loc.chatRetry,
                     textColor: Colors.white,
                     onPressed: () {
                       cubit.clearError();
@@ -274,21 +276,19 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                     ),
                   ),
                 ),
+                BlocSelector<ChatCubit, ChatState, bool>(
+                  selector: (state) =>
+                      !state.isLoading && !state.isRestoringHistory,
+                  builder: (context, enabled) {
+                    return ChatInputBar(
+                      key: _inputBarKey,
+                      enabled: enabled,
+                      onSend: context.read<ChatCubit>().sendMessage,
+                      onFocusChanged: (_) => _scrollToBottom(animated: false),
+                    );
+                  },
+                ),
               ],
-            ),
-            bottomNavigationBar: SafeArea(
-              top: false,
-              child: BlocSelector<ChatCubit, ChatState, bool>(
-                selector: (state) =>
-                    !state.isLoading && !state.isRestoringHistory,
-                builder: (context, enabled) {
-                  return ChatInputBar(
-                    key: _inputBarKey,
-                    enabled: enabled,
-                    onSend: context.read<ChatCubit>().sendMessage,
-                  );
-                },
-              ),
             ),
           ),
         ),
@@ -308,6 +308,7 @@ class _ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context);
     return BlocSelector<ChatCubit, ChatState, bool>(
       selector: (state) =>
           state.messages.isNotEmpty &&
@@ -322,9 +323,9 @@ class _ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
             color: AppBrandColors.pink,
             onPressed: () => context.pop(),
           ),
-          title: const Text(
-            'Чат со стилистом',
-            style: TextStyle(
+          title: Text(
+            loc.chatTitle,
+            style: const TextStyle(
               color: AppBrandColors.pink,
               fontWeight: FontWeight.w600,
               fontSize: 18,
@@ -333,7 +334,7 @@ class _ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
           centerTitle: true,
           actions: [
             IconButton(
-              tooltip: 'Избранные образы',
+              tooltip: loc.chatFavoritesTooltip,
               icon: const Icon(
                 Icons.favorite_rounded,
                 color: AppBrandColors.pink,
@@ -342,7 +343,7 @@ class _ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
             ),
             if (canClear)
               IconButton(
-                tooltip: 'Очистить чат',
+                tooltip: loc.chatClearTooltip,
                 icon: const Icon(
                   Icons.delete_outline_rounded,
                   color: AppBrandColors.pink,

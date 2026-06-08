@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/widgets/chicks_empty_state.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../data/wardrobe_filter.dart';
 
 class WardrobeNoResultsState extends StatelessWidget {
@@ -15,24 +16,25 @@ class WardrobeNoResultsState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context);
     final (title, message, hint) = switch (reason) {
       WardrobeEmptyFilterReason.search => (
-          'Ничего не найдено',
-          'Попробуй другое слово — название, цвет или стиль',
-          'Например: «белый», «casual», «уютный»',
+          loc.wardrobeNoResultsTitle,
+          loc.wardrobeNoResultsMessage,
+          loc.wardrobeNoResultsHint,
         ),
       WardrobeEmptyFilterReason.favorites => (
-          'Нет избранных вещей',
-          'Отмечай ♥ на карточках — они появятся здесь',
-          'Избранное хранится локально на устройстве',
+          loc.wardrobeNoFavoritesTitle,
+          loc.wardrobeNoFavoritesMessage,
+          loc.wardrobeNoFavoritesHint,
         ),
       WardrobeEmptyFilterReason.filters => (
-          'Нет вещей по фильтрам',
-          'Измени категорию, сезон или стиль — или сбрось фильтры',
+          loc.wardrobeNoFilterTitle,
+          loc.wardrobeNoFilterMessage,
           null,
         ),
       WardrobeEmptyFilterReason.none => (
-          'Пусто',
+          loc.wardrobeNoResultsTitle,
           '',
           null,
         ),
@@ -44,7 +46,7 @@ class WardrobeNoResultsState extends StatelessWidget {
       title: title,
       message: message,
       hint: hint,
-      actionLabel: 'Сбросить фильтры',
+      actionLabel: loc.wardrobeFilterReset,
       onAction: onClearFilters,
     );
   }

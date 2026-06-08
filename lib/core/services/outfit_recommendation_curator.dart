@@ -11,6 +11,7 @@ import '../models/weather_snapshot.dart';
 import '../utils/logger.dart';
 import 'outfit_item_scorer.dart';
 import 'outfit_weather_guard.dart';
+import 'outfit_base_slot_rules.dart';
 import 'wardrobe_recommendation_resolver.dart';
 import 'wardrobe_slot_classifier.dart';
 
@@ -108,8 +109,9 @@ abstract final class OutfitRecommendationCurator {
 
     final picked = <WardrobeOutfitSlot, WardrobeItem>{};
     final pickOrder = [
-      WardrobeOutfitSlot.top,
+      WardrobeOutfitSlot.set,
       WardrobeOutfitSlot.dress,
+      WardrobeOutfitSlot.top,
       WardrobeOutfitSlot.bottom,
       WardrobeOutfitSlot.outerwear,
       WardrobeOutfitSlot.shoes,
@@ -156,7 +158,7 @@ abstract final class OutfitRecommendationCurator {
       );
     }
 
-    _applyDressBaseRule(picked);
+    OutfitBaseSlotRules.resolveBaseConflicts(picked);
 
     var ordered = _orderOutfit(picked);
 
@@ -400,12 +402,6 @@ abstract final class OutfitRecommendationCurator {
   }
 
   /// Dress replaces separate top + bottom in the same look.
-  static void _applyDressBaseRule(Map<WardrobeOutfitSlot, WardrobeItem> picked) {
-    if (!picked.containsKey(WardrobeOutfitSlot.dress)) return;
-    picked.remove(WardrobeOutfitSlot.top);
-    picked.remove(WardrobeOutfitSlot.bottom);
-  }
-
   static List<WardrobeItem> _orderOutfit(
     Map<WardrobeOutfitSlot, WardrobeItem> picked,
   ) {
@@ -416,12 +412,7 @@ abstract final class OutfitRecommendationCurator {
       if (item != null) result.add(item);
     }
 
-    if (picked.containsKey(WardrobeOutfitSlot.dress)) {
-      addSlot(WardrobeOutfitSlot.dress);
-    } else {
-      addSlot(WardrobeOutfitSlot.top);
-      addSlot(WardrobeOutfitSlot.bottom);
-    }
+    OutfitBaseSlotRules.appendBaseItems(picked, addSlot);
 
     addSlot(WardrobeOutfitSlot.outerwear);
     addSlot(WardrobeOutfitSlot.shoes);

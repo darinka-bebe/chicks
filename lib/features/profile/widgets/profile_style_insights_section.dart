@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/models/wardrobe_insight.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../core/services/style_insights_loader.dart';
 import '../../../core/theme/app_brand_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -54,6 +55,7 @@ class ProfileStyleInsightsSectionState
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -82,22 +84,22 @@ class ProfileStyleInsightsSectionState
                 ),
               ),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Инсайты стиля',
-                      style: TextStyle(
+                      loc.profileStyleInsightsTitle,
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
                         color: AppBrandColors.title,
                       ),
                     ),
-                    SizedBox(height: 2),
+                    const SizedBox(height: 2),
                     Text(
-                      'Персональный разбор на основе гардероба',
-                      style: TextStyle(
+                      loc.profileStyleInsightsSub,
+                      style: const TextStyle(
                         fontSize: 13,
                         color: Color(0xFF8A7A82),
                         height: 1.3,
@@ -114,12 +116,12 @@ class ProfileStyleInsightsSectionState
           const _InsightsLoadingPlaceholder()
         else if (_loadFailed)
           ChicksErrorState(
-            message: 'Не удалось загрузить инсайты',
+            message: loc.profileStyleInsightsLoadError,
             onRetry: reload,
             compact: true,
           )
         else if (_insights.isEmpty)
-          const _InsightsEmptyCard()
+          _InsightsEmptyCard(message: loc.profileStyleInsightsEmpty)
         else
           ..._insights.map(
             (insight) => StyleInsightCard(insight: insight),
@@ -193,7 +195,9 @@ class _InsightsLoadingPlaceholder extends StatelessWidget {
 }
 
 class _InsightsEmptyCard extends StatelessWidget {
-  const _InsightsEmptyCard();
+  const _InsightsEmptyCard({required this.message});
+
+  final String message;
 
   @override
   Widget build(BuildContext context) {
@@ -202,7 +206,7 @@ class _InsightsEmptyCard extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: ProfileCardDecoration.actionTile,
       child: Text(
-        'Добавь вещи в гардероб — здесь появятся инсайты о стиле, цветах и силуэтах.',
+        message,
         style: TextStyle(fontSize: 14, color: Colors.grey[700], height: 1.45),
       ),
     );

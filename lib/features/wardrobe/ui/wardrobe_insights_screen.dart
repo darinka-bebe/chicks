@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/localization/app_locale.dart';
 import '../../../core/models/wardrobe_analysis_snapshot.dart';
 import '../../../core/widgets/chicks_error_state.dart';
 import '../../../core/widgets/chicks_skeleton.dart';
@@ -57,9 +58,12 @@ class _WardrobeInsightsScreenState extends State<WardrobeInsightsScreen> {
               color: AppBrandColors.pink,
               onPressed: () => context.pop(),
             ),
-            title: const Text(
-              'Анализ гардероба',
-              style: TextStyle(
+            title: Text(
+              AppLocale.pick(
+                ru: 'Анализ гардероба',
+                en: 'Wardrobe analysis',
+              ),
+              style: const TextStyle(
                 color: AppBrandColors.pink,
                 fontWeight: FontWeight.w600,
                 fontSize: 18,
@@ -125,11 +129,11 @@ class _WardrobeInsightsScreenState extends State<WardrobeInsightsScreen> {
         ),
         const SizedBox(height: 20),
         if (snapshot.totalItems > 0) ...[
-          const Padding(
-            padding: EdgeInsets.fromLTRB(20, 0, 20, 10),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
             child: Text(
-              'По категориям',
-              style: TextStyle(
+              AppLocale.pick(ru: 'По категориям', en: 'By category'),
+              style: const TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
                 color: AppBrandColors.title,
@@ -143,9 +147,12 @@ class _WardrobeInsightsScreenState extends State<WardrobeInsightsScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Row(
             children: [
-              const Text(
-                'Инсайты гардероба',
-                style: TextStyle(
+              Text(
+                AppLocale.pick(
+                  ru: 'Инсайты гардероба',
+                  en: 'Wardrobe insights',
+                ),
+                style: const TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w700,
                   color: AppBrandColors.title,
@@ -228,8 +235,14 @@ class _SummaryHeader extends StatelessWidget {
               Expanded(
                 child: Text(
                   snapshot.totalItems == 0
-                      ? 'Добавь вещи для анализа'
-                      : '${snapshot.totalItems} вещей в гардеробе',
+                      ? AppLocale.pick(
+                          ru: 'Добавь вещи для анализа',
+                          en: 'Add items to analyze',
+                        )
+                      : AppLocale.pick(
+                          ru: '${snapshot.totalItems} вещей в гардеробе',
+                          en: '${snapshot.totalItems} items in wardrobe',
+                        ),
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
@@ -243,8 +256,18 @@ class _SummaryHeader extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               usedAi
-                  ? 'Локальный разбор + короткие советы стилиста (компактный AI-запрос).'
-                  : 'Разбор баланса категорий, цветов и пробелов — без лишних токенов.',
+                  ? AppLocale.pick(
+                      ru:
+                          'Локальный разбор + короткие советы стилиста (компактный AI-запрос).',
+                      en:
+                          'Local analysis plus short stylist tips (compact AI request).',
+                    )
+                  : AppLocale.pick(
+                      ru:
+                          'Разбор баланса категорий, цветов и пробелов — без лишних токенов.',
+                      en:
+                          'Category, color, and gap analysis — without extra tokens.',
+                    ),
               style: TextStyle(
                 fontSize: 13,
                 color: Colors.grey[700],

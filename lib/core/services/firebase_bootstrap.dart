@@ -59,12 +59,23 @@ abstract final class FirestoreBootstrap {
     for (var attempt = 1; attempt <= 4; attempt++) {
       try {
         final firestore = FirebaseFirestore.instance;
-        firestore.settings = Settings(
-          persistenceEnabled: !kDebugMode,
-          cacheSizeBytes: kDebugMode ? 10 * 1024 * 1024 : 50 * 1024 * 1024,
-        );
+        final usePersistence = !kDebugMode;
+        try {
+          firestore.settings = Settings(
+            persistenceEnabled: usePersistence,
+            cacheSizeBytes: kDebugMode ? 10 * 1024 * 1024 : 50 * 1024 * 1024,
+          );
+        } catch (e) {
+          AppLogger.warning(
+            'FirestoreBootstrap: persistence settings failed, retrying without cache: $e',
+          );
+          firestore.settings = const Settings(persistenceEnabled: false);
+        }
         _ready = true;
-        AppLogger.info('FirestoreBootstrap: native channel ready');
+        AppLogger.info(
+          'FirestoreBootstrap: native channel ready '
+          '(persistence=${usePersistence ? "on" : "off"})',
+        );
         return;
       } catch (e) {
         lastError = e;

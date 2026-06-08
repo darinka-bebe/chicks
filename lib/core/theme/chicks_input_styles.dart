@@ -68,11 +68,27 @@ abstract final class ChicksInputStyles {
   }
 
   static InputDecoration chatDecoration({required String hintText}) {
-    return decoration(
+    const radius = 24.0;
+    final outline = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(radius),
+      borderSide: BorderSide(
+        color: AppBrandColors.pink.withValues(alpha: 0.28),
+        width: 1.2,
+      ),
+    );
+
+    return InputDecoration(
       hintText: hintText,
-      fillColor: AppBrandColors.background,
-      borderRadius: 24,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+      hintStyle: hint,
+      filled: true,
+      fillColor: const Color(0xFFFFF8FB),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+      border: outline,
+      enabledBorder: outline,
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(radius),
+        borderSide: const BorderSide(color: AppBrandColors.pink, width: 1.6),
+      ),
     );
   }
 

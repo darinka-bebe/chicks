@@ -1,31 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/constants/stylist_suggestion_chips.dart';
+import '../../../core/localization/outfit_display.dart';
 import '../../../core/theme/app_brand_colors.dart';
 import '../../../data/models/favorite_outfit.dart';
+import '../../../data/models/wardrobe_item.dart';
+import '../../outfit_history/widgets/outfit_history_item_thumbnails.dart';
 
 class FavoriteOutfitCard extends StatelessWidget {
   const FavoriteOutfitCard({
     super.key,
     required this.outfit,
+    required this.wardrobeItems,
     required this.onTap,
   });
 
   final FavoriteOutfit outfit;
+  final List<WardrobeItem> wardrobeItems;
   final VoidCallback onTap;
-
-  String get _excerpt {
-    final plain = outfit.recommendation
-        .replaceAll(RegExp(r'[#*>`\[\]]'), '')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
-    if (plain.length <= 120) return plain;
-    return '${plain.substring(0, 117)}…';
-  }
 
   @override
   Widget build(BuildContext context) {
-    final dateLabel = DateFormat('d MMM yyyy').format(outfit.createdAt);
+    final locale = Localizations.localeOf(context).toString();
+    final dateLabel =
+        DateFormat('d MMM yyyy', locale).format(outfit.createdAt);
 
     return Material(
       color: Colors.transparent,
@@ -44,92 +43,95 @@ class FavoriteOutfitCard extends StatelessWidget {
               ),
             ],
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Container(
-                height: 96,
-                decoration: BoxDecoration(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(22),
-                  ),
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      AppBrandColors.iconBackground,
-                      AppBrandColors.pink.withValues(alpha: 0.22),
-                    ],
-                  ),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                OutfitHistoryItemThumbnails(
+                  recommendedItemIds: outfit.recommendedItemIds,
+                  wardrobeItems: wardrobeItems,
+                  height: 88,
+                  maxVisible: 3,
                 ),
-                child: Stack(
-                  children: [
-                    const Positioned(
-                      right: 16,
-                      top: 14,
-                      child: Icon(
-                        Icons.favorite_rounded,
-                        color: AppBrandColors.pink,
-                        size: 22,
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 48, 12),
-                      child: Text(
-                        outfit.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700,
-                          color: AppBrandColors.title,
-                          height: 1.25,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (outfit.hasContext) ...[
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          ...outfit.moods.map((tag) => _TagChip(tag)),
-                          ...outfit.occasions.map((tag) => _TagChip(tag)),
-                          ...outfit.weather.map((tag) => _TagChip(tag)),
+                          Expanded(
+                            child: Text(
+                              OutfitDisplay.favoriteTitle(outfit),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: AppBrandColors.title,
+                                height: 1.25,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Icon(
+                            Icons.favorite_rounded,
+                            color: AppBrandColors.pink,
+                            size: 20,
+                          ),
                         ],
                       ),
+                      if (outfit.hasContext) ...[
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: [
+                            ...outfit.moods.map(
+                              (tag) => _TagChip(
+                                StylistContextCatalog.displayMood(tag),
+                              ),
+                            ),
+                            ...outfit.occasions.map(
+                              (tag) => _TagChip(
+                                StylistContextCatalog.displayOccasion(tag),
+                              ),
+                            ),
+                            ...outfit.weather.map(
+                              (tag) => _TagChip(
+                                StylistContextCatalog.displayWeather(tag),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                      const SizedBox(height: 8),
+                      Text(
+                        OutfitDisplay.favoriteExcerpt(outfit),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          height: 1.45,
+                          color: Colors.grey[700],
+                        ),
+                      ),
                       const SizedBox(height: 10),
+                      Text(
+                        dateLabel,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey[500],
+                        ),
+                      ),
                     ],
-                    Text(
-                      _excerpt,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 13,
-                        height: 1.45,
-                        color: Colors.grey[700],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      dateLabel,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.grey[500],
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

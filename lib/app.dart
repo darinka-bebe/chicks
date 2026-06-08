@@ -4,6 +4,8 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
 import 'core/lifecycle/app_lifecycle_coordinator.dart';
+import 'core/localization/app_locale.dart';
+import 'core/localization/app_locale_resolver.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'data/repositories/auth_repository.dart';
@@ -51,6 +53,7 @@ class App extends StatelessWidget {
             theme: AppTheme.light,
             routerConfig: AppRouter.router,
             builder: (context, child) {
+              AppLocale.updateResolvedLocale(Localizations.localeOf(context));
               return Stack(
                 children: [
                   if (child != null) child,
@@ -68,6 +71,7 @@ class App extends StatelessWidget {
               GlobalCupertinoLocalizations.delegate,
             ],
             supportedLocales: AppLocalizations.supportedLocales,
+            localeResolutionCallback: AppLocaleResolver.resolve,
           ),
         ),
       ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/constants/wardrobe_catalog.dart';
 import '../../../core/theme/app_brand_colors.dart';
 import '../../../core/widgets/wardrobe_item_image.dart';
 import '../../../data/models/wardrobe_item.dart';
@@ -21,11 +22,14 @@ class WardrobeItemCard extends StatelessWidget {
   final VoidCallback? onFavoriteToggle;
 
   static String _subtitleLine(WardrobeItem item) {
-    final parts = <String>[item.color, item.season];
+    final parts = <String>[
+      WardrobeCatalog.displayColor(item.color),
+      WardrobeCatalog.displaySeason(item.season),
+    ];
     if (item.styles.isNotEmpty) {
       parts.add(item.styles.first);
     } else if (item.vibes.isNotEmpty) {
-      parts.add(item.vibes.first);
+      parts.add(WardrobeCatalog.displayVibe(item.vibes.first));
     }
     return parts.join(' · ');
   }
@@ -111,7 +115,7 @@ class WardrobeItemCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          item.title,
+                          WardrobeCatalog.displayItemTitle(item),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
@@ -123,7 +127,7 @@ class WardrobeItemCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 5),
                         Text(
-                          item.category,
+                          WardrobeCatalog.displayCategory(item.category),
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w500,

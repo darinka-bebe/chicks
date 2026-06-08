@@ -62,6 +62,7 @@ class FavoriteOutfit extends Equatable {
       moods: _parseList(json['moods']),
       occasions: _parseList(json['occasions']),
       weather: _parseList(json['weather']),
+      recommendedItemIds: _parseList(json['recommendedItemIds']),
     );
   }
 

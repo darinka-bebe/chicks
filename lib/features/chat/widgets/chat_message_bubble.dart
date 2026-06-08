@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_brand_colors.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../data/models/chat_message.dart';
 import 'chat_ai_message_content.dart';
 import 'chat_weather_banner.dart';
@@ -67,7 +68,7 @@ class ChatMessageBubble extends StatelessWidget {
               ),
             ],
           ),
-          child: _isUser ? _buildUserText() : _buildAiContent(),
+          child: _isUser ? _buildUserText() : _buildAiContent(context),
         ),
       ),
     );
@@ -85,14 +86,19 @@ class ChatMessageBubble extends StatelessWidget {
     );
   }
 
-  Widget _buildAiContent() {
+  Widget _buildAiContent(BuildContext context) {
+    final loc = AppLocalizations.of(context);
     const contentPadding = EdgeInsets.symmetric(
       horizontal: OutfitPreviewMetrics.chatBubbleHorizontalPadding,
     );
 
     final parsed = OutfitWhySectionParser.parse(message.content);
-    final displayBody =
-        parsed.hasWhySection ? parsed.body : message.content;
+    final hasOutfitCards = message.recommendedItemIds.isNotEmpty;
+    var displayBody = parsed.hasWhySection ? parsed.body : message.content;
+    if (hasOutfitCards) {
+      displayBody =
+          OutfitWhySectionParser.compactBodyWhenOutfitCardsShown(displayBody);
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -120,7 +126,7 @@ class ChatMessageBubble extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Стилист Chicks',
+                      loc.stylistLabel,
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -149,8 +155,10 @@ class ChatMessageBubble extends StatelessWidget {
                   label: message.weatherLabel,
                   compact: true,
                 ),
-              const SizedBox(height: 10),
-              ChatAiMessageContent(content: displayBody),
+              if (displayBody.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                ChatAiMessageContent(content: displayBody),
+              ],
               if (parsed.hasWhySection)
                 OutfitWhyCard(bullets: parsed.whyBullets),
             ],
@@ -177,14 +185,15 @@ class _DislikeToggleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context);
     return Semantics(
       button: true,
-      label: isDisliked ? 'Убрать дизлайк' : 'Не мой стиль',
+      label: isDisliked ? loc.removeDislike : loc.dislikeOutfit,
       child: IconButton(
         onPressed: onPressed,
         padding: const EdgeInsets.all(6),
         constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-        tooltip: isDisliked ? 'Убрать дизлайк' : 'Не мой стиль',
+        tooltip: isDisliked ? loc.removeDislike : loc.dislikeOutfit,
         icon: Icon(
           isDisliked ? Icons.thumb_down : Icons.thumb_down_outlined,
           size: 21,
@@ -206,14 +215,15 @@ class _FavoriteToggleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context);
     return Semantics(
       button: true,
-      label: isFavorite ? 'Удалить из избранного' : 'Сохранить образ',
+      label: isFavorite ? loc.removeFromFavorites : loc.saveOutfit,
       child: IconButton(
         onPressed: onPressed,
         padding: const EdgeInsets.all(6),
         constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-        tooltip: isFavorite ? 'Удалить из избранного' : 'Сохранить образ',
+        tooltip: isFavorite ? loc.removeFromFavorites : loc.saveOutfit,
         icon: Icon(
           isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
           size: 22,

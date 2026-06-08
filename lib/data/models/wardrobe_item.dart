@@ -120,6 +120,12 @@ class WardrobeItem extends Equatable {
       path = '';
     }
 
+    if (path.isNotEmpty && !isAssetPath(path) && !isHttpUrl(path)) {
+      if (!File(path).existsSync()) {
+        path = '';
+      }
+    }
+
     if (url == item.imageUrl && path == item.imagePath) return item;
 
     return item.copyWith(

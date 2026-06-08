@@ -9,6 +9,7 @@ import '../models/wardrobe_outfit_slot.dart';
 import '../models/weather_condition.dart';
 import '../models/weather_snapshot.dart';
 import '../utils/logger.dart';
+import 'outfit_base_slot_rules.dart';
 import 'outfit_item_scorer.dart';
 import 'wardrobe_outfit_fallback.dart';
 import 'wardrobe_slot_classifier.dart';
@@ -457,12 +458,7 @@ abstract final class OutfitWeatherGuard {
       if (item != null) result.add(item);
     }
 
-    if (picked.containsKey(WardrobeOutfitSlot.dress)) {
-      add(WardrobeOutfitSlot.dress);
-    } else {
-      add(WardrobeOutfitSlot.top);
-      add(WardrobeOutfitSlot.bottom);
-    }
+    OutfitBaseSlotRules.appendBaseItems(picked, add);
     add(WardrobeOutfitSlot.outerwear);
     add(WardrobeOutfitSlot.shoes);
     add(WardrobeOutfitSlot.accessory);

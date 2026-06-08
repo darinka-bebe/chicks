@@ -3,9 +3,14 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/constants/stylist_suggestion_chips.dart';
+import '../../../core/localization/outfit_display.dart';
 import '../../../core/theme/app_brand_colors.dart';
 import '../../../data/models/favorite_outfit.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../chat/widgets/chat_ai_message_content.dart';
+import '../../outfit_history/widgets/outfit_history_item_thumbnails.dart';
+import '../../wardrobe/wardrobe_controller.dart';
 import '../favorites_controller.dart';
 
 class FavoriteOutfitDetailsScreen extends StatelessWidget {
@@ -14,22 +19,25 @@ class FavoriteOutfitDetailsScreen extends StatelessWidget {
   final FavoriteOutfit outfit;
 
   Future<void> _confirmDelete(BuildContext context) async {
+    final loc = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Удалить образ?'),
-        content: Text('«${outfit.title}» будет удалён из избранного.'),
+        title: Text(loc.favoriteDeleteTitle),
+        content: Text(
+          loc.favoriteDeleteBody(OutfitDisplay.favoriteTitle(outfit)),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Отмена'),
+            child: Text(loc.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text(
-              'Удалить',
-              style: TextStyle(color: Colors.redAccent),
+            child: Text(
+              loc.delete,
+              style: const TextStyle(color: Colors.redAccent),
             ),
           ),
         ],
@@ -45,8 +53,8 @@ class FavoriteOutfitDetailsScreen extends StatelessWidget {
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(
-          const SnackBar(
-            content: Text('Удалено из избранного'),
+          SnackBar(
+            content: Text(loc.favoriteDeleted),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -56,7 +64,11 @@ class FavoriteOutfitDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateLabel = DateFormat('d MMMM yyyy, HH:mm').format(outfit.createdAt);
+    final loc = AppLocalizations.of(context);
+    final wardrobeItems = context.watch<WardrobeController>().items;
+    final locale = Localizations.localeOf(context).toString();
+    final dateLabel =
+        DateFormat('d MMMM yyyy, HH:mm', locale).format(outfit.createdAt);
 
     return Scaffold(
       backgroundColor: AppBrandColors.background,
@@ -68,9 +80,9 @@ class FavoriteOutfitDetailsScreen extends StatelessWidget {
           color: AppBrandColors.pink,
           onPressed: () => context.pop(),
         ),
-        title: const Text(
-          'Образ',
-          style: TextStyle(
+        title: Text(
+          loc.favoriteOutfitTitle,
+          style: const TextStyle(
             color: AppBrandColors.pink,
             fontWeight: FontWeight.w600,
             fontSize: 18,
@@ -98,6 +110,15 @@ class FavoriteOutfitDetailsScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (outfit.hasRecommendations) ...[
+                  OutfitHistoryItemThumbnails(
+                    recommendedItemIds: outfit.recommendedItemIds,
+                    wardrobeItems: wardrobeItems,
+                    height: 88,
+                    maxVisible: 4,
+                  ),
+                  const SizedBox(height: 14),
+                ],
                 const Icon(
                   Icons.favorite_rounded,
                   color: AppBrandColors.pink,
@@ -105,7 +126,7 @@ class FavoriteOutfitDetailsScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  outfit.title,
+                  OutfitDisplay.favoriteTitle(outfit),
                   style: const TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w700,
@@ -127,9 +148,19 @@ class FavoriteOutfitDetailsScreen extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: [
-                ...outfit.moods.map((tag) => _ContextChip(tag)),
-                ...outfit.occasions.map((tag) => _ContextChip(tag)),
-                ...outfit.weather.map((tag) => _ContextChip(tag)),
+                ...outfit.moods.map(
+                  (tag) => _ContextChip(StylistContextCatalog.displayMood(tag)),
+                ),
+                ...outfit.occasions.map(
+                  (tag) => _ContextChip(
+                    StylistContextCatalog.displayOccasion(tag),
+                  ),
+                ),
+                ...outfit.weather.map(
+                  (tag) => _ContextChip(
+                    StylistContextCatalog.displayWeather(tag),
+                  ),
+                ),
               ],
             ),
           ],
@@ -157,7 +188,7 @@ class FavoriteOutfitDetailsScreen extends StatelessWidget {
           OutlinedButton.icon(
             onPressed: () => _confirmDelete(context),
             icon: const Icon(Icons.delete_outline_rounded),
-            label: const Text('Удалить из избранного'),
+            label: Text(loc.removeFromFavorites),
             style: OutlinedButton.styleFrom(
               foregroundColor: Colors.redAccent,
               side: const BorderSide(color: Colors.redAccent),

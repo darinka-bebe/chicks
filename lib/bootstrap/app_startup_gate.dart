@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import '../app.dart';
+import '../core/localization/localized_app_shell.dart';
+import '../core/bootstrap/env_bootstrap.dart';
 import '../core/platform/app_platform_bootstrap.dart';
 import '../core/services/firebase_bootstrap.dart';
 import '../core/services/profile_bootstrap_service.dart';
 import '../core/services/sync_coordinator.dart';
 import '../core/storage/local_hive_storage.dart';
 import '../core/theme/app_brand_colors.dart';
+import '../l10n/generated/app_localizations.dart';
 import '../core/utils/logger.dart';
-import '../core/utils/openai_key_diagnostics.dart';
 
 /// Runs async startup AFTER [runApp] so Android plugins are registered on the engine.
 class AppStartupGate extends StatefulWidget {
@@ -23,19 +24,7 @@ class _AppStartupGateState extends State<AppStartupGate> {
   late final Future<void> _startup = _runStartup();
 
   static Future<void> _runStartup() async {
-    try {
-      await dotenv.load(fileName: '.env');
-      final key = OpenAiKeyDiagnostics.normalize(dotenv.env['OPENAI_API_KEY']);
-      AppLogger.info(
-        'AppStartupGate: OPENAI_API_KEY ${OpenAiKeyDiagnostics.describe(key)}',
-      );
-    } catch (e, stack) {
-      AppLogger.error(
-        'AppStartupGate: .env not loaded',
-        error: e,
-        stackTrace: stack,
-      );
-    }
+    await EnvBootstrap.load();
 
     AppLogger.info('AppStartupGate: begin startup');
     await FirebaseBootstrap.ensureInitialized();
@@ -53,14 +42,14 @@ class _AppStartupGateState extends State<AppStartupGate> {
       future: _startup,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
-          return MaterialApp(
-            home: _StartupErrorScreen(error: snapshot.error),
+          return LocalizedAppShell.wrap(
+            _StartupErrorScreen(error: snapshot.error),
           );
         }
 
         if (snapshot.connectionState != ConnectionState.done) {
-          return const MaterialApp(
-            home: _StartupLoadingScreen(),
+          return LocalizedAppShell.wrap(
+            const _StartupLoadingScreen(),
           );
         }
 
@@ -91,6 +80,7 @@ class _StartupErrorScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: AppBrandColors.background,
       body: SafeArea(
@@ -101,10 +91,10 @@ class _StartupErrorScreen extends StatelessWidget {
             children: [
               const Icon(Icons.error_outline, color: Colors.redAccent, size: 48),
               const SizedBox(height: 16),
-              const Text(
-                'Не удалось запустить Firebase',
+              Text(
+                loc.startupFirebaseError,
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
                   color: AppBrandColors.title,
@@ -117,10 +107,10 @@ class _StartupErrorScreen extends StatelessWidget {
                 style: TextStyle(fontSize: 13, color: Colors.grey[700]),
               ),
               const SizedBox(height: 20),
-              const Text(
-                'Выполните: flutter clean → flutter pub get → пересоберите приложение.',
+              Text(
+                loc.startupRetryHint,
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13),
+                style: const TextStyle(fontSize: 13),
               ),
             ],
           ),

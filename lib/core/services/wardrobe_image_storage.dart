@@ -79,6 +79,7 @@ class WardrobeImageStorage {
     List<int> bytes, {
     String? sourceHint,
     String? fallbackName,
+    String? uniqueToken,
   }) async {
     if (bytes.isEmpty) {
       AppLogger.error('WardrobeImageStorage: persistBytes empty');
@@ -94,8 +95,11 @@ class WardrobeImageStorage {
     }
 
     final extension = _resolveExtension(sourceHint ?? fallbackName ?? '');
+    final token = uniqueToken?.trim().isNotEmpty == true
+        ? uniqueToken!.trim()
+        : '${DateTime.now().microsecondsSinceEpoch}';
     final output = File(
-      '${imagesDir.path}/wardrobe_${DateTime.now().millisecondsSinceEpoch}$extension',
+      '${imagesDir.path}/wardrobe_$token$extension',
     );
     await output.writeAsBytes(bytes, flush: true);
 

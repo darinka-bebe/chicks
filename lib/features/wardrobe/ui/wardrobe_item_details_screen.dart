@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/constants/wardrobe_catalog.dart';
 import '../../../core/router/route_names.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../core/theme/app_brand_colors.dart';
 import '../../../core/widgets/wardrobe_item_image.dart';
 import '../../../core/utils/logger.dart';
@@ -62,23 +64,24 @@ class _WardrobeItemDetailsScreenState extends State<WardrobeItemDetailsScreen> {
   Future<void> _confirmDelete() async {
     if (_isDeleting) return;
 
+    final loc = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       barrierColor: Colors.black38,
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Удалить вещь?'),
-        content: const Text('Это действие нельзя отменить.'),
+        title: Text(loc.wardrobeDeleteTitle),
+        content: Text(loc.wardrobeDeleteBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Отмена'),
+            child: Text(loc.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text(
-              'Удалить',
-              style: TextStyle(color: AppBrandColors.pink),
+            child: Text(
+              loc.delete,
+              style: const TextStyle(color: AppBrandColors.pink),
             ),
           ),
         ],
@@ -107,8 +110,8 @@ class _WardrobeItemDetailsScreenState extends State<WardrobeItemDetailsScreen> {
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
           ..showSnackBar(
-            const SnackBar(
-              content: Text('Не удалось удалить вещь'),
+            SnackBar(
+              content: Text(AppLocalizations.of(context).wardrobeDeleteFailed),
               behavior: SnackBarBehavior.floating,
               backgroundColor: Colors.redAccent,
             ),
@@ -140,6 +143,7 @@ class _WardrobeItemDetailsScreenState extends State<WardrobeItemDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context);
     final hasImage = item.hasDisplayImage;
 
     return Scaffold(
@@ -152,9 +156,9 @@ class _WardrobeItemDetailsScreenState extends State<WardrobeItemDetailsScreen> {
           color: AppBrandColors.pink,
           onPressed: _isDeleting ? null : () => context.pop(),
         ),
-        title: const Text(
-          'Детали вещи',
-          style: TextStyle(
+        title: Text(
+          loc.wardrobeDetailsTitle,
+          style: const TextStyle(
             color: AppBrandColors.pink,
             fontWeight: FontWeight.w600,
             fontSize: 18,
@@ -163,7 +167,9 @@ class _WardrobeItemDetailsScreenState extends State<WardrobeItemDetailsScreen> {
         centerTitle: true,
         actions: [
           IconButton(
-            tooltip: _isFavorite ? 'Убрать из избранного' : 'В избранное',
+            tooltip: _isFavorite
+                ? loc.wardrobeRemoveFromFavorites
+                : loc.wardrobeAddToFavorites,
             onPressed: _isDeleting ? null : _toggleFavorite,
             icon: Icon(
               _isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
@@ -198,7 +204,7 @@ class _WardrobeItemDetailsScreenState extends State<WardrobeItemDetailsScreen> {
               ),
               const SizedBox(height: 24),
               Text(
-                item.title,
+                WardrobeCatalog.displayItemTitle(item),
                 style: const TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w600,
@@ -206,34 +212,46 @@ class _WardrobeItemDetailsScreenState extends State<WardrobeItemDetailsScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              _DetailRow(label: 'Категория', value: item.category),
-              _DetailRow(label: 'Цвет', value: item.color),
+              _DetailRow(
+                label: loc.wardrobeFieldCategory,
+                value: WardrobeCatalog.displayCategory(item.category),
+              ),
+              _DetailRow(
+                label: loc.wardrobeFieldColor,
+                value: WardrobeCatalog.displayColor(item.color),
+              ),
               const SizedBox(height: 8),
-              const Text(
-                'Стиль и контекст',
-                style: TextStyle(
+              Text(
+                loc.wardrobeStyleContext,
+                style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
                   color: AppBrandColors.pink,
                 ),
               ),
               const SizedBox(height: 12),
-              _MetadataCard(label: 'Стиль / эстетика', values: item.styles),
-              _MetadataCard(label: 'Повод', values: item.occasions),
               _MetadataCard(
-                label: 'Посадка',
+                label: loc.wardrobeStyleAesthetic,
+                values: item.styles,
+              ),
+              _MetadataCard(
+                label: loc.wardrobeOccasion,
+                values: item.occasions,
+              ),
+              _MetadataCard(
+                label: loc.wardrobeFit,
                 values: item.fit.isNotEmpty ? [item.fit] : const [],
               ),
               _MetadataCard(
-                label: 'Сезон',
+                label: loc.wardrobeSeason,
                 values: item.season.isNotEmpty ? [item.season] : const [],
               ),
-              _MetadataCard(label: 'Вайб', values: item.vibes),
+              _MetadataCard(label: loc.wardrobeVibe, values: item.vibes),
               if (!item.hasStyleMetadata)
                 Padding(
                   padding: const EdgeInsets.only(top: 4, bottom: 8),
                   child: Text(
-                    'Теги стиля не заданы — отредактируйте вещь, чтобы добавить их.',
+                    loc.wardrobeNoStyleTags,
                     style: TextStyle(fontSize: 13, color: Colors.grey[600]),
                   ),
                 ),
@@ -241,7 +259,7 @@ class _WardrobeItemDetailsScreenState extends State<WardrobeItemDetailsScreen> {
               FilledButton.icon(
                 onPressed: _isDeleting ? null : _openEdit,
                 icon: const Icon(Icons.edit_outlined),
-                label: const Text('Редактировать'),
+                label: Text(loc.wardrobeEdit),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppBrandColors.pink,
                   minimumSize: const Size.fromHeight(48),
@@ -260,7 +278,9 @@ class _WardrobeItemDetailsScreenState extends State<WardrobeItemDetailsScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.delete_outline_rounded),
-                label: Text(_isDeleting ? 'Удаление…' : 'Удалить вещь'),
+                label: Text(
+                  _isDeleting ? loc.wardrobeDeleting : loc.wardrobeDeleteItem,
+                ),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Colors.grey[700],
                   side: BorderSide(color: Colors.grey.shade300),
@@ -276,17 +296,17 @@ class _WardrobeItemDetailsScreenState extends State<WardrobeItemDetailsScreen> {
             Container(
               color: Colors.black.withValues(alpha: 0.08),
               alignment: Alignment.center,
-              child: const Card(
+              child: Card(
                 child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      CircularProgressIndicator(color: AppBrandColors.pink),
-                      SizedBox(height: 14),
+                      const CircularProgressIndicator(color: AppBrandColors.pink),
+                      const SizedBox(height: 14),
                       Text(
-                        'Удаление…',
-                        style: TextStyle(fontWeight: FontWeight.w600),
+                        loc.wardrobeDeleting,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                     ],
                   ),
@@ -384,7 +404,10 @@ class _MetadataCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
-            WardrobeMetadataChips(values: values),
+            WardrobeMetadataChips(
+              values: values,
+              valueLabel: WardrobeCatalog.displayMetadata,
+            ),
           ],
         ),
       ),

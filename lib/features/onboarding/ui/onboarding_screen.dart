@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/localization/app_locale.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_brand_colors.dart';
 import '../../../data/repositories/onboarding_repository.dart';
@@ -19,7 +20,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final _pageController = PageController();
   int _currentPage = 0;
 
-  static const _pages = OnboardingPages.slides;
+  List<OnboardingPageData> get _pages => OnboardingPages.slides;
 
   @override
   void dispose() {
@@ -61,7 +62,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   TextButton(
                     onPressed: _finish,
                     child: Text(
-                      'Пропустить',
+                      AppLocale.pick(ru: 'Пропустить', en: 'Skip'),
                       style: TextStyle(
                         color: Colors.grey[600],
                         fontWeight: FontWeight.w600,
@@ -87,9 +88,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ),
             OnboardingFunnelHeader(
               step: OnboardingFunnel.stepWelcome,
-              title: 'Знакомство с Chicks',
+              title: OnboardingFunnel.welcomeTitle(),
               subProgress: (_currentPage + 1) / _pages.length,
-              subLabel: 'Слайд ${_currentPage + 1} из ${_pages.length}',
+              subLabel: OnboardingFunnel.slideLabel(
+                _currentPage + 1,
+                _pages.length,
+              ),
             ),
             const SizedBox(height: 12),
             Padding(
@@ -108,7 +112,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     elevation: 0,
                   ),
                   child: Text(
-                    isLastPage ? 'Начать' : 'Далее',
+                    isLastPage
+                        ? AppLocale.pick(ru: 'Начать', en: 'Get started')
+                        : AppLocale.pick(ru: 'Далее', en: 'Next'),
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,

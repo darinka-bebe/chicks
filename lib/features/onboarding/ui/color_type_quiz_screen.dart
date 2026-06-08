@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/localization/app_locale.dart';
 import '../../../core/models/color_type_quiz_answers.dart';
 import '../../../core/models/seasonal_color_type.dart';
 import '../../../core/router/route_names.dart';
@@ -35,7 +36,7 @@ class _ColorTypeQuizScreenState extends State<ColorTypeQuizScreen> {
   bool _showResult = false;
   SeasonalColorType? _resultType;
 
-  static const _questions = ColorTypeQuizQuestions.questions;
+  List<ColorTypeQuizQuestion> get _questions => ColorTypeQuizQuestions.questions;
 
   @override
   void dispose() {
@@ -140,11 +141,14 @@ class _ColorTypeQuizScreenState extends State<ColorTypeQuizScreen> {
                     )
                   else
                     const SizedBox(width: 48),
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Твой цветотип',
+                      AppLocale.pick(
+                        ru: 'Твой цветотип',
+                        en: 'Your color type',
+                      ),
                       textAlign: TextAlign.center,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w700,
                         color: AppBrandColors.title,
@@ -154,7 +158,7 @@ class _ColorTypeQuizScreenState extends State<ColorTypeQuizScreen> {
                   TextButton(
                     onPressed: _skip,
                     child: Text(
-                      'Позже',
+                      AppLocale.pick(ru: 'Позже', en: 'Later'),
                       style: TextStyle(
                         color: Colors.grey[600],
                         fontWeight: FontWeight.w600,
@@ -166,9 +170,12 @@ class _ColorTypeQuizScreenState extends State<ColorTypeQuizScreen> {
             ),
             if (!_showResult) ...[
               if (!widget.fromProfile)
-                const OnboardingFunnelHeader(
+                OnboardingFunnelHeader(
                   step: OnboardingFunnel.stepColorQuiz,
-                  title: 'Определение цветотипа',
+                  title: AppLocale.pick(
+                    ru: 'Определение цветотипа',
+                    en: 'Color type analysis',
+                  ),
                 ),
               Padding(
                 padding: EdgeInsets.fromLTRB(
@@ -179,7 +186,10 @@ class _ColorTypeQuizScreenState extends State<ColorTypeQuizScreen> {
                 ),
                 child: QuizProgressBar(
                   progress: (_currentIndex + 1) / _questions.length,
-                  label: 'Вопрос ${_currentIndex + 1} из ${_questions.length}',
+                  label: AppLocale.pick(
+                    ru: 'Вопрос ${_currentIndex + 1} из ${_questions.length}',
+                    en: 'Question ${_currentIndex + 1} of ${_questions.length}',
+                  ),
                 ),
               ),
               const SizedBox(height: 8),
@@ -229,7 +239,12 @@ class _ColorTypeQuizScreenState extends State<ColorTypeQuizScreen> {
                     elevation: 0,
                   ),
                   child: Text(
-                    _showResult ? 'Сохранить и продолжить' : 'Далее',
+                    _showResult
+                        ? AppLocale.pick(
+                            ru: 'Сохранить и продолжить',
+                            en: 'Save and continue',
+                          )
+                        : AppLocale.pick(ru: 'Далее', en: 'Next'),
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -360,8 +375,12 @@ class _ResultPanel extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Стилист будет подбирать образы с учётом этой палитры — '
-                  'без фото и сложного анализа, только твои ответы.',
+                  AppLocale.pick(
+                    ru: 'Стилист будет подбирать образы с учётом этой палитры — '
+                        'без фото и сложного анализа, только твои ответы.',
+                    en: 'The stylist will use this palette for outfits — '
+                        'no photos or complex analysis, just your answers.',
+                  ),
                   style: TextStyle(
                     fontSize: 13,
                     color: Colors.grey[600],

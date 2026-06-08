@@ -43,6 +43,7 @@ class WardrobeAnalysisSnapshot {
       'top=${countFor(WardrobeOutfitSlot.top)}',
       'bottom=${countFor(WardrobeOutfitSlot.bottom)}',
       'dress=${countFor(WardrobeOutfitSlot.dress)}',
+      'set=${countFor(WardrobeOutfitSlot.set)}',
       'outer=${countFor(WardrobeOutfitSlot.outerwear)}',
       'shoes=${countFor(WardrobeOutfitSlot.shoes)}',
       'acc=${countFor(WardrobeOutfitSlot.accessory)}',

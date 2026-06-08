@@ -1,4 +1,5 @@
 import '../constants/seasonal_palette_catalog.dart';
+import '../localization/app_locale.dart';
 
 /// Approximate seasonal color type (rule-based quiz, no image analysis).
 enum SeasonalColorType {
@@ -39,6 +40,14 @@ extension SeasonalColorTypeX on SeasonalColorType {
   String get displayNameRu => paletteId.displayNameRu;
 
   String get shortDescriptionRu => paletteId.shortDescriptionRu;
+
+  String get displayName =>
+      AppLocale.pick(ru: displayNameRu, en: englishLabel);
+
+  String get shortDescription => AppLocale.pick(
+        ru: shortDescriptionRu,
+        en: paletteId.shortDescriptionEn,
+      );
 
   SeasonalPaletteId get paletteId => switch (this) {
         SeasonalColorType.lightSpring => SeasonalPaletteId.lightSpring,

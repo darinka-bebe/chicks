@@ -7,6 +7,7 @@ import 'package:image/image.dart' as img;
 import 'package:path_provider/path_provider.dart';
 
 import '../../../core/theme/app_brand_colors.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../core/utils/logger.dart';
 
 /// Bottom-sheet crop editor for profile avatar (1:1, not full screen).
@@ -36,12 +37,16 @@ class _ProfileAvatarCropSheetState extends State<ProfileAvatarCropSheet> {
     try {
       final file = File(widget.sourcePath);
       if (!await file.exists()) {
-        setState(() => _loadError = 'Файл не найден');
+        if (!mounted) return;
+        final loc = AppLocalizations.of(context);
+        setState(() => _loadError = loc.profileAvatarFileNotFound);
         return;
       }
       final bytes = await file.readAsBytes();
       if (bytes.isEmpty) {
-        setState(() => _loadError = 'Пустой файл изображения');
+        if (!mounted) return;
+        final loc = AppLocalizations.of(context);
+        setState(() => _loadError = loc.profileAvatarEmptyFile);
         return;
       }
       if (!mounted) return;
@@ -53,7 +58,8 @@ class _ProfileAvatarCropSheetState extends State<ProfileAvatarCropSheet> {
         stackTrace: stack,
       );
       if (!mounted) return;
-      setState(() => _loadError = 'Не удалось открыть фото');
+      final loc = AppLocalizations.of(context);
+      setState(() => _loadError = loc.profileAvatarOpenFailed);
     }
   }
 
@@ -81,9 +87,10 @@ class _ProfileAvatarCropSheetState extends State<ProfileAvatarCropSheet> {
       );
       if (!mounted) return;
       setState(() => _isSaving = false);
+      final loc = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Не удалось сохранить обрезку'),
+        SnackBar(
+          content: Text(loc.profileAvatarCropSaveFailed),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -112,6 +119,7 @@ class _ProfileAvatarCropSheetState extends State<ProfileAvatarCropSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context);
     final maxSheetHeight = MediaQuery.sizeOf(context).height * 0.72;
     final cropHeight = (MediaQuery.sizeOf(context).width * 1.05)
         .clamp(280.0, maxSheetHeight - 120);
@@ -156,11 +164,11 @@ class _ProfileAvatarCropSheetState extends State<ProfileAvatarCropSheet> {
                             : () => Navigator.of(context).pop(),
                         icon: const Icon(Icons.close),
                       ),
-                      const Expanded(
+                      Expanded(
                         child: Text(
-                          'Обрезать фото',
+                          loc.profileAvatarCropTitle,
                           textAlign: TextAlign.center,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w600,
                             color: AppBrandColors.title,
@@ -171,7 +179,7 @@ class _ProfileAvatarCropSheetState extends State<ProfileAvatarCropSheet> {
                         onPressed:
                             _cropReady && !_isSaving ? _applyCrop : null,
                         child: Text(
-                          _isSaving ? '…' : 'Готово',
+                          _isSaving ? '…' : loc.profileAvatarCropDone,
                           style: TextStyle(
                             color: _cropReady && !_isSaving
                                 ? AppBrandColors.pink
@@ -257,9 +265,10 @@ class _ProfileAvatarCropSheetState extends State<ProfileAvatarCropSheet> {
             );
             if (!mounted) return;
             setState(() => _isSaving = false);
+            final loc = AppLocalizations.of(context);
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Не удалось обрезать фото'),
+              SnackBar(
+                content: Text(loc.profileAvatarCropFailed),
                 behavior: SnackBarBehavior.floating,
               ),
             );

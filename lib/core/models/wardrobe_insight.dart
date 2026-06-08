@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../localization/app_locale.dart';
+
 /// A single wardrobe balance / gap insight for the UI.
 enum WardrobeInsightKind {
   gap,
@@ -38,14 +40,22 @@ class WardrobeInsight {
         WardrobeInsightKind.recommendation => Icons.tips_and_updates_outlined,
       };
 
-  String get categoryLabelRu => switch (kind) {
-        WardrobeInsightKind.style => 'Стиль',
-        WardrobeInsightKind.color => 'Палитра',
-        WardrobeInsightKind.balance => 'Баланс',
-        WardrobeInsightKind.silhouette => 'Силуэт',
-        WardrobeInsightKind.recommendation => 'Совет',
-        WardrobeInsightKind.gap => 'Пробел',
-        WardrobeInsightKind.highlight => 'Акцент',
-        WardrobeInsightKind.tip => 'Инсайт',
+  String get categoryLabel => switch (kind) {
+        WardrobeInsightKind.style =>
+          AppLocale.pick(ru: 'Стиль', en: 'Style'),
+        WardrobeInsightKind.color =>
+          AppLocale.pick(ru: 'Палитра', en: 'Palette'),
+        WardrobeInsightKind.balance =>
+          AppLocale.pick(ru: 'Баланс', en: 'Balance'),
+        WardrobeInsightKind.silhouette =>
+          AppLocale.pick(ru: 'Силуэт', en: 'Silhouette'),
+        WardrobeInsightKind.recommendation =>
+          AppLocale.pick(ru: 'Совет', en: 'Tip'),
+        WardrobeInsightKind.gap =>
+          AppLocale.pick(ru: 'Пробел', en: 'Gap'),
+        WardrobeInsightKind.highlight =>
+          AppLocale.pick(ru: 'Акцент', en: 'Highlight'),
+        WardrobeInsightKind.tip =>
+          AppLocale.pick(ru: 'Инсайт', en: 'Insight'),
       };
 }

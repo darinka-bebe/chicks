@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/seasonal_palette_catalog.dart';
 import '../../../core/models/seasonal_color_type.dart';
 import '../../../core/theme/app_brand_colors.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import 'seasonal_palette_swatch.dart';
 
 /// Profile / list card for a seasonal color type (reference-style layout).
@@ -28,8 +29,8 @@ class ColorTypePaletteCard extends StatelessWidget {
     this.onTap,
     this.swatchSize,
   })  : paletteId = type.paletteId,
-        title = type.displayNameRu,
-        description = type.shortDescriptionRu;
+        title = type.displayName,
+        description = type.shortDescription;
 
   final SeasonalPaletteId paletteId;
   final String? title;
@@ -42,10 +43,10 @@ class ColorTypePaletteCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final resolvedSwatchSize =
-        swatchSize ?? (compact ? 72.0 : 80.0);
-    final resolvedTitle = title ?? paletteId.displayNameRu;
-    final resolvedDescription = description ?? paletteId.shortDescriptionRu;
+    final loc = AppLocalizations.of(context);
+    final resolvedSwatchSize = swatchSize ?? (compact ? 72.0 : 80.0);
+    final resolvedTitle = title ?? paletteId.displayName;
+    final resolvedDescription = description ?? paletteId.shortDescription;
 
     final content = Row(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -60,9 +61,9 @@ class ColorTypePaletteCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Цветотип',
-                style: TextStyle(
+              Text(
+                loc.profileColorType,
+                style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                   color: AppBrandColors.pink,

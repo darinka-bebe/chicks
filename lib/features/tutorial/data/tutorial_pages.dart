@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/localization/app_locale.dart';
+
 class TutorialPageData {
   const TutorialPageData({
     required this.title,
@@ -19,7 +21,10 @@ class TutorialPageData {
 }
 
 abstract final class TutorialPages {
-  static const slides = <TutorialPageData>[
+  static List<TutorialPageData> get slides =>
+      AppLocale.isRussian() ? _slidesRu : _slidesEn;
+
+  static const _slidesRu = <TutorialPageData>[
     TutorialPageData(
       title: 'Добро пожаловать в Chicks',
       subtitle:
@@ -60,6 +65,48 @@ abstract final class TutorialPages {
       icon: Icons.bookmark_rounded,
       accentIcon: Icons.insights_outlined,
       hint: 'Рекомендации улучшаются с каждой новой вещью',
+      gradientColors: [Color(0xFFFFD6E8), Color(0xFFFFF0F5)],
+    ),
+  ];
+
+  static const _slidesEn = <TutorialPageData>[
+    TutorialPageData(
+      title: 'Welcome to Chicks',
+      subtitle: 'Your personal AI stylist — looks made just for you',
+      icon: Icons.auto_awesome_rounded,
+      accentIcon: Icons.favorite_rounded,
+    ),
+    TutorialPageData(
+      title: 'Build your digital wardrobe',
+      subtitle:
+          'Add items — your stylist will create looks from what you already own',
+      icon: Icons.checkroom_rounded,
+      accentIcon: Icons.add_circle_outline_rounded,
+      hint: 'Add at least 5 items for better recommendations',
+      gradientColors: [Color(0xFFFFE4F2), Color(0xFFFFF0F5)],
+    ),
+    TutorialPageData(
+      title: 'A stylist that knows the context',
+      subtitle:
+          'Weather, body shape, and color type — outfits that work for you',
+      icon: Icons.wb_sunny_outlined,
+      accentIcon: Icons.palette_outlined,
+      gradientColors: [Color(0xFFFFD6E8), Color(0xFFFFF0F5)],
+    ),
+    TutorialPageData(
+      title: 'Personal looks every day',
+      subtitle: 'Ask the stylist for a ready look from your wardrobe',
+      icon: Icons.style_outlined,
+      accentIcon: Icons.chat_bubble_outline_rounded,
+      hint: 'Try: "Cozy outfit for a rainy day"',
+      gradientColors: [Color(0xFFFFE4F2), Color(0xFFFFFBFE)],
+    ),
+    TutorialPageData(
+      title: 'Save and get inspired',
+      subtitle: 'Favorite looks and style tips always in your profile',
+      icon: Icons.bookmark_rounded,
+      accentIcon: Icons.insights_outlined,
+      hint: 'Recommendations improve with every new item',
       gradientColors: [Color(0xFFFFD6E8), Color(0xFFFFF0F5)],
     ),
   ];

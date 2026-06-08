@@ -6,6 +6,7 @@ import '../../../core/services/profile_avatar_picker_service.dart';
 import '../../../core/services/profile_avatar_service.dart';
 import '../../../core/services/profile_avatar_storage.dart';
 import '../../../core/theme/app_brand_colors.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../widgets/user_avatar.dart';
 
 /// Editable circular profile avatar with gallery picker.
@@ -38,6 +39,7 @@ class _ProfileEditableAvatarState extends State<ProfileEditableAvatar> {
   Future<void> _changePhoto() async {
     if (_isUpdating) return;
 
+    final loc = AppLocalizations.of(context);
     final gallery = await ProfileAvatarPickerService.pickGalleryFile();
     if (!mounted) return;
 
@@ -50,7 +52,7 @@ class _ProfileEditableAvatarState extends State<ProfileEditableAvatar> {
         ..showSnackBar(
           SnackBar(
             content: Text(
-              gallery.message ?? 'Нет доступа к фото',
+              gallery.message ?? loc.profileAvatarPermissionDenied,
             ),
             behavior: SnackBarBehavior.floating,
             backgroundColor: Colors.redAccent,
@@ -64,7 +66,7 @@ class _ProfileEditableAvatarState extends State<ProfileEditableAvatar> {
         ..hideCurrentSnackBar()
         ..showSnackBar(
           SnackBar(
-            content: Text(gallery.message ?? 'Не удалось выбрать фото'),
+            content: Text(gallery.message ?? loc.profileAvatarPickFailed),
             behavior: SnackBarBehavior.floating,
             backgroundColor: Colors.redAccent,
           ),
@@ -96,7 +98,7 @@ class _ProfileEditableAvatarState extends State<ProfileEditableAvatar> {
           ..hideCurrentSnackBar()
           ..showSnackBar(
             SnackBar(
-              content: Text(result.message ?? 'Фото профиля обновлено'),
+              content: Text(result.message ?? loc.profileAvatarUpdated),
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -111,7 +113,7 @@ class _ProfileEditableAvatarState extends State<ProfileEditableAvatar> {
         ..hideCurrentSnackBar()
         ..showSnackBar(
           SnackBar(
-            content: Text(result.message ?? 'Не удалось сохранить фото'),
+            content: Text(result.message ?? loc.profileAvatarSaveFailed),
             behavior: SnackBarBehavior.floating,
             backgroundColor: Colors.redAccent,
           ),
@@ -138,9 +140,11 @@ class _ProfileEditableAvatarState extends State<ProfileEditableAvatar> {
     final innerSize = widget.radius * 2;
     final outerSize = innerSize + 12;
 
+    final loc = AppLocalizations.of(context);
+
     return Semantics(
       button: true,
-      label: 'Изменить фото профиля',
+      label: loc.profileAvatarChangeLabel,
       child: GestureDetector(
         onTap: _isUpdating ? null : _changePhoto,
         child: SizedBox(

@@ -6,6 +6,7 @@ import '../../../core/models/body_shape_type.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_brand_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../onboarding/widgets/quiz_visual_registry.dart';
 import '../../onboarding/widgets/quiz_visual_theme.dart';
 import 'profile_card_decoration.dart';
@@ -33,6 +34,7 @@ class ProfileBodyTypeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context);
     final profile = bodyProfile;
 
     return Material(
@@ -57,9 +59,9 @@ class ProfileBodyTypeCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text(
-                      'Тип фигуры',
-                      style: TextStyle(
+                    Text(
+                      loc.profileBodyType,
+                      style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                         color: AppBrandColors.pink,
@@ -68,7 +70,7 @@ class ProfileBodyTypeCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      profile?.shape.displayNameRu ?? 'Не определён',
+                      profile?.shape.displayName ?? loc.profileNotSet,
                       style: const TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w700,
@@ -79,8 +81,8 @@ class ProfileBodyTypeCard extends StatelessWidget {
                     const SizedBox(height: 6),
                     Text(
                       profile != null
-                          ? profile.shape.shortDescriptionRu
-                          : 'Пройди короткий тест — образы станут точнее по силуэту',
+                          ? profile.shape.shortDescription
+                          : loc.profileBodyTypeHint,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(

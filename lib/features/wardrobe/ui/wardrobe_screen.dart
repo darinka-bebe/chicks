@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/constants/wardrobe_catalog.dart';
 import '../../../core/router/route_names.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../core/theme/app_brand_colors.dart';
 import '../../../core/widgets/chicks_error_state.dart';
 import '../../../core/widgets/chicks_skeleton.dart';
@@ -225,7 +227,11 @@ class _WardrobeScreenState extends State<WardrobeScreen>
     if (!mounted) return;
 
     await _runInsertAnimation(created.id);
-    _showSnack('«${created.title}» добавлена в гардероб');
+    _showSnack(
+      AppLocalizations.of(context).wardrobeItemAdded(
+        WardrobeCatalog.displayItemTitle(created),
+      ),
+    );
   }
 
   Future<void> _openItemDetails(WardrobeItem item) async {
@@ -243,7 +249,7 @@ class _WardrobeScreenState extends State<WardrobeScreen>
     if (result is String && result.isNotEmpty) {
       await _runDeleteAnimation(result);
       if (mounted) {
-        _showSnack('Вещь удалена');
+        _showSnack(AppLocalizations.of(context).wardrobeItemDeleted);
       }
       return;
     }
@@ -253,7 +259,11 @@ class _WardrobeScreenState extends State<WardrobeScreen>
       await controller.onItemUpdated(result);
       if (!mounted) return;
       _applyItems(controller.items, animateEntrance: false);
-      _showSnack('«${result.title}» обновлена');
+      _showSnack(
+        AppLocalizations.of(context).wardrobeItemUpdated(
+          WardrobeCatalog.displayItemTitle(result),
+        ),
+      );
       return;
     }
 
@@ -590,9 +600,9 @@ class _WardrobeScreenState extends State<WardrobeScreen>
         color: AppBrandColors.pink,
         onPressed: () => context.pop(),
       ),
-      title: const Text(
-        'Твой гардероб',
-        style: TextStyle(
+      title: Text(
+        AppLocalizations.of(context).wardrobeTitle,
+        style: const TextStyle(
           color: AppBrandColors.pink,
           fontWeight: FontWeight.w600,
           fontSize: 18,
@@ -601,7 +611,7 @@ class _WardrobeScreenState extends State<WardrobeScreen>
       centerTitle: true,
       actions: [
         IconButton(
-          tooltip: 'Анализ гардероба',
+          tooltip: AppLocalizations.of(context).wardrobeInsightsTooltip,
           onPressed: !hasItems
               ? null
               : () => context.pushNamed(RouteNames.wardrobeInsightsName),
@@ -627,8 +637,8 @@ class _WardrobeScreenState extends State<WardrobeScreen>
 
   Widget _buildCountLabel(int count, {int? totalCount}) {
     final label = totalCount != null && totalCount != count
-        ? '$count из $totalCount ${_itemsLabel(totalCount)}'
-        : '$count ${_itemsLabel(count)}';
+        ? WardrobeCatalog.countShownLabel(count, totalCount)
+        : WardrobeCatalog.itemsLabel(count);
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
       child: Text(
@@ -642,12 +652,4 @@ class _WardrobeScreenState extends State<WardrobeScreen>
     );
   }
 
-  String _itemsLabel(int count) {
-    final mod10 = count % 10;
-    final mod100 = count % 100;
-    if (mod100 >= 11 && mod100 <= 14) return 'вещей';
-    if (mod10 == 1) return 'вещь';
-    if (mod10 >= 2 && mod10 <= 4) return 'вещи';
-    return 'вещей';
-  }
 }

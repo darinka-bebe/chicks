@@ -1,4 +1,6 @@
 import '../../data/models/wardrobe_item.dart';
+import '../constants/wardrobe_catalog.dart';
+import '../localization/app_locale.dart';
 import '../models/wardrobe_analysis_snapshot.dart';
 import '../models/wardrobe_insight.dart';
 import '../models/wardrobe_outfit_slot.dart';
@@ -6,10 +8,13 @@ import 'wardrobe_slot_classifier.dart';
 
 /// Rule-based wardrobe balance and gap analysis (no image / Vision).
 abstract final class WardrobeAnalyzer {
+  static String _l(String ru, String en) => AppLocale.pick(ru: ru, en: en);
+
   static const _analysisSlots = [
     WardrobeOutfitSlot.top,
     WardrobeOutfitSlot.bottom,
     WardrobeOutfitSlot.dress,
+    WardrobeOutfitSlot.set,
     WardrobeOutfitSlot.outerwear,
     WardrobeOutfitSlot.shoes,
     WardrobeOutfitSlot.accessory,
@@ -138,13 +143,16 @@ abstract final class WardrobeAnalyzer {
 
   static List<WardrobeInsight> buildInsights(WardrobeAnalysisSnapshot snapshot) {
     if (snapshot.totalItems == 0) {
-      return const [
+      return [
         WardrobeInsight(
           id: 'empty',
-          title: 'Гардероб пуст',
-          body:
-              'Добавь несколько базовых вещей — верх, низ и обувь — '
-              'и я смогу подсказать, чего не хватает для сбалансированных образов.',
+          title: _l('Гардероб пуст', 'Wardrobe is empty'),
+          body: _l(
+            'Добавь несколько базовых вещей — верх, низ и обувь — '
+            'и я смогу подсказать, чего не хватает для сбалансированных образов.',
+            'Add a few basics — top, bottom, and shoes — '
+            'and I can point out what is missing for balanced outfits.',
+          ),
           kind: WardrobeInsightKind.tip,
         ),
       ];
@@ -170,10 +178,16 @@ abstract final class WardrobeAnalyzer {
       insights.add(
         WardrobeInsight(
           id: nextId('gap'),
-          title: 'Мало обуви для разных образов',
-          body:
-              'С одной-двумя парами сложно менять настроение лука. '
-              'Подумай о повседневной паре и чуть более нарядной — так гардероб станет гибче.',
+          title: _l(
+            'Мало обуви для разных образов',
+            'Not enough shoes for different looks',
+          ),
+          body: _l(
+            'С одной-двумя парами сложно менять настроение лука. '
+            'Подумай о повседневной паре и чуть более нарядной — так гардероб станет гибче.',
+            'With only one or two pairs it is hard to change the mood of a look. '
+            'Consider a casual pair and a slightly dressier one — your wardrobe will feel more flexible.',
+          ),
           kind: WardrobeInsightKind.gap,
         ),
       );
@@ -185,10 +199,13 @@ abstract final class WardrobeAnalyzer {
       insights.add(
         WardrobeInsight(
           id: nextId('balance'),
-          title: 'Много похожих верхов',
-          body:
-              'Похоже, у тебя несколько худи или свитшотов, а обуви и аксессуаров меньше. '
-              'Добавь базовую обувь или один акцент — образы сразу станут разнообразнее.',
+          title: _l('Много похожих верхов', 'Many similar tops'),
+          body: _l(
+            'Похоже, у тебя несколько худи или свитшотов, а обуви и аксессуаров меньше. '
+            'Добавь базовую обувь или один акцент — образы сразу станут разнообразнее.',
+            'It looks like you have several hoodies or sweatshirts but fewer shoes and accessories. '
+            'Add basic footwear or one accent piece — outfits will feel more varied right away.',
+          ),
           kind: WardrobeInsightKind.balance,
         ),
       );
@@ -202,11 +219,15 @@ abstract final class WardrobeAnalyzer {
       insights.add(
         WardrobeInsight(
           id: nextId('balance'),
-          title: 'Перекос по категории',
-          body:
-              'В категории «${_slotLabelRu(slot)}» уже ${snapshot.countFor(slot)} '
-              'из ${snapshot.totalItems} вещей. Попробуй усилить слабые слоты — '
-              'низ, обувь или аксессуары — для баланса.',
+          title: _l('Перекос по категории', 'Category imbalance'),
+          body: _l(
+            'В категории «${slot.displayNameLower}» уже ${snapshot.countFor(slot)} '
+            'из ${snapshot.totalItems} вещей. Попробуй усилить слабые слоты — '
+            'низ, обувь или аксессуары — для баланса.',
+            'You already have ${snapshot.countFor(slot)} of ${snapshot.totalItems} items '
+            'in «${slot.displayNameLower}». Try strengthening weaker slots — '
+            'bottoms, shoes, or accessories — for better balance.',
+          ),
           kind: WardrobeInsightKind.balance,
         ),
       );
@@ -219,10 +240,16 @@ abstract final class WardrobeAnalyzer {
       insights.add(
         WardrobeInsight(
           id: nextId('gap'),
-          title: 'Мало базовых нейтральных вещей',
-          body:
-              'Нейтральный низ или верх (беж, серый, джинс, белый) '
-              'связывает образы. Сейчас их мало — это усложняет комбинации.',
+          title: _l(
+            'Мало базовых нейтральных вещей',
+            'Few basic neutral pieces',
+          ),
+          body: _l(
+            'Нейтральный низ или верх (беж, серый, джинс, белый) '
+            'связывает образы. Сейчас их мало — это усложняет комбинации.',
+            'Neutral bottoms or tops (beige, gray, denim, white) tie outfits together. '
+            'You have few of them right now — that makes mixing harder.',
+          ),
           kind: WardrobeInsightKind.gap,
         ),
       );
@@ -233,10 +260,13 @@ abstract final class WardrobeAnalyzer {
       insights.add(
         WardrobeInsight(
           id: nextId('color'),
-          title: 'Преобладают тёмные тона',
-          body:
-              'Большая часть гардероба в тёмной гамме. Добавь светлый верх '
-              'или акцентный аксессуар — контраст оживит повседневные луки.',
+          title: _l('Преобладают тёмные тона', 'Dark tones dominate'),
+          body: _l(
+            'Большая часть гардероба в тёмной гамме. Добавь светлый верх '
+            'или акцентный аксессуар — контраст оживит повседневные луки.',
+            'Most of your wardrobe is in dark tones. Add a light top '
+            'or a bold accessory — contrast will freshen everyday looks.',
+          ),
           kind: WardrobeInsightKind.color,
         ),
       );
@@ -246,10 +276,16 @@ abstract final class WardrobeAnalyzer {
       insights.add(
         WardrobeInsight(
           id: nextId('style'),
-          title: 'Мало нарядных / formal-вариантов',
-          body:
-              'Почти нет вещей для офиса, свидания или события. '
-              'Один более собранный верх или платье расширят сценарии образов.',
+          title: _l(
+            'Мало нарядных / formal-вариантов',
+            'Few dressy / formal options',
+          ),
+          body: _l(
+            'Почти нет вещей для офиса, свидания или события. '
+            'Один более собранный верх или платье расширят сценарии образов.',
+            'Almost nothing for office, dates, or events. '
+            'One more polished top or dress will open up new outfit scenarios.',
+          ),
           kind: WardrobeInsightKind.style,
         ),
       );
@@ -260,10 +296,13 @@ abstract final class WardrobeAnalyzer {
       insights.add(
         WardrobeInsight(
           id: nextId('style'),
-          title: 'Повторяется один стиль',
-          body:
-              'Стиль «${repeatedStyle.key}» встречается часто. '
-              'Попробуй 1–2 вещи в другом направлении — образы перестанут выглядеть однообразно.',
+          title: _l('Повторяется один стиль', 'One style repeats often'),
+          body: _l(
+            'Стиль «${repeatedStyle.key}» встречается часто. '
+            'Попробуй 1–2 вещи в другом направлении — образы перестанут выглядеть однообразно.',
+            'The «${repeatedStyle.key}» style shows up often. '
+            'Try 1–2 pieces in a different direction — outfits will stop looking samey.',
+          ),
           kind: WardrobeInsightKind.style,
         ),
       );
@@ -273,11 +312,18 @@ abstract final class WardrobeAnalyzer {
       insights.add(
         WardrobeInsight(
           id: nextId('highlight'),
-          title: 'Самая заполненная категория',
-          body:
-              'Больше всего вещей в категории «${_slotLabelRu(snapshot.mostUsedSlot!)}» '
-              '(${snapshot.countFor(snapshot.mostUsedSlot!)} шт.). '
-              'Имеет смысл развивать слабые слоты, а не только эту группу.',
+          title: _l(
+            'Самая заполненная категория',
+            'Most filled category',
+          ),
+          body: _l(
+            'Больше всего вещей в категории «${snapshot.mostUsedSlot!.displayNameLower}» '
+            '(${snapshot.countFor(snapshot.mostUsedSlot!)} шт.). '
+            'Имеет смысл развивать слабые слоты, а не только эту группу.',
+            'Most items are in «${snapshot.mostUsedSlot!.displayNameLower}» '
+            '(${snapshot.countFor(snapshot.mostUsedSlot!)} pcs). '
+            'It makes sense to grow weaker slots, not only this group.',
+          ),
           kind: WardrobeInsightKind.highlight,
         ),
       );
@@ -286,14 +332,18 @@ abstract final class WardrobeAnalyzer {
     if (snapshot.mostRepeatedColor != null &&
         (snapshot.colorCounts[snapshot.mostRepeatedColor!] ?? 0) >= 3) {
       final c = snapshot.mostRepeatedColor!;
+      final colorLabel = WardrobeCatalog.displayColor(c);
       final n = snapshot.colorCounts[c]!;
       insights.add(
         WardrobeInsight(
           id: nextId('highlight'),
-          title: 'Самый частый цвет',
-          body:
-              'Оттенок «$c» встречается $n раз. '
-              'Добавь контрастный или нейтральный акцент — комбинации станут свежее.',
+          title: _l('Самый частый цвет', 'Most common color'),
+          body: _l(
+            'Оттенок «$colorLabel» встречается $n раз. '
+            'Добавь контрастный или нейтральный акцент — комбинации станут свежее.',
+            'The shade «$colorLabel» appears $n times. '
+            'Add a contrasting or neutral accent — combinations will feel fresher.',
+          ),
           kind: WardrobeInsightKind.highlight,
         ),
       );
@@ -304,10 +354,13 @@ abstract final class WardrobeAnalyzer {
       insights.add(
         WardrobeInsight(
           id: nextId('highlight'),
-          title: 'Самая универсальная вещь',
-          body:
-              '«${versatile.title}» — сильный базовый элемент: '
-              'её проще всего встроить в разные образы. Строй луки вокруг неё.',
+          title: _l('Самая универсальная вещь', 'Most versatile item'),
+          body: _l(
+            '«${WardrobeCatalog.displayItemTitle(versatile)}» — сильный базовый элемент: '
+            'её проще всего встроить в разные образы. Строй луки вокруг неё.',
+            '«${WardrobeCatalog.displayItemTitle(versatile)}» is a strong base piece: '
+            'it is the easiest to mix into different outfits. Build looks around it.',
+          ),
           kind: WardrobeInsightKind.highlight,
         ),
       );
@@ -317,10 +370,13 @@ abstract final class WardrobeAnalyzer {
       insights.add(
         WardrobeInsight(
           id: nextId('tip'),
-          title: 'Гардероб в хорошей форме',
-          body:
-              'Баланс категорий выглядит неплохо. Продолжай добавлять базу '
-              'и 1–2 акцента под разные поводы — стилист подберёт образы точнее.',
+          title: _l('Гардероб в хорошей форме', 'Wardrobe looks balanced'),
+          body: _l(
+            'Баланс категорий выглядит неплохо. Продолжай добавлять базу '
+            'и 1–2 акцента под разные поводы — стилист подберёт образы точнее.',
+            'Category balance looks good. Keep adding basics '
+            'and 1–2 accents for different occasions — the stylist will pick outfits more accurately.',
+          ),
           kind: WardrobeInsightKind.tip,
         ),
       );
@@ -331,7 +387,8 @@ abstract final class WardrobeAnalyzer {
 
   static bool _hasBottomCoverage(Map<WardrobeOutfitSlot, int> counts) {
     return (counts[WardrobeOutfitSlot.bottom] ?? 0) > 0 ||
-        (counts[WardrobeOutfitSlot.dress] ?? 0) > 0;
+        (counts[WardrobeOutfitSlot.dress] ?? 0) > 0 ||
+        (counts[WardrobeOutfitSlot.set] ?? 0) > 0;
   }
 
   static bool _isSlotExpected(WardrobeOutfitSlot slot, int total) {
@@ -343,7 +400,7 @@ abstract final class WardrobeAnalyzer {
 
   static String _normalizeColor(String raw) {
     final c = raw.trim().toLowerCase();
-    if (c.isEmpty) return 'не указан';
+    if (c.isEmpty) return _l('не указан', 'unspecified');
     return c.length > 24 ? '${c.substring(0, 24)}…' : c;
   }
 
@@ -390,25 +447,27 @@ abstract final class WardrobeAnalyzer {
     );
   }
 
-  static String _slotLabelRu(WardrobeOutfitSlot slot) => switch (slot) {
-        WardrobeOutfitSlot.top => 'верх',
-        WardrobeOutfitSlot.bottom => 'низ',
-        WardrobeOutfitSlot.dress => 'платья',
-        WardrobeOutfitSlot.outerwear => 'верхняя одежда',
-        WardrobeOutfitSlot.shoes => 'обувь',
-        WardrobeOutfitSlot.accessory => 'аксессуары',
-        WardrobeOutfitSlot.unknown => 'прочее',
-      };
-
   static String _missingTitle(WardrobeOutfitSlot slot) => switch (slot) {
-        WardrobeOutfitSlot.bottom =>
-          'Не хватает базового низа',
-        WardrobeOutfitSlot.shoes => 'Мало обуви',
-        WardrobeOutfitSlot.outerwear => 'Нет верхней одежды',
-        WardrobeOutfitSlot.accessory => 'Почти нет аксессуаров',
-        WardrobeOutfitSlot.top => 'Мало верхов',
-        WardrobeOutfitSlot.dress => 'Нет платьев',
-        WardrobeOutfitSlot.unknown => 'Пробел в гардеробе',
+        WardrobeOutfitSlot.bottom => _l(
+            'Не хватает базового низа',
+            'Missing a basic bottom',
+          ),
+        WardrobeOutfitSlot.shoes => _l('Мало обуви', 'Not enough shoes'),
+        WardrobeOutfitSlot.outerwear => _l(
+            'Нет верхней одежды',
+            'No outerwear',
+          ),
+        WardrobeOutfitSlot.accessory => _l(
+            'Почти нет аксессуаров',
+            'Almost no accessories',
+          ),
+        WardrobeOutfitSlot.top => _l('Мало верхов', 'Not enough tops'),
+        WardrobeOutfitSlot.dress => _l('Нет платьев', 'No dresses'),
+        WardrobeOutfitSlot.set => _l('Нет комплектов', 'No matching sets'),
+        WardrobeOutfitSlot.unknown => _l(
+            'Пробел в гардеробе',
+            'Gap in your wardrobe',
+          ),
       };
 
   static String _missingBody(
@@ -416,25 +475,50 @@ abstract final class WardrobeAnalyzer {
     WardrobeAnalysisSnapshot snapshot,
   ) =>
       switch (slot) {
-        WardrobeOutfitSlot.bottom =>
+        WardrobeOutfitSlot.bottom => _l(
           'Без низа или платья сложно собирать цельные образы. '
           'Добавь нейтральные джинсы, брюки или юбку — это быстро расширит комбинации.',
-        WardrobeOutfitSlot.shoes =>
+          'Without a bottom or dress it is hard to build complete outfits. '
+          'Add neutral jeans, trousers, or a skirt — that quickly expands combinations.',
+        ),
+        WardrobeOutfitSlot.shoes => _l(
           'Обувь задаёт тон всему луку. Хотя бы одна повседневная '
           'и одна чуть наряднее пара сильно увеличат вариативность.',
-        WardrobeOutfitSlot.outerwear =>
+          'Shoes set the tone for the whole look. At least one casual '
+          'and one slightly dressier pair will greatly increase variety.',
+        ),
+        WardrobeOutfitSlot.outerwear => _l(
           'Куртка, пальто или жакет пригодятся в прохладную погоду '
           'и добавят завершённость образу.',
-        WardrobeOutfitSlot.accessory =>
+          'A jacket, coat, or blazer helps in cool weather '
+          'and adds polish to an outfit.',
+        ),
+        WardrobeOutfitSlot.accessory => _l(
           'Сумка, ремень или украшение часто «собирают» образ. '
           'Один универсальный аксессуар даст много новых сочетаний.',
-        WardrobeOutfitSlot.top =>
+          'A bag, belt, or jewelry often pulls a look together. '
+          'One versatile accessory unlocks many new combinations.',
+        ),
+        WardrobeOutfitSlot.top => _l(
           'Сейчас мало верхов — добавь базовую футболку, рубашку или свитер.',
-        WardrobeOutfitSlot.dress =>
+          'You have few tops right now — add a basic tee, shirt, or sweater.',
+        ),
+        WardrobeOutfitSlot.dress => _l(
           'Платье — готовый образ в одной вещи; одно базовое платье '
           'расширит гардероб без лишних комбинаций.',
-        WardrobeOutfitSlot.unknown =>
+          'A dress is a full outfit in one piece; one basic dress '
+          'expands your wardrobe without extra mixing.',
+        ),
+        WardrobeOutfitSlot.set => _l(
+          'Спортивный костюм или коорд-сет — готовая база; добавляй как '
+          'один комплект, а не отдельно верх и низ.',
+          'A tracksuit or co-ord set is a ready base; add it as '
+          'one set, not separate top and bottom.',
+        ),
+        WardrobeOutfitSlot.unknown => _l(
           'В гардеробе есть нераспределённые вещи — проверь категории при добавлении.',
+          'Some items are uncategorized — check categories when adding pieces.',
+        ),
       };
 
   static const _neutralKeywords = [

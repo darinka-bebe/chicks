@@ -14,24 +14,24 @@ class WardrobeStatsStrip extends StatelessWidget {
   Widget build(BuildContext context) {
     final chips = <_StatChipData>[
       _StatChipData(
-        label: 'Верх',
+        label: WardrobeOutfitSlot.top.statsStripLabel,
         count: snapshot.countFor(WardrobeOutfitSlot.top) +
             snapshot.countFor(WardrobeOutfitSlot.dress),
       ),
       _StatChipData(
-        label: 'Низ',
+        label: WardrobeOutfitSlot.bottom.statsStripLabel,
         count: snapshot.countFor(WardrobeOutfitSlot.bottom),
       ),
       _StatChipData(
-        label: 'Обувь',
+        label: WardrobeOutfitSlot.shoes.statsStripLabel,
         count: snapshot.countFor(WardrobeOutfitSlot.shoes),
       ),
       _StatChipData(
-        label: 'Верх. одежда',
+        label: WardrobeOutfitSlot.outerwear.statsStripLabel,
         count: snapshot.countFor(WardrobeOutfitSlot.outerwear),
       ),
       _StatChipData(
-        label: 'Аксессуары',
+        label: WardrobeOutfitSlot.accessory.statsStripLabel,
         count: snapshot.countFor(WardrobeOutfitSlot.accessory),
       ),
     ];

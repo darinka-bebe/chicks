@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/router/post_auth_navigation.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/chicks_input_styles.dart';
 import '../../../data/repositories/auth_repository.dart';
@@ -97,8 +98,10 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       listenWhen: (previous, current) =>
           previous.status != current.status &&
           current.status == AppStatus.authenticated,
-      listener: (context, state) {
-        context.go(RouteNames.main);
+      listener: (context, state) async {
+        final destination = await PostAuthNavigation.destinationAfterAuth();
+        if (!context.mounted) return;
+        context.go(destination);
       },
       child: Scaffold(
       backgroundColor: colorScheme.surface,

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../localization/app_locale.dart';
+
 /// Visual palette identity for seasonal color type cards.
 enum SeasonalPaletteId {
   lightSpring,
@@ -24,6 +26,25 @@ extension SeasonalPaletteIdX on SeasonalPaletteId {
         SeasonalPaletteId.coolSpring => 'Холодная весна',
       };
 
+  String get displayNameEn => switch (this) {
+        SeasonalPaletteId.lightSpring => 'Light Spring',
+        SeasonalPaletteId.coolSummer => 'Cool Summer',
+        SeasonalPaletteId.warmAutumn => 'Warm Autumn',
+        SeasonalPaletteId.brightWinter => 'Bright Winter',
+        SeasonalPaletteId.deepAutumn => 'Deep Autumn',
+        SeasonalPaletteId.deepSummer => 'Deep Summer',
+        SeasonalPaletteId.darkWinter => 'Dark Winter',
+        SeasonalPaletteId.coolSpring => 'Cool Spring',
+      };
+
+  String get displayName =>
+      AppLocale.pick(ru: displayNameRu, en: displayNameEn);
+
+  String get shortDescription => AppLocale.pick(
+        ru: shortDescriptionRu,
+        en: shortDescriptionEn,
+      );
+
   String get shortDescriptionRu => switch (this) {
         SeasonalPaletteId.lightSpring =>
           'Светлые тёплые оттенки, воздушные и свежие сочетания.',
@@ -41,6 +62,25 @@ extension SeasonalPaletteIdX on SeasonalPaletteId {
           'Насыщенные холодные цвета и глубокий контраст.',
         SeasonalPaletteId.coolSpring =>
           'Светлые свежие оттенки с прохладным подтоном.',
+      };
+
+  String get shortDescriptionEn => switch (this) {
+        SeasonalPaletteId.lightSpring =>
+          'Light warm shades with airy, fresh combinations.',
+        SeasonalPaletteId.coolSummer =>
+          'Soft cool tones with gentle, delicate contrast.',
+        SeasonalPaletteId.warmAutumn =>
+          'Warm earthy tones: terracotta, caramel, olive, chocolate.',
+        SeasonalPaletteId.brightWinter =>
+          'Clear saturated shades with bold contrast.',
+        SeasonalPaletteId.deepAutumn =>
+          'Deep earthy tones: rust, olive, mahogany.',
+        SeasonalPaletteId.deepSummer =>
+          'Muted cool shades with soft depth.',
+        SeasonalPaletteId.darkWinter =>
+          'Rich cool colors with deep contrast.',
+        SeasonalPaletteId.coolSpring =>
+          'Light fresh shades with a cool undertone.',
       };
 }
 

@@ -1,4 +1,5 @@
 import '../../data/models/wardrobe_item.dart';
+import '../localization/app_locale.dart';
 import '../models/stylist_request_context.dart';
 import '../models/stylist_response.dart';
 import '../models/wardrobe_outfit_slot.dart';
@@ -12,10 +13,24 @@ abstract final class StylistPipelineSafety {
       'Сейчас не получилось собрать ответ 😔 '
       'Попробуй отправить запрос ещё раз через пару секунд — я на связи!';
 
-  static const String emptyWardrobeSection = '''
+  static String get emptyWardrobeSection {
+    if (AppLocale.isRussian()) {
+      return '''
 ГАРДЕРОБ ПОЛЬЗОВАТЕЛЯ:
-Список вещей пуст. Дай универсальные советы по стилю.
-recommendedItemIds: [].''';
+Список вещей пуст — собрать образ из гардероба нельзя.
+recommendedItemIds: [] — карточки вещей не показывай.
+Честно скажи, что одеть нечего из сохранённых вещей.
+Дай прямой совет по запросу: что надеть в целом (типы одежды, цвета, слои).
+Мягко предложи добавить вещи в «Твой гардероб».''';
+    }
+    return '''
+USER WARDROBE:
+The wardrobe list is empty — you cannot build an outfit from saved items.
+recommendedItemIds: [] — do not show item cards.
+Say honestly there is nothing to wear from their saved clothes.
+Give direct styling advice for the request (garment types, colors, layers).
+Gently suggest adding items in the Wardrobe tab.''';
+  }
 
   /// Drops invalid wardrobe rows and normalizes text fields.
   static List<WardrobeItem> sanitizeWardrobe(List<WardrobeItem> items) {

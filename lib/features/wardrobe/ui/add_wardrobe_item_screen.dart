@@ -16,6 +16,7 @@ import '../../../data/models/wardrobe_item.dart';
 import '../../../data/repositories/clothing_vision_repository.dart';
 import '../../../data/repositories/wardrobe_repository.dart';
 import '../../../core/constants/wardrobe_catalog.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../widgets/wardrobe_chip_selector.dart';
 
 class AddWardrobeItemScreen extends StatefulWidget {
@@ -63,7 +64,7 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
       _titleController.text = editing.title;
       final color = editing.color.trim();
       _colorController.text =
-          color.isEmpty || color == 'Не указан' ? '' : color;
+          color.isEmpty || color == WardrobeCatalog.unspecifiedColor ? '' : color;
       _category = WardrobeCatalog.categories.contains(editing.category)
           ? editing.category
           : WardrobeCatalog.categories.first;
@@ -103,56 +104,59 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (sheetContext) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(4),
+      builder: (sheetContext) {
+        final loc = AppLocalizations.of(sheetContext);
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(4),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Добавить фото',
-                style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                  color: AppBrandColors.title,
+                const SizedBox(height: 16),
+                Text(
+                  loc.wardrobeAddPhotoDialogTitle,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    color: AppBrandColors.title,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'На эмуляторе надёжнее «Файл» → Downloads',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-              ),
-              const SizedBox(height: 16),
-              ListTile(
-                leading: const Icon(Icons.photo_library_outlined,
-                    color: AppBrandColors.pink),
-                title: const Text('Галерея'),
-                subtitle: const Text('Системный выбор фото'),
-                onTap: () =>
-                    Navigator.pop(sheetContext, ImageImportMethod.gallery),
-              ),
-              ListTile(
-                leading: const Icon(Icons.folder_open_outlined,
-                    color: AppBrandColors.pink),
-                title: const Text('Файл'),
-                subtitle: const Text('Downloads, Documents, Files'),
-                onTap: () =>
-                    Navigator.pop(sheetContext, ImageImportMethod.files),
-              ),
-            ],
+                const SizedBox(height: 6),
+                Text(
+                  loc.wardrobeEmulatorHint,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                ),
+                const SizedBox(height: 16),
+                ListTile(
+                  leading: const Icon(Icons.photo_library_outlined,
+                      color: AppBrandColors.pink),
+                  title: Text(loc.wardrobeSourceGallery),
+                  subtitle: Text(loc.wardrobeSourceGallerySub),
+                  onTap: () =>
+                      Navigator.pop(sheetContext, ImageImportMethod.gallery),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.folder_open_outlined,
+                      color: AppBrandColors.pink),
+                  title: Text(loc.wardrobeSourceFile),
+                  subtitle: Text(loc.wardrobeSourceFileSub),
+                  onTap: () =>
+                      Navigator.pop(sheetContext, ImageImportMethod.files),
+                ),
+              ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -177,7 +181,7 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
       title: _titleController.text.trim(),
       category: _category,
       color: _colorController.text.trim().isEmpty
-          ? 'Не указан'
+          ? WardrobeCatalog.unspecifiedColor
           : _colorController.text.trim(),
       wardrobe: wardrobe,
       vision: vision,
@@ -189,23 +193,34 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
 
   Future<bool> _confirmSaveDespiteDuplicate(WardrobeDuplicateMatch match) async {
     final editing = widget.isEditing;
+    final loc = AppLocalizations.of(context);
     final result = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text(editing ? 'Похожая вещь в гардеробе' : 'Вещь уже в гардеробе'),
+        title: Text(
+          editing
+              ? loc.wardrobeDuplicateSimilarTitle
+              : loc.wardrobeDuplicateExistsTitle,
+        ),
         content: Text(
-          'Совпадает с ${match.label}.\n\n'
-          '${editing ? 'Если это другая вещь — нажмите «Всё равно сохранить».' : 'Если на фото другая вещь — нажмите «Всё равно добавить».'}',
+          loc.wardrobeDuplicateDialogBody(
+            match.label,
+            editing
+                ? loc.wardrobeDuplicateEditHint
+                : loc.wardrobeDuplicateAddHint,
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Отмена'),
+            child: Text(loc.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, true),
             child: Text(
-              editing ? 'Всё равно сохранить' : 'Всё равно добавить',
+              editing
+                  ? loc.wardrobeDuplicateSaveAnyway
+                  : loc.wardrobeDuplicateAddAnyway,
               style: const TextStyle(color: AppBrandColors.pink),
             ),
           ),
@@ -216,6 +231,7 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
   }
 
   Future<void> _pickImage() async {
+    final loc = AppLocalizations.of(context);
     final method = await _askImportMethod();
     if (method == null || !mounted) return;
 
@@ -232,7 +248,7 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
         final path = result.localPath;
         if (path == null || path.isEmpty) {
           _showSnackBar(
-            result.message ?? 'Не удалось сохранить фото',
+            result.message ?? loc.wardrobePhotoSaveFailed,
             isError: true,
           );
           return;
@@ -241,19 +257,19 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
         if (!mounted) return;
         await precacheImage(FileImage(File(path)), context);
         if (!mounted) return;
-        _showSnackBar(result.message ?? 'Фото добавлено', isError: false);
+        _showSnackBar(result.message ?? loc.wardrobePhotoAdded, isError: false);
         await _runVisionAnalysis(path);
       case GalleryPickStatus.cancelled:
         break;
       case GalleryPickStatus.permissionDenied:
         _showSnackBar(
-          result.message ?? 'Нет доступа к галерее',
+          result.message ?? loc.wardrobeGalleryDenied,
           isError: true,
         );
         await GalleryImagePickerService.openAppSettingsIfNeeded();
       case GalleryPickStatus.failed:
         _showSnackBar(
-          result.message ?? 'Ошибка при выборе фото',
+          result.message ?? loc.wardrobePhotoPickFailed,
           isError: true,
         );
     }
@@ -262,27 +278,27 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
   Future<void> _runVisionAnalysis(String imagePath) async {
     if (_isAnalyzing) return;
 
+    final locale = Localizations.localeOf(context);
+    final loc = AppLocalizations.of(context);
+
     setState(() {
       _isAnalyzing = true;
       _visionAnalysisFailed = false;
     });
 
     try {
-      final analysis = await _visionRepository.analyzeImage(imagePath);
+      final analysis = await _visionRepository.analyzeImage(
+        imagePath,
+        locale: locale,
+      );
       if (!mounted) return;
       _applyVisionAnalysis(analysis);
       await _refreshDuplicateHint(vision: analysis);
       if (!mounted) return;
       if (_duplicateMatch != null) {
-        _showSnackBar(
-          'Это та же вещь, что уже в гардеробе — проверьте перед сохранением',
-          isError: true,
-        );
+        _showSnackBar(loc.wardrobeDuplicateSnack, isError: true);
       } else {
-        _showSnackBar(
-          'AI заполнил поля — проверьте и отредактируйте при необходимости',
-          isError: false,
-        );
+        _showSnackBar(loc.wardrobeAiFilledSnack, isError: false);
       }
     } on OpenAiChatException catch (e, stack) {
       AppLogger.error(
@@ -293,7 +309,7 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
       if (!mounted) return;
       setState(() => _visionAnalysisFailed = true);
       _showSnackBar(
-        '${e.message} Можно заполнить вручную или повторить анализ.',
+        e.message.trim().isNotEmpty ? e.message : loc.wardrobeAiFailed,
         isError: true,
       );
     } catch (e, stack) {
@@ -304,10 +320,7 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
       );
       if (!mounted) return;
       setState(() => _visionAnalysisFailed = true);
-      _showSnackBar(
-        'Не удалось распознать вещь. Заполните поля вручную или повторите.',
-        isError: true,
-      );
+      _showSnackBar(loc.wardrobeAiFailed, isError: true);
     } finally {
       if (mounted) setState(() => _isAnalyzing = false);
     }
@@ -360,14 +373,20 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
 
     if (title.isEmpty) {
       AppLogger.debug('AddWardrobeItem: validation failed — empty title');
-      _showSnackBar('Введите название', isError: true);
+      _showSnackBar(
+        AppLocalizations.of(context).wardrobeFieldNameRequired,
+        isError: true,
+      );
       _formKey.currentState?.validate();
       return false;
     }
 
     if (category.isEmpty) {
       AppLogger.debug('AddWardrobeItem: validation failed — empty category');
-      _showSnackBar('Выберите категорию', isError: true);
+      _showSnackBar(
+        AppLocalizations.of(context).wardrobeFieldCategoryRequired,
+        isError: true,
+      );
       return false;
     }
 
@@ -402,7 +421,7 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
         id: editing?.id ?? WardrobeRepository.generateItemId(),
         title: _titleController.text.trim(),
         category: _category,
-        color: colorRaw.isEmpty ? 'Не указан' : colorRaw,
+        color: colorRaw.isEmpty ? WardrobeCatalog.unspecifiedColor : colorRaw,
         season: _selectedSeason.isNotEmpty
             ? _selectedSeason.first
             : WardrobeCatalog.seasons.last,
@@ -436,7 +455,7 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
         stackTrace: stackTrace,
       );
       if (!mounted) return;
-      _showSnackBar('Не удалось сохранить вещь', isError: true);
+      _showSnackBar(AppLocalizations.of(context).wardrobeSaveFailed, isError: true);
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -444,6 +463,7 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: AppBrandColors.background,
       appBar: AppBar(
@@ -455,7 +475,7 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
           onPressed: _isSaving || _isAnalyzing ? null : () => context.pop(),
         ),
         title: Text(
-          widget.isEditing ? 'Редактировать' : 'Новая вещь',
+          widget.isEditing ? loc.wardrobeAddEditTitle : loc.wardrobeAddNewTitle,
           style: const TextStyle(
             color: AppBrandColors.pink,
             fontWeight: FontWeight.w600,
@@ -502,22 +522,23 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
             const SizedBox(height: 20),
             _ChicksTextField(
               controller: _titleController,
-              label: 'Название',
+              label: loc.wardrobeFieldName,
               enabled: !_isAnalyzing,
-              hint: 'Например, белая рубашка',
+              hint: loc.wardrobeFieldNameHint,
               textInputAction: TextInputAction.next,
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'Введите название';
+                  return loc.wardrobeFieldNameRequired;
                 }
                 return null;
               },
             ),
             const SizedBox(height: 14),
             _ChicksDropdownField(
-              label: 'Категория',
+              label: loc.wardrobeFieldCategory,
               value: _category,
               items: WardrobeCatalog.categories,
+              itemLabel: WardrobeCatalog.displayCategory,
               enabled: !_isAnalyzing,
               onChanged: (value) {
                 if (value != null) setState(() => _category = value);
@@ -526,22 +547,22 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
             const SizedBox(height: 14),
             _ChicksTextField(
               controller: _colorController,
-              label: 'Цвет',
-              hint: 'Например, бежевый (необязательно)',
+              label: loc.wardrobeFieldColor,
+              hint: loc.wardrobeFieldColorHint,
               textInputAction: TextInputAction.done,
               enabled: !_isAnalyzing,
             ),
             const SizedBox(height: 24),
-            const _SectionHeader(
-              title: 'Стиль и контекст',
-              subtitle: 'Поможет AI-стилисту подбирать образы точнее',
+            _SectionHeader(
+              title: loc.wardrobeStyleContext,
+              subtitle: loc.wardrobeStyleContextHint,
             ),
             const SizedBox(height: 14),
             _MetadataPanel(
               children: [
                 WardrobeChipSelector(
-                  label: 'Стиль / эстетика',
-                  subtitle: 'Можно выбрать несколько',
+                  label: loc.wardrobeStyleAesthetic,
+                  subtitle: loc.wardrobeMultiSelectHint,
                   options: WardrobeCatalog.styles,
                   selected: _selectedStyles,
                   enabled: !_isAnalyzing,
@@ -549,9 +570,10 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
                 ),
                 const SizedBox(height: 18),
                 WardrobeChipSelector(
-                  label: 'Повод',
-                  subtitle: 'Можно выбрать несколько',
+                  label: loc.wardrobeOccasion,
+                  subtitle: loc.wardrobeMultiSelectHint,
                   options: WardrobeCatalog.occasions,
+                  optionLabel: WardrobeCatalog.displayOccasion,
                   selected: _selectedOccasions,
                   enabled: !_isAnalyzing,
                   onChanged: (value) =>
@@ -559,7 +581,7 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
                 ),
                 const SizedBox(height: 18),
                 WardrobeChipSelector(
-                  label: 'Посадка',
+                  label: loc.wardrobeFit,
                   options: WardrobeCatalog.fits,
                   selected: _selectedFit,
                   allowMultiple: false,
@@ -568,8 +590,9 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
                 ),
                 const SizedBox(height: 18),
                 WardrobeChipSelector(
-                  label: 'Сезон',
+                  label: loc.wardrobeSeason,
                   options: WardrobeCatalog.seasons,
+                  optionLabel: WardrobeCatalog.displaySeason,
                   selected: _selectedSeason,
                   allowMultiple: false,
                   enabled: !_isAnalyzing,
@@ -577,9 +600,10 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
                 ),
                 const SizedBox(height: 18),
                 WardrobeChipSelector(
-                  label: 'Вайб',
-                  subtitle: 'Можно выбрать несколько',
+                  label: loc.wardrobeVibe,
+                  subtitle: loc.wardrobeMultiSelectHint,
                   options: WardrobeCatalog.vibes,
+                  optionLabel: WardrobeCatalog.displayVibe,
                   selected: _selectedVibes,
                   enabled: !_isAnalyzing,
                   onChanged: (value) => setState(() => _selectedVibes = value),
@@ -606,9 +630,9 @@ class _AddWardrobeItemScreenState extends State<AddWardrobeItemScreen>
                         color: Colors.white,
                       ),
                     )
-                  : const Text(
-                      'Сохранить',
-                      style: TextStyle(
+                  : Text(
+                      loc.wardrobeSave,
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
@@ -729,6 +753,7 @@ class _DuplicateWarningBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -744,9 +769,8 @@ class _DuplicateWarningBanner extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Похоже, вы снова добавляете ту же вещь: ${match.label}. '
-              'Если это другая вещь (например, другие джинсы) — сохраните, мы уточним название.',
-              style: TextStyle(
+              loc.wardrobeDuplicateBanner(match.label),
+              style: const TextStyle(
                 fontSize: 13,
                 height: 1.35,
                 color: AppBrandColors.title,
@@ -766,6 +790,7 @@ class _VisionRetryBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context);
     return Material(
       color: Colors.white,
       borderRadius: BorderRadius.circular(14),
@@ -780,13 +805,13 @@ class _VisionRetryBanner extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'AI не смог распознать вещь. Заполните вручную или повторите.',
+                  loc.wardrobeAiFailed,
                   style: TextStyle(fontSize: 13, color: Colors.grey[700]),
                 ),
               ),
-              const Text(
-                'Повторить',
-                style: TextStyle(
+              Text(
+                loc.wardrobeAiRetry,
+                style: const TextStyle(
                   color: AppBrandColors.pink,
                   fontWeight: FontWeight.w600,
                 ),
@@ -870,16 +895,16 @@ class _ImagePickerCard extends StatelessWidget {
                         Container(
                           color: Colors.black.withValues(alpha: 0.35),
                           alignment: Alignment.center,
-                          child: const Column(
+                          child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              CircularProgressIndicator(
+                              const CircularProgressIndicator(
                                 color: Colors.white,
                               ),
-                              SizedBox(height: 10),
+                              const SizedBox(height: 10),
                               Text(
-                                'AI анализирует вещь...',
-                                style: TextStyle(
+                                AppLocalizations.of(context).wardrobeAiAnalyzing,
+                                style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -892,9 +917,7 @@ class _ImagePickerCard extends StatelessWidget {
                           right: 12,
                           bottom: 12,
                           child: _PhotoBadge(
-                            label: analysisFailed
-                                ? 'Изменить фото'
-                                : 'Изменить фото',
+                            label: AppLocalizations.of(context).wardrobeChangePhoto,
                           ),
                         ),
                     ],
@@ -907,36 +930,41 @@ class _ImagePickerCard extends StatelessWidget {
   }
 
   Widget _placeholder() {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Container(
-          width: 64,
-          height: 64,
-          decoration: BoxDecoration(
-            color: AppBrandColors.iconBackground,
-            borderRadius: BorderRadius.circular(18),
-          ),
-          child: const Icon(
-            Icons.add_a_photo_outlined,
-            color: AppBrandColors.pink,
-            size: 32,
-          ),
-        ),
-        const SizedBox(height: 12),
-        const Text(
-          'Добавить фото',
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            color: AppBrandColors.title,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Галерея или файл',
-          style: TextStyle(fontSize: 13, color: Colors.grey[500]),
-        ),
-      ],
+    return Builder(
+      builder: (context) {
+        final loc = AppLocalizations.of(context);
+        return Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: AppBrandColors.iconBackground,
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: const Icon(
+                Icons.add_a_photo_outlined,
+                color: AppBrandColors.pink,
+                size: 32,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              loc.wardrobeAddPhoto,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                color: AppBrandColors.title,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              loc.wardrobePhotoSourceHint,
+              style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -1035,6 +1063,7 @@ class _ChicksDropdownField extends StatelessWidget {
     required this.items,
     required this.onChanged,
     this.enabled = true,
+    this.itemLabel,
   });
 
   final String label;
@@ -1042,6 +1071,7 @@ class _ChicksDropdownField extends StatelessWidget {
   final List<String> items;
   final ValueChanged<String?> onChanged;
   final bool enabled;
+  final String Function(String value)? itemLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -1065,7 +1095,10 @@ class _ChicksDropdownField extends StatelessWidget {
               .map(
                 (item) => DropdownMenuItem(
                   value: item,
-                  child: Text(item, style: ChicksInputStyles.value),
+                  child: Text(
+                    itemLabel?.call(item) ?? item,
+                    style: ChicksInputStyles.value,
+                  ),
                 ),
               )
               .toList(),

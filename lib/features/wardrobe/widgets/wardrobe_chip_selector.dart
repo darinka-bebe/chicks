@@ -13,6 +13,7 @@ class WardrobeChipSelector extends StatelessWidget {
     this.allowMultiple = true,
     this.subtitle,
     this.enabled = true,
+    this.optionLabel,
   });
 
   final String label;
@@ -21,6 +22,7 @@ class WardrobeChipSelector extends StatelessWidget {
   final List<String> selected;
   final bool allowMultiple;
   final bool enabled;
+  final String Function(String option)? optionLabel;
   final ValueChanged<List<String>> onChanged;
 
   void _onTap(String value) {
@@ -74,7 +76,7 @@ class WardrobeChipSelector extends StatelessWidget {
                 scale: isSelected ? 1.0 : 0.98,
                 duration: const Duration(milliseconds: 150),
                 child: FilterChip(
-                  label: Text(option),
+                  label: Text(optionLabel?.call(option) ?? option),
                   selected: isSelected,
                   showCheckmark: false,
                   onSelected: enabled ? (_) => _onTap(option) : null,
@@ -110,9 +112,11 @@ class WardrobeMetadataChips extends StatelessWidget {
   const WardrobeMetadataChips({
     super.key,
     required this.values,
+    this.valueLabel,
   });
 
   final List<String> values;
+  final String Function(String value)? valueLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -135,7 +139,7 @@ class WardrobeMetadataChips extends StatelessWidget {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
-                value,
+                valueLabel?.call(value) ?? value,
                 style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,

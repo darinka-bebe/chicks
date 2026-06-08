@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/router/route_names.dart';
 import '../../../core/services/wardrobe_recommendation_resolver.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../core/theme/app_brand_colors.dart';
 import '../../../core/widgets/chicks_skeleton.dart';
 import '../../../data/models/wardrobe_item.dart';
@@ -80,6 +81,7 @@ class _OutfitRowHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context);
     return Row(
       children: [
         Container(
@@ -92,7 +94,7 @@ class _OutfitRowHeader extends StatelessWidget {
         ),
         const SizedBox(width: 7),
         Text(
-          'Вещи из образа',
+          loc.outfitItemsHeader,
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w700,

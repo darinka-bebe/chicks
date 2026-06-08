@@ -6,10 +6,10 @@ abstract final class OutfitPreviewMetrics {
   static const double imageRadius = 12;
   static const double imageInset = 6;
 
-  static const double _minCardWidth = 108;
-  static const double _maxCardWidth = 124;
+  static const double _minCardWidth = 116;
+  static const double _maxCardWidth = 136;
 
-  static const double imageHeight = 122;
+  static const double imageHeight = 148;
 
   static const double bodyPaddingH = 9;
   static const double bodyPaddingTop = 7;

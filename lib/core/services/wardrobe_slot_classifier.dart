@@ -24,6 +24,12 @@ abstract final class WardrobeSlotClassifier {
     if (category == 'платья' || category == 'платье') {
       return WardrobeOutfitSlot.dress;
     }
+    if (category == 'комплекты' ||
+        category == 'комплект' ||
+        category == 'костюм' ||
+        category == 'костюмы') {
+      return WardrobeOutfitSlot.set;
+    }
     if (category == 'верхняя одежда' || category == 'outerwear') {
       return WardrobeOutfitSlot.outerwear;
     }
@@ -45,6 +51,22 @@ abstract final class WardrobeSlotClassifier {
       'комбинезон',
     ])) {
       return WardrobeOutfitSlot.dress;
+    }
+    if (_matchesAny(t, const [
+      'костюм',
+      'комплект',
+      'коорд',
+      'co-ord',
+      'coord set',
+      'tracksuit',
+      'sport suit',
+      'спортивн',
+      'twin set',
+      'двойк',
+      'ансамбл',
+      'set',
+    ])) {
+      return WardrobeOutfitSlot.set;
     }
     if (_matchesAny(t, const [
       'куртк',

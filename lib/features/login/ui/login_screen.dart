@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/router/post_auth_navigation.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/utils/logger.dart';
 import '../../../data/repositories/auth_repository.dart';
@@ -67,8 +68,10 @@ class _LoginScreenState extends State<LoginScreen> {
       listenWhen: (previous, current) =>
           previous.status != current.status &&
           current.status == AppStatus.authenticated,
-      listener: (context, state) {
-        context.go(RouteNames.main);
+      listener: (context, state) async {
+        final destination = await PostAuthNavigation.destinationAfterAuth();
+        if (!context.mounted) return;
+        context.go(destination);
       },
       child: Scaffold(
         backgroundColor: const Color(0xFFFFF0F5),

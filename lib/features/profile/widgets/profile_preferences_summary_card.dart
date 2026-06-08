@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/models/seasonal_color_type.dart';
 import '../../../core/models/user_preferences_bundle.dart';
 import '../../../core/theme/app_brand_colors.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import 'profile_card_decoration.dart';
 
 /// Saved style quiz + taste signals from chat (likes/dislikes).
@@ -16,6 +17,7 @@ class ProfilePreferencesSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context);
     final color = bundle.colorType;
     final body = bundle.bodyProfile;
     final defaults = bundle.stylistDefaults;
@@ -28,9 +30,9 @@ class ProfilePreferencesSummaryCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Сохранённые предпочтения',
-              style: TextStyle(
+            Text(
+              loc.profileSavedPreferences,
+              style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: AppBrandColors.pink,
@@ -40,21 +42,21 @@ class ProfilePreferencesSummaryCard extends StatelessWidget {
             if (color != null)
               _Row(
                 icon: Icons.palette_outlined,
-                label: 'Цветотип',
-                value: color.displayNameRu,
+                label: loc.profilePrefColorType,
+                value: color.displayName,
               ),
             if (body != null) ...[
               const SizedBox(height: 8),
               _Row(
                 icon: Icons.accessibility_new_outlined,
-                label: 'Силуэт',
-                value: body.shape.displayNameRu,
+                label: loc.profilePrefSilhouette,
+                value: body.shape.displayName,
               ),
               if (body.fitPreference.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 _Row(
                   icon: Icons.checkroom_outlined,
-                  label: 'Посадка',
+                  label: loc.profilePrefFit,
                   value: body.fitPreference,
                 ),
               ],
@@ -63,7 +65,7 @@ class ProfilePreferencesSummaryCard extends StatelessWidget {
               const SizedBox(height: 8),
               _Row(
                 icon: Icons.auto_awesome_outlined,
-                label: 'Настроение',
+                label: loc.profilePrefMood,
                 value: defaults.topMoods().join(', '),
               ),
             ],
@@ -71,33 +73,33 @@ class ProfilePreferencesSummaryCard extends StatelessWidget {
               const SizedBox(height: 8),
               _Row(
                 icon: Icons.event_outlined,
-                label: 'Поводы',
+                label: loc.profilePrefOccasions,
                 value: defaults.topOccasions().join(', '),
               ),
             ],
             const SizedBox(height: 10),
             _Row(
               icon: Icons.favorite_rounded,
-              label: 'Избранное',
+              label: loc.profilePrefFavorites,
               value: '${bundle.favoritesCount}',
             ),
             const SizedBox(height: 8),
             _Row(
               icon: Icons.thumb_down_off_alt_outlined,
-              label: 'Не мой стиль',
+              label: loc.profilePrefDislikes,
               value: '${bundle.dislikesCount}',
             ),
             if (dislikes.hasSignals && dislikes.topStyles().isNotEmpty) ...[
               const SizedBox(height: 8),
               _Row(
                 icon: Icons.block_outlined,
-                label: 'Избегать',
+                label: loc.profilePrefAvoid,
                 value: dislikes.topStyles().join(', '),
               ),
             ],
             if (!bundle.hasStyleQuiz && !bundle.hasTasteSignals) ...[
               Text(
-                'Пройди квизы и общайся со стилистом — предпочтения сохранятся на устройстве.',
+                loc.profilePrefEmpty,
                 style: TextStyle(
                   fontSize: 13,
                   color: Colors.grey[600],

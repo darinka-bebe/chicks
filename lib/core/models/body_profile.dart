@@ -1,3 +1,4 @@
+import '../localization/app_locale.dart';
 import 'body_shape_type.dart';
 
 /// Optional fit / proportion preferences stored with body shape.
@@ -19,6 +20,12 @@ class BodyProfile {
   final String fitPreference;
   final bool prefersOversized;
   final bool prefersFitted;
+
+  String get displayFitPreference => switch (fitPreference) {
+        'fitted' => AppLocale.pick(ru: 'по фигуре', en: 'fitted'),
+        'oversized' => AppLocale.pick(ru: 'свободная', en: 'relaxed'),
+        _ => AppLocale.pick(ru: 'универсальная', en: 'balanced'),
+      };
 
   Map<String, dynamic> toJson() => {
         'shape': shape.storageKey,

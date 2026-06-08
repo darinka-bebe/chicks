@@ -29,15 +29,11 @@ abstract final class IphoneLayout {
     );
   }
 
-  /// Chat / input bars: avoid double gap when keyboard is open.
+  /// Chat / input bars: keep the field above home indicator / keyboard.
   static EdgeInsets inputBarPadding(BuildContext context) {
     final keyboard = MediaQuery.viewInsetsOf(context).bottom;
     final safeBottom = MediaQuery.paddingOf(context).bottom;
-    return EdgeInsets.fromLTRB(
-      16,
-      0,
-      16,
-      keyboard > 0 ? 8 : 12 + safeBottom,
-    );
+    final bottom = keyboard > 0 ? 10.0 : 12.0 + safeBottom;
+    return EdgeInsets.fromLTRB(16, 0, 16, bottom);
   }
 }

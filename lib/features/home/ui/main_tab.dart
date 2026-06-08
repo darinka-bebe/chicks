@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/localization/outfit_display.dart';
 import '../../../core/models/weather_condition.dart';
 import '../../../core/models/weather_snapshot.dart';
 import '../../../core/router/route_names.dart';
@@ -15,7 +16,6 @@ import '../../../core/widgets/chicks_error_state.dart';
 import '../../../core/widgets/chicks_skeleton.dart';
 import '../../../core/widgets/iphone_layout.dart';
 import '../../../data/models/outfit_history_entry.dart';
-import '../../../data/repositories/tutorial_repository.dart';
 import '../../../data/repositories/profile_preferences_repository.dart';
 import '../../../features/app/bloc/app_bloc.dart';
 import '../../../features/favorites/favorites_controller.dart';
@@ -52,7 +52,7 @@ class _MainTabState extends State<MainTab> with SingleTickerProviderStateMixin {
       vsync: this,
       duration: const Duration(milliseconds: 980),
     );
-    _sectionAnims = List.generate(7, (i) {
+    _sectionAnims = List.generate(8, (i) {
       final start = (i * 0.1).clamp(0.0, 0.8);
       final end = (start + 0.45).clamp(0.0, 1.0);
       return Tween<double>(begin: 0.0, end: 1.0).animate(
@@ -65,7 +65,6 @@ class _MainTabState extends State<MainTab> with SingleTickerProviderStateMixin {
     _controller.forward();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _maybePromptForName();
-      await _maybeShowTutorial();
       await _loadDashboardData();
     });
   }
@@ -85,7 +84,10 @@ class _MainTabState extends State<MainTab> with SingleTickerProviderStateMixin {
       }
     } catch (_) {
       if (mounted) {
-        setState(() => _weatherError = 'Не удалось обновить погоду');
+        setState(
+          () => _weatherError =
+              AppLocalizations.of(context).homeWeatherUpdateError,
+        );
       }
     } finally {
       if (mounted) setState(() => _loadingWeather = false);
@@ -100,18 +102,13 @@ class _MainTabState extends State<MainTab> with SingleTickerProviderStateMixin {
       }
     } catch (_) {
       if (mounted) {
-        setState(() => _insightsError = 'Не удалось загрузить style insights');
+        setState(
+          () => _insightsError =
+              AppLocalizations.of(context).homeInsightsLoadError,
+        );
       }
     } finally {
       if (mounted) setState(() => _loadingInsights = false);
-    }
-  }
-
-  Future<void> _maybeShowTutorial() async {
-    if (!mounted) return;
-    final done = await TutorialRepository.instance.isCompleted();
-    if (!done && mounted) {
-      context.go(RouteNames.tutorial);
     }
   }
 
@@ -187,11 +184,13 @@ class _MainTabState extends State<MainTab> with SingleTickerProviderStateMixin {
 
   void _openFavorites() => context.pushNamed(RouteNames.favoritesName);
 
-  String _weatherPrompt() {
+  String _weatherPrompt(AppLocalizations loc) {
     if (_weather == null || !_weather!.isAvailable) {
-      return 'Подбери comfy образ на сегодня';
+      return loc.weatherOutfitPromptDefault;
     }
-    return 'Подбери образ на сегодня: ${_weather!.compactUiLabel.toLowerCase()}';
+    return loc.weatherOutfitPromptWithLabel(
+      _weather!.compactUiLabel.toLowerCase(),
+    );
   }
 
   @override
@@ -239,32 +238,37 @@ class _MainTabState extends State<MainTab> with SingleTickerProviderStateMixin {
                 userId: user.uid,
                 photoUrl: user.photoUrl,
                 avatarRevision: user.avatarRevision,
-                greeting: hasPersonalName ? loc.greeting(greetingName) : 'Привет! 👋',
+                greeting: hasPersonalName ? loc.greeting(greetingName) : loc.greetingFallback,
                 subtitle: hasPersonalName
-                    ? 'AI-стилист подготовил идеи специально для тебя'
-                    : 'Добавь имя, чтобы персонализировать опыт',
+                    ? loc.greetingSubtitlePersonalized
+                    : loc.greetingSubtitleNoName,
                 onTapAvatar: hasPersonalName ? _openNameEdit : _openNameSetup,
               ),
             ),
             const SizedBox(height: 14),
             _animated(
               1,
+              _StylistChatHeroCard(onTap: _openStylistChat),
+            ),
+            const SizedBox(height: 14),
+            _animated(
+              2,
               _WeatherCard(
                 weather: _weather,
                 isLoading: _loadingWeather,
                 errorMessage: _weatherError,
-                onGenerate: () => _openStylistChatWithPrompt(_weatherPrompt()),
+                onGenerate: () => _openStylistChatWithPrompt(_weatherPrompt(loc)),
                 onRetry: _loadDashboardData,
               ),
             ),
             const SizedBox(height: 14),
             _animated(
-              2,
+              3,
               _QuickPromptsCard(onTapPrompt: _openStylistChatWithPrompt),
             ),
             const SizedBox(height: 14),
             _animated(
-              3,
+              4,
               _OutfitOfDayCard(
                 latest: latest,
                 onOpenChat: _openStylistChat,
@@ -272,7 +276,7 @@ class _MainTabState extends State<MainTab> with SingleTickerProviderStateMixin {
             ),
             const SizedBox(height: 14),
             _animated(
-              4,
+              5,
               _InsightsCard(
                 isLoading: _loadingInsights,
                 insights: _insights,
@@ -282,7 +286,7 @@ class _MainTabState extends State<MainTab> with SingleTickerProviderStateMixin {
             ),
             const SizedBox(height: 14),
             _animated(
-              5,
+              6,
               _StatsRow(
                 wardrobeCount: wardrobe.items.length,
                 favoritesCount: favorites.outfits.length,
@@ -291,20 +295,20 @@ class _MainTabState extends State<MainTab> with SingleTickerProviderStateMixin {
             ),
             const SizedBox(height: 14),
             _animated(
-              6,
+              7,
               Column(
                 children: [
                   _FeatureCard(
                     icon: Icons.shopping_bag_outlined,
-                    title: 'Твой гардероб',
-                    subtitle: 'Создай цифровой гардероб и получай рекомендации',
+                    title: loc.homeWardrobeCardTitle,
+                    subtitle: loc.homeWardrobeCardSubtitle,
                     onTap: _openWardrobe,
                   ),
                   const SizedBox(height: 10),
                   _FeatureCard(
                     icon: Icons.favorite_rounded,
-                    title: 'Избранные образы',
-                    subtitle: 'Сохранённые рекомендации стилиста в одном месте',
+                    title: loc.homeFavoritesCardTitle,
+                    subtitle: loc.homeFavoritesCardSubtitle,
                     onTap: _openFavorites,
                   ),
                   if (wardrobe.items.isEmpty) ...[
@@ -315,6 +319,64 @@ class _MainTabState extends State<MainTab> with SingleTickerProviderStateMixin {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StylistChatHeroCard extends StatelessWidget {
+  const _StylistChatHeroCard({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context);
+    return Material(
+      color: AppBrandColors.pink,
+      elevation: 0,
+      shadowColor: AppBrandColors.pink.withValues(alpha: 0.35),
+      borderRadius: BorderRadius.circular(20),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      loc.chatTitle,
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      loc.homeChatCardSubtitle,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.white.withValues(alpha: 0.9),
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Icon(
+                Icons.chat_bubble_rounded,
+                color: Colors.white.withValues(alpha: 0.95),
+                size: 28,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -389,7 +451,8 @@ class _WeatherCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = weather?.compactUiLabel ?? 'Погода недоступна';
+    final loc = AppLocalizations.of(context);
+    final label = weather?.compactUiLabel ?? loc.homeWeatherUnavailable;
     return _DashboardCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -408,7 +471,7 @@ class _WeatherCard extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  isLoading ? 'Обновляем погоду…' : label,
+                  isLoading ? loc.homeWeatherUpdating : label,
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
@@ -439,7 +502,7 @@ class _WeatherCard extends StatelessWidget {
                         onRetry: onRetry,
                       )
                     : Text(
-                        _adviceFor(weather),
+                        _adviceFor(context, weather),
                         key: const ValueKey('weather-ready'),
                         style: TextStyle(
                           fontSize: 13,
@@ -459,31 +522,32 @@ class _WeatherCard extends StatelessWidget {
               ),
             ),
             icon: const Icon(Icons.auto_awesome_rounded, size: 18),
-            label: const Text('Generate weather outfit'),
+            label: Text(loc.homeGenerateWeatherOutfit),
           ),
         ],
       ),
     );
   }
 
-  static String _adviceFor(WeatherSnapshot? weather) {
+  static String _adviceFor(BuildContext context, WeatherSnapshot? weather) {
+    final loc = AppLocalizations.of(context);
     if (weather == null || !weather.isAvailable) {
-      return 'Сегодня layered comfy outfits будут универсальным выбором.';
+      return loc.homeWeatherAdviceDefault;
     }
     final rainy = weather.conditions.contains(WeatherCondition.rainy);
     if (rainy && weather.isCold) {
-      return 'Сегодня холодно и дождливо — собери тёплый многослойный образ и закрытую обувь.';
+      return loc.homeWeatherAdviceColdRainy;
     }
     if (rainy) {
-      return 'Сегодня дождливо — лучше подойдут многослойные comfy-образы и защищённая обувь.';
+      return loc.homeWeatherAdviceRainy;
     }
     if (weather.isCold) {
-      return 'Добавь тёплый слой и более плотные фактуры для баланса.';
+      return loc.homeWeatherAdviceCold;
     }
     if (weather.isHot) {
-      return 'Сделай ставку на лёгкие ткани и светлую палитру.';
+      return loc.homeWeatherAdviceHot;
     }
-    return 'Сегодня хорошо подойдут мягкие многослойные образы.';
+    return loc.homeWeatherAdviceMild;
   }
 
   static IconData _iconFor(WeatherSnapshot? weather) {
@@ -507,21 +571,22 @@ class _QuickPromptsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const prompts = <(String, String)>[
-      ('comfy', 'Подбери comfy образ на сегодня'),
-      ('school', 'Подбери образ в школу'),
-      ('date night', 'Подбери образ для date night'),
-      ('streetwear', 'Подбери streetwear образ'),
-      ('rainy', 'Подбери образ на дождливую погоду'),
-      ('minimal', 'Подбери минималистичный образ'),
+    final loc = AppLocalizations.of(context);
+    final prompts = <(String, String)>[
+      (loc.homeQuickPromptComfy, loc.homeQuickPromptComfyFull),
+      (loc.homeQuickPromptSchool, loc.homeQuickPromptSchoolFull),
+      (loc.homeQuickPromptDateNight, loc.homeQuickPromptDateNightFull),
+      (loc.homeQuickPromptStreetwear, loc.homeQuickPromptStreetwearFull),
+      (loc.homeQuickPromptRainy, loc.homeQuickPromptRainyFull),
+      (loc.homeQuickPromptMinimal, loc.homeQuickPromptMinimalFull),
     ];
     return _DashboardCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Quick AI Suggestions',
-            style: TextStyle(
+          Text(
+            loc.homeQuickAiSuggestions,
+            style: const TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w700,
               color: AppBrandColors.title,
@@ -560,6 +625,7 @@ class _OutfitOfDayCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context);
     final entry = latest;
     return _DashboardCard(
       child: Column(
@@ -567,9 +633,9 @@ class _OutfitOfDayCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Text(
-                'Outfit of the Day',
-                style: TextStyle(
+              Text(
+                loc.homeOutfitOfDay,
+                style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
                   color: AppBrandColors.title,
@@ -578,13 +644,13 @@ class _OutfitOfDayCard extends StatelessWidget {
               const Spacer(),
               TextButton(
                 onPressed: onOpenChat,
-                child: const Text('К рекомендациям'),
+                child: Text(loc.homeToRecommendations),
               ),
             ],
           ),
           if (entry == null)
             Text(
-              'Сгенерируй первый образ в чате, и он появится здесь.',
+              loc.homeOutfitOfDayEmpty,
               style: TextStyle(fontSize: 13, color: Colors.grey[600], height: 1.4),
             )
           else
@@ -599,19 +665,32 @@ class _OutfitOfDayCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    entry.title,
+                    OutfitDisplay.homeTitle(entry),
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
                       color: AppBrandColors.title,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    entry.userPrompt,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                  Builder(
+                    builder: (context) {
+                      final subtitle = OutfitDisplay.homeSubtitle(entry);
+                      if (subtitle == null || subtitle.isEmpty) {
+                        return const SizedBox.shrink();
+                      }
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          subtitle,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -637,19 +716,20 @@ class _InsightsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const fallback = <String>[
-      'You mostly wear neutral comfy styles',
-      'Your dominant palette is Soft Summer',
-      'Streetwear is your top aesthetic',
+    final loc = AppLocalizations.of(context);
+    final fallback = <String>[
+      loc.homeInsightsFallback1,
+      loc.homeInsightsFallback2,
+      loc.homeInsightsFallback3,
     ];
     final current = insights.isEmpty ? fallback : insights;
     return _DashboardCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Style Insights',
-            style: TextStyle(
+          Text(
+            loc.homeStyleInsights,
+            style: const TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w700,
               color: AppBrandColors.title,
@@ -730,13 +810,14 @@ class _StatsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context);
     return Row(
       children: [
-        Expanded(child: _StatCard(label: 'Гардероб', value: '$wardrobeCount')),
+        Expanded(child: _StatCard(label: loc.statWardrobe, value: '$wardrobeCount')),
         const SizedBox(width: 10),
-        Expanded(child: _StatCard(label: 'Избранное', value: '$favoritesCount')),
+        Expanded(child: _StatCard(label: loc.statFavorites, value: '$favoritesCount')),
         const SizedBox(width: 10),
-        Expanded(child: _StatCard(label: 'AI образы', value: '$generatedCount')),
+        Expanded(child: _StatCard(label: loc.statAiOutfits, value: '$generatedCount')),
       ],
     );
   }
@@ -749,13 +830,14 @@ class _EmptyWardrobeHint extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context);
     return _DashboardCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Начни с гардероба',
-            style: TextStyle(
+          Text(
+            loc.homeEmptyWardrobeTitle,
+            style: const TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w700,
               color: AppBrandColors.title,
@@ -763,7 +845,7 @@ class _EmptyWardrobeHint extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            'Добавь минимум 5 вещей, чтобы AI рекомендации стали заметно точнее.',
+            loc.homeEmptyWardrobeBody,
             style: TextStyle(fontSize: 13, color: Colors.grey[700], height: 1.4),
           ),
           const SizedBox(height: 10),
@@ -773,7 +855,7 @@ class _EmptyWardrobeHint extends StatelessWidget {
               backgroundColor: AppBrandColors.pink,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Добавить вещи'),
+            child: Text(loc.homeEmptyWardrobeAction),
           ),
         ],
       ),

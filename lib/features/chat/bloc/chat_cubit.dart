@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../core/localization/app_locale.dart';
 import '../../../core/services/openai_chat_service.dart';
 import '../../../core/services/stylist_context_parser.dart';
 import '../../../data/repositories/auth_repository.dart';
@@ -284,8 +285,12 @@ class ChatCubit extends Cubit<ChatState> {
         weather: weather,
         userPrompt: userPrompt,
         showErrorBanner: true,
-        errorBanner:
-            'Не удалось получить ответ стилиста. Проверьте сеть и попробуйте снова.',
+        errorBanner: AppLocale.pick(
+          ru:
+              'Не удалось получить ответ стилиста. Проверьте сеть и попробуйте снова.',
+          en:
+              'Could not get a stylist reply. Check your network and try again.',
+        ),
       );
     }
   }
@@ -407,7 +412,10 @@ class ChatCubit extends Cubit<ChatState> {
       role: ChatRole.user,
       content: entry.userPrompt.isNotEmpty
           ? entry.userPrompt
-          : 'Покажи этот образ снова',
+          : AppLocale.pick(
+              ru: 'Покажи этот образ снова',
+              en: 'Show this look again',
+            ),
       createdAt: entry.createdAt.subtract(const Duration(milliseconds: 1)),
     );
 
