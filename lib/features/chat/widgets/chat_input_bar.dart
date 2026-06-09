@@ -62,18 +62,28 @@ class ChatInputBarState extends State<ChatInputBar> {
     _focusNode.requestFocus();
   }
 
+  bool _startsWithSuggestPrefix(String text) {
+    final lower = text.trim().toLowerCase();
+    return lower.startsWith('подбери') ||
+        lower.startsWith('suggest') ||
+        lower.startsWith('ұсын');
+  }
+
   void _insertChipPrompt(StylistSuggestionChip chip) {
     final snippet = chip.localizedPromptSnippet;
     final current = _controller.text.trim();
-    final prefix = AppLocale.isRussian() ? 'Подбери' : 'Suggest';
+    final prefix = AppLocale.pick(
+      ru: 'Подбери',
+      en: 'Suggest',
+      kk: 'Ұсын',
+    );
 
     String next;
     if (current.isEmpty) {
       next = '$prefix $snippet';
     } else if (current.toLowerCase().contains(snippet.toLowerCase())) {
       next = current;
-    } else if (current.toLowerCase().startsWith(prefix.toLowerCase()) ||
-        current.toLowerCase().startsWith('suggest')) {
+    } else if (_startsWithSuggestPrefix(current)) {
       next = '$current, $snippet';
     } else {
       next = '$current. $prefix $snippet';

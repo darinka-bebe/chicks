@@ -87,6 +87,7 @@ class WeatherSnapshot extends Equatable {
     return AppLocale.pick(
       ru: _labelRu(condition),
       en: _labelEn(condition),
+      kk: _labelKk(condition),
     );
   }
 
@@ -112,10 +113,22 @@ class WeatherSnapshot extends Equatable {
     };
   }
 
+  static String _labelKk(WeatherCondition condition) {
+    return switch (condition) {
+      WeatherCondition.sunny => 'Күн ашық',
+      WeatherCondition.cloudy => 'Бұлтты',
+      WeatherCondition.rainy => 'Жаңбыр',
+      WeatherCondition.snowy => 'Қар',
+      WeatherCondition.windy => 'Жел',
+      WeatherCondition.foggy => 'Тұман',
+    };
+  }
+
   static String dayPhaseLabel(DayPhase? phase) {
     return AppLocale.pick(
       ru: dayPhaseRu(phase),
       en: dayPhaseEn(phase),
+      kk: dayPhaseKk(phase),
     );
   }
 
@@ -135,6 +148,16 @@ class WeatherSnapshot extends Equatable {
       DayPhase.afternoon => 'afternoon',
       DayPhase.evening => 'evening',
       DayPhase.night => 'night',
+      null => '',
+    };
+  }
+
+  static String dayPhaseKk(DayPhase? phase) {
+    return switch (phase) {
+      DayPhase.morning => 'таңертең',
+      DayPhase.afternoon => 'күндіз',
+      DayPhase.evening => 'кеш',
+      DayPhase.night => 'түн',
       null => '',
     };
   }

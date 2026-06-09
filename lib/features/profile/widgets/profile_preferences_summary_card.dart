@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/constants/stylist_suggestion_chips.dart';
 import '../../../core/models/seasonal_color_type.dart';
 import '../../../core/models/user_preferences_bundle.dart';
 import '../../../core/theme/app_brand_colors.dart';
@@ -66,7 +67,10 @@ class ProfilePreferencesSummaryCard extends StatelessWidget {
               _Row(
                 icon: Icons.auto_awesome_outlined,
                 label: loc.profilePrefMood,
-                value: defaults.topMoods().join(', '),
+                value: defaults
+                    .topMoods()
+                    .map(StylistContextCatalog.displayMood)
+                    .join(', '),
               ),
             ],
             if (defaults.topOccasions().isNotEmpty) ...[
@@ -74,7 +78,10 @@ class ProfilePreferencesSummaryCard extends StatelessWidget {
               _Row(
                 icon: Icons.event_outlined,
                 label: loc.profilePrefOccasions,
-                value: defaults.topOccasions().join(', '),
+                value: defaults
+                    .topOccasions()
+                    .map(StylistContextCatalog.displayOccasion)
+                    .join(', '),
               ),
             ],
             const SizedBox(height: 10),

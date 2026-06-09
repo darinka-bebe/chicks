@@ -21,8 +21,11 @@ class TutorialPageData {
 }
 
 abstract final class TutorialPages {
-  static List<TutorialPageData> get slides =>
-      AppLocale.isRussian() ? _slidesRu : _slidesEn;
+  static List<TutorialPageData> get slides {
+    if (AppLocale.isKazakh()) return _slidesKk;
+    if (AppLocale.isRussian()) return _slidesRu;
+    return _slidesEn;
+  }
 
   static const _slidesRu = <TutorialPageData>[
     TutorialPageData(
@@ -65,6 +68,48 @@ abstract final class TutorialPages {
       icon: Icons.bookmark_rounded,
       accentIcon: Icons.insights_outlined,
       hint: 'Рекомендации улучшаются с каждой новой вещью',
+      gradientColors: [Color(0xFFFFD6E8), Color(0xFFFFF0F5)],
+    ),
+  ];
+
+  static const _slidesKk = <TutorialPageData>[
+    TutorialPageData(
+      title: 'Chicks-ке қош келдіңіз',
+      subtitle: 'Жеке AI стилистіңіз — сізге арналған образдар',
+      icon: Icons.auto_awesome_rounded,
+      accentIcon: Icons.favorite_rounded,
+    ),
+    TutorialPageData(
+      title: 'Цифрлық гардероб құрыңыз',
+      subtitle:
+          'Заттарды қосыңыз — стилист сізде бар киімнен образ жасайды',
+      icon: Icons.checkroom_rounded,
+      accentIcon: Icons.add_circle_outline_rounded,
+      hint: 'Жақсырақ ұсыныстар үшін кемінде 5 зат қосыңыз',
+      gradientColors: [Color(0xFFFFE4F2), Color(0xFFFFF0F5)],
+    ),
+    TutorialPageData(
+      title: 'Контекстті білетін стилист',
+      subtitle:
+          'Ауа райы, дене типі және түс типі — сізге сәйкес образдар',
+      icon: Icons.wb_sunny_outlined,
+      accentIcon: Icons.palette_outlined,
+      gradientColors: [Color(0xFFFFD6E8), Color(0xFFFFF0F5)],
+    ),
+    TutorialPageData(
+      title: 'Күн сайын жеке образдар',
+      subtitle: 'Стилисттен гардеробыңыздан дайын образ сұраңыз',
+      icon: Icons.style_outlined,
+      accentIcon: Icons.chat_bubble_outline_rounded,
+      hint: 'Мысалы: «Жаңбырлы күнге ыңғайлы образ»',
+      gradientColors: [Color(0xFFFFE4F2), Color(0xFFFFFBFE)],
+    ),
+    TutorialPageData(
+      title: 'Сақтаңыз және шабыт алыңыз',
+      subtitle: 'Таңдаулы образдар мен стиль кеңестері профильде әрқашан',
+      icon: Icons.bookmark_rounded,
+      accentIcon: Icons.insights_outlined,
+      hint: 'Әр жаңа затпен ұсыныстар жақсарады',
       gradientColors: [Color(0xFFFFD6E8), Color(0xFFFFF0F5)],
     ),
   ];

@@ -1,8 +1,9 @@
 import 'package:flutter/widgets.dart';
 
-/// Device locale helpers (ru / en) for UI and AI prompts.
+/// Device locale helpers (en / ru / kk) for UI and AI prompts.
 abstract final class AppLocale {
   static const fallback = Locale('en');
+  static const kazakh = Locale('kk');
 
   static Locale? _resolvedAppLocale;
 
@@ -18,9 +19,8 @@ abstract final class AppLocale {
   }
 
   static Locale effectiveLocale([Locale? locale]) {
-    if (locale != null) return locale;
-    if (_resolvedAppLocale != null) return _resolvedAppLocale!;
-    return deviceLocale();
+    if (locale != null) return resolve(locale);
+    return resolve(null);
   }
 
   static String languageCode([Locale? locale]) {
@@ -31,31 +31,55 @@ abstract final class AppLocale {
     return languageCode(locale).startsWith('ru');
   }
 
-  /// Maps device language to a supported app locale (en or ru).
+  static bool isKazakh([Locale? locale]) {
+    return languageCode(locale).startsWith('kk');
+  }
+
+  /// Maps device / app language to a supported locale (en, ru, or kk).
+  ///
+  /// Walks [MaterialApp] locale, then the system preferred-locale list, so
+  /// Kazakh is picked even when iOS reports `en` as [deviceLocale].
   static Locale resolve(Locale? locale) {
-    if (locale != null && isRussian(locale)) {
-      return const Locale('ru');
+    final seen = <String>{};
+    final candidates = <Locale>[
+      if (locale != null) locale,
+      if (_resolvedAppLocale != null) _resolvedAppLocale!,
+      ...WidgetsBinding.instance.platformDispatcher.locales,
+      deviceLocale(),
+    ];
+
+    for (final candidate in candidates) {
+      final code = candidate.languageCode.toLowerCase();
+      if (!seen.add(code)) continue;
+      if (code.startsWith('ru')) return const Locale('ru');
+      if (code.startsWith('kk')) return kazakh;
     }
+
     return fallback;
   }
 
   static String stylistLanguageRule([Locale? locale]) {
-    if (isRussian(locale)) {
-      return 'Always respond in Russian.';
-    }
+    if (isRussian(locale)) return 'Always respond in Russian.';
+    if (isKazakh(locale)) return 'Always respond in Kazakh.';
     return 'Always respond in English.';
   }
 
   static String messageLanguageLabel([Locale? locale]) {
-    return isRussian(locale) ? 'Russian' : 'English';
+    if (isRussian(locale)) return 'Russian';
+    if (isKazakh(locale)) return 'Kazakh';
+    return 'English';
   }
 
-  /// Picks Russian or English copy based on device locale.
+  /// Picks copy by device locale. [kk] falls back to [en] when omitted.
   static String pick({
     required String ru,
     required String en,
+    String? kk,
     Locale? locale,
   }) {
-    return isRussian(locale) ? ru : en;
+    final code = resolve(locale).languageCode.toLowerCase();
+    if (code.startsWith('kk')) return kk ?? en;
+    if (code.startsWith('ru')) return ru;
+    return en;
   }
 }

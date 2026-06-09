@@ -1,4 +1,5 @@
 import '../../data/models/wardrobe_item.dart';
+import '../models/wardrobe_inventory_profile.dart';
 import '../models/wardrobe_outfit_slot.dart';
 
 /// Compact wardrobe statistics for analysis and low-token AI prompts.
@@ -17,6 +18,7 @@ class WardrobeAnalysisSnapshot {
     required this.mostVersatileItem,
     required this.missingSlots,
     required this.overloadedSlots,
+    required this.inventory,
   });
 
   final int totalItems;
@@ -32,6 +34,7 @@ class WardrobeAnalysisSnapshot {
   final WardrobeItem? mostVersatileItem;
   final List<WardrobeOutfitSlot> missingSlots;
   final List<WardrobeOutfitSlot> overloadedSlots;
+  final WardrobeInventoryProfile inventory;
 
   int countFor(WardrobeOutfitSlot slot) => slotCounts[slot] ?? 0;
 
@@ -65,6 +68,8 @@ class WardrobeAnalysisSnapshot {
     if (overloadedSlots.isNotEmpty) {
       parts.add('overload=${overloadedSlots.map((s) => s.name).join(",")}');
     }
+
+    parts.add('owned=${inventory.ownedSummaryForAi()}');
 
     final topColors = colorCounts.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));

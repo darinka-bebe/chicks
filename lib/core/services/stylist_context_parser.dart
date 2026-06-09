@@ -1,4 +1,5 @@
 import '../constants/stylist_suggestion_chips.dart';
+import '../localization/app_locale.dart';
 import '../models/stylist_request_context.dart';
 
 /// Extracts mood, weather, and occasion from a user chat message.
@@ -58,14 +59,24 @@ abstract final class StylistContextParser {
     return matches;
   }
 
-  /// Builds a Russian prompt snippet from selected chip contexts.
+  /// Builds a localized prompt from selected chip contexts.
   static String buildPromptFromChips(List<StylistSuggestionChip> chips) {
     if (chips.isEmpty) return '';
 
-    final snippets = chips.map((chip) => chip.promptSnippet).toList();
+    final prefix = AppLocale.pick(
+      ru: 'Подбери',
+      en: 'Suggest',
+      kk: 'Ұсын',
+    );
+    final snippets = chips.map((chip) => chip.localizedPromptSnippet).toList();
     if (snippets.length == 1) {
-      return 'Подбери ${snippets.first}';
+      return '$prefix ${snippets.first}';
     }
-    return 'Подбери образ: ${snippets.join(', ')}';
+    final outfitWord = AppLocale.pick(
+      ru: 'образ',
+      en: 'outfit',
+      kk: 'образ',
+    );
+    return '$prefix $outfitWord: ${snippets.join(', ')}';
   }
 }

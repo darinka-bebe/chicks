@@ -24,8 +24,11 @@ class OpenAiVisionService {
 
   String? get _apiKey => dotenv.env['OPENAI_API_KEY'];
 
-  static String _systemPromptFor(Locale? locale) =>
-      AppLocale.isRussian(locale) ? _systemPromptRu : _systemPromptEn;
+  static String _systemPromptFor(Locale? locale) {
+    if (AppLocale.isKazakh(locale)) return _systemPromptKk;
+    if (AppLocale.isRussian(locale)) return _systemPromptRu;
+    return _systemPromptEn;
+  }
 
   static const _systemPromptRu = '''
 Ты — AI-модуль распознавания одежды в fashion-приложении Chicks.
@@ -111,6 +114,33 @@ FOOTWEAR (critical):
 If unsure about duplicate — isDuplicate=false. Do not invent categories.
 ''';
 
+  static const _systemPromptKk = '''
+You are Chicks wardrobe vision AI. Analyze the photo and return ONLY valid JSON.
+
+LANGUAGE (critical):
+- title, clothingType, color, outfitContext: Kazakh only — use Latin script for loanwords if needed.
+- category, seasons, occasions, vibes: use the exact Russian storage tokens listed below.
+
+Fields:
+- title: short Kazakh name (2–6 words) with a distinguishing detail.
+- clothingType: garment type in Kazakh
+- category: one of: Верх, Низ, Платья, Комплекты, Верхняя одежда, Обувь, Аксессуары
+- color: main color in Kazakh
+- styles: array from: casual, old money, streetwear, clean girl, sporty, feminine
+- seasons: array from: Весна, Лето, Осень, Зима, Всесезон
+- occasions: array from: школа, прогулка, office, date, party
+- vibes: array from: минимализм, романтичный, дерзкий, уютный, элегантный, игривый
+- fit: one of: oversized, slim, relaxed, regular (or empty)
+- outfitContext: one short styling sentence in Kazakh
+- isDuplicate: true ONLY if the photo is the exact same item from EXISTING WARDROBE
+- duplicateMatchTitle: exact title from the list (empty if isDuplicate=false)
+- recognizable: true in most cases when one garment is visible and type + color can be named
+- recognitionNote: empty if recognizable=true; otherwise a short reason in Kazakh
+
+RECOGNITION, COORDINATED SETS, FOOTWEAR: same rules as English prompt.
+If unsure about duplicate — isDuplicate=false. Do not invent categories.
+''';
+
   Future<ClothingVisionAnalysis> analyzeClothingImage(
     String imagePath, {
     List<WardrobeItem> existingWardrobe = const [],
@@ -147,23 +177,44 @@ If unsure about duplicate — isDuplicate=false. Do not invent categories.
       'wardrobeContext=${existingWardrobe.length} locale=${uiLocale.languageCode}',
     );
 
-    final honestyHint = AppLocale.isRussian(uiLocale)
-        ? 'Если вещь на фото видна — recognizable=true и заполни поля. Отказ только если реально ничего не разобрать.'
-        : 'If the garment is visible — recognizable=true and fill fields. Refuse only when truly unreadable.';
+    final honestyHint = AppLocale.pick(
+      ru:
+          'Если вещь на фото видна — recognizable=true и заполни поля. Отказ только если реально ничего не разобрать.',
+      en:
+          'If the garment is visible — recognizable=true and fill fields. Refuse only when truly unreadable.',
+      kk:
+          'Фотода киім көрінсе — recognizable=true және өрістерді толтыр. Шынымен оқу мүмкін емес болса ғана бас тарту.',
+      locale: uiLocale,
+    );
 
     final languageReminder = AppLocale.isRussian(uiLocale)
         ? ''
-        : '\n\nREMINDER: title, clothingType, color, outfitContext must be English (Latin letters only).';
+        : AppLocale.isKazakh(uiLocale)
+            ? '\n\nЕСКЕРТУ: title, clothingType, color, outfitContext қазақ тілінде болуы керек.'
+            : '\n\nREMINDER: title, clothingType, color, outfitContext must be English (Latin letters only).';
 
     final userText = wardrobeBlock.isEmpty
-        ? (AppLocale.isRussian(uiLocale)
-            ? 'Проанализируй эту вещь гардероба. $honestyHint Верни JSON по схеме из system.'
-            : 'Analyze this wardrobe item. $honestyHint Return JSON per the system schema.$languageReminder')
-        : (AppLocale.isRussian(uiLocale)
-            ? '$wardrobeBlock\n\nПроанализируй фото. Если это комплект — одна запись «Комплекты». '
-                'duplicateMatchTitle только если это тот же физический предмет из списка. $honestyHint'
-            : '$wardrobeBlock\n\nAnalyze the photo. If it is a coordinated set — one «Комплекты» entry. '
-                'duplicateMatchTitle only for the exact same physical item from the list. $honestyHint$languageReminder');
+        ? AppLocale.pick(
+            ru:
+                'Проанализируй эту вещь гардероба. $honestyHint Верни JSON по схеме из system.',
+            en:
+                'Analyze this wardrobe item. $honestyHint Return JSON per the system schema.$languageReminder',
+            kk:
+                'Гардероб затын талда. $honestyHint JSON қайтар.$languageReminder',
+            locale: uiLocale,
+          )
+        : AppLocale.pick(
+            ru:
+                '$wardrobeBlock\n\nПроанализируй фото. Если это комплект — одна запись «Комплекты». '
+                'duplicateMatchTitle только если это тот же физический предмет из списка. $honestyHint',
+            en:
+                '$wardrobeBlock\n\nAnalyze the photo. If it is a coordinated set — one «Комплекты» entry. '
+                'duplicateMatchTitle only for the exact same physical item from the list. $honestyHint$languageReminder',
+            kk:
+                '$wardrobeBlock\n\nФотоны талда. Комплект болса — бір «Комплекты» жазба. '
+                'duplicateMatchTitle тек тізімдегі сол зат болса. $honestyHint$languageReminder',
+            locale: uiLocale,
+          );
 
     final requestBody = jsonEncode({
       'model': _model,

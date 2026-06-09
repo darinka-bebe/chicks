@@ -72,11 +72,36 @@ enum BodyShapeType {
           'Shoulders wider than hips — soften the top and add volume below.',
       };
 
-  String get displayName =>
-      AppLocale.pick(ru: displayNameRu, en: englishLabel);
+  String get displayNameKk => switch (this) {
+        BodyShapeType.hourglass => 'Құм сағаты',
+        BodyShapeType.pear => 'Алмұрт',
+        BodyShapeType.rectangle => 'Төртбұрыш',
+        BodyShapeType.apple => 'Алма',
+        BodyShapeType.invertedTriangle => 'Төңкерілген үшбұрыш',
+      };
+
+  String get shortDescriptionKk => switch (this) {
+        BodyShapeType.hourglass =>
+          'Иық пен жамбас теңгерімді, бел айқын — беліңізді бөліп көрсетіңіз.',
+        BodyShapeType.pear =>
+          'Жамбас иықтан кең — пропорцияны жоғарғы бөліспен теңестіріңіз.',
+        BodyShapeType.rectangle =>
+          'Иық, бел және жамбас ұқсас — иілгі мен қабаттар қосыңыз.',
+        BodyShapeType.apple =>
+          'Орталықта көлем — силуэтті ұзартып, иықты құрылымдаңыз.',
+        BodyShapeType.invertedTriangle =>
+          'Иық жамбастан кең — жоғарғыны жұмсартып, төменге көлем қосыңыз.',
+      };
+
+  String get displayName => AppLocale.pick(
+        ru: displayNameRu,
+        en: englishLabel,
+        kk: displayNameKk,
+      );
 
   String get shortDescription => AppLocale.pick(
         ru: shortDescriptionRu,
         en: shortDescriptionEn,
+        kk: shortDescriptionKk,
       );
 }

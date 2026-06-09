@@ -5,16 +5,15 @@ import '../models/stylist_request_context.dart';
 class StylistSuggestionChip {
   const StylistSuggestionChip({
     required this.emoji,
-    required this.label,
     required this.promptSnippet,
     required this.promptSnippetEn,
+    this.promptSnippetKk,
     this.mood,
     this.weather,
     this.occasion,
   });
 
   final String emoji;
-  final String label;
 
   /// Phrase inserted into the user message (Russian).
   final String promptSnippet;
@@ -22,13 +21,27 @@ class StylistSuggestionChip {
   /// English phrase for EN locale devices.
   final String promptSnippetEn;
 
-  String get localizedPromptSnippet =>
-      AppLocale.pick(ru: promptSnippet, en: promptSnippetEn);
+  /// Kazakh phrase; falls back to [promptSnippetEn] when omitted.
+  final String? promptSnippetKk;
+
+  String get localizedPromptSnippet => AppLocale.pick(
+        ru: promptSnippet,
+        en: promptSnippetEn,
+        kk: promptSnippetKk,
+      );
+
   final String? mood;
   final String? weather;
   final String? occasion;
 
-  String get displayLabel => '$emoji $label';
+  String get localizedLabel {
+    if (mood != null) return StylistContextCatalog.displayMood(mood!);
+    if (weather != null) return StylistContextCatalog.displayWeather(weather!);
+    if (occasion != null) return StylistContextCatalog.displayOccasion(occasion!);
+    return '';
+  }
+
+  String get displayLabel => '$emoji $localizedLabel';
 
   StylistRequestContext get context => StylistRequestContext(
         moods: mood != null ? [mood!] : const [],
@@ -69,30 +82,35 @@ abstract final class StylistContextCatalog {
       _filter(tags, occasions);
 
   static String displayMood(String tag) => switch (tag.toLowerCase()) {
-        'comfy' => AppLocale.pick(ru: 'уютный', en: 'Comfy'),
-        'feminine' => AppLocale.pick(ru: 'женственный', en: 'Feminine'),
-        'confident' => AppLocale.pick(ru: 'уверенный', en: 'Confident'),
-        'cozy' => AppLocale.pick(ru: 'уютный', en: 'Cozy'),
-        'romantic' => AppLocale.pick(ru: 'романтичный', en: 'Romantic'),
-        'soft girl' => AppLocale.pick(ru: 'soft girl', en: 'Soft girl'),
-        'elegant' => AppLocale.pick(ru: 'элегантный', en: 'Elegant'),
+        'comfy' => AppLocale.pick(ru: 'уютный', en: 'Comfy', kk: 'Ыңғайлы'),
+        'feminine' =>
+          AppLocale.pick(ru: 'женственный', en: 'Feminine', kk: 'Әйелдік'),
+        'confident' =>
+          AppLocale.pick(ru: 'уверенный', en: 'Confident', kk: 'Сенімді'),
+        'cozy' => AppLocale.pick(ru: 'уютный', en: 'Cozy', kk: 'Жайлы'),
+        'romantic' =>
+          AppLocale.pick(ru: 'романтичный', en: 'Romantic', kk: 'Романтик'),
+        'soft girl' =>
+          AppLocale.pick(ru: 'soft girl', en: 'Soft girl', kk: 'Soft girl'),
+        'elegant' =>
+          AppLocale.pick(ru: 'элегантный', en: 'Elegant', kk: 'Сәнді'),
         _ => tag,
       };
 
   static String displayWeather(String tag) => switch (tag.toLowerCase()) {
-        'hot' => AppLocale.pick(ru: 'жарко', en: 'Hot'),
-        'cold' => AppLocale.pick(ru: 'холодно', en: 'Cold'),
-        'rainy' => AppLocale.pick(ru: 'дождь', en: 'Rainy'),
-        'windy' => AppLocale.pick(ru: 'ветрено', en: 'Windy'),
+        'hot' => AppLocale.pick(ru: 'жарко', en: 'Hot', kk: 'Ыстық'),
+        'cold' => AppLocale.pick(ru: 'холодно', en: 'Cold', kk: 'Суық'),
+        'rainy' => AppLocale.pick(ru: 'дождь', en: 'Rainy', kk: 'Жаңбыр'),
+        'windy' => AppLocale.pick(ru: 'ветрено', en: 'Windy', kk: 'Желді'),
         _ => tag,
       };
 
   static String displayOccasion(String tag) => switch (tag.toLowerCase()) {
-        'school' => AppLocale.pick(ru: 'школа', en: 'School'),
-        'date' => AppLocale.pick(ru: 'свидание', en: 'Date'),
-        'office' => AppLocale.pick(ru: 'офис', en: 'Office'),
-        'walk' => AppLocale.pick(ru: 'прогулка', en: 'Walk'),
-        'party' => AppLocale.pick(ru: 'вечеринка', en: 'Party'),
+        'school' => AppLocale.pick(ru: 'школа', en: 'School', kk: 'Мектеп'),
+        'date' => AppLocale.pick(ru: 'свидание', en: 'Date', kk: 'Кездесу'),
+        'office' => AppLocale.pick(ru: 'офис', en: 'Office', kk: 'Офис'),
+        'walk' => AppLocale.pick(ru: 'прогулка', en: 'Walk', kk: 'Серуен'),
+        'party' => AppLocale.pick(ru: 'вечеринка', en: 'Party', kk: 'Кеш'),
         _ => tag,
       };
 
@@ -134,37 +152,37 @@ abstract final class StylistContextCatalog {
   static const suggestionChips = [
     StylistSuggestionChip(
       emoji: '💖',
-      label: 'romantic',
       promptSnippet: 'романтичный образ',
       promptSnippetEn: 'a romantic outfit',
+      promptSnippetKk: 'романтикалық образ',
       mood: 'romantic',
     ),
     StylistSuggestionChip(
       emoji: '☁',
-      label: 'comfy',
-      promptSnippet: 'comfy уютный образ',
+      promptSnippet: 'уютный образ',
       promptSnippetEn: 'a comfy cozy outfit',
+      promptSnippetKk: 'ыңғайлы образ',
       mood: 'comfy',
     ),
     StylistSuggestionChip(
       emoji: '🏫',
-      label: 'school',
       promptSnippet: 'образ в школу',
       promptSnippetEn: 'a school outfit',
+      promptSnippetKk: 'мектепке образ',
       occasion: 'school',
     ),
     StylistSuggestionChip(
       emoji: '🌧',
-      label: 'rainy',
       promptSnippet: 'на дождливую погоду',
       promptSnippetEn: 'a rainy-day outfit',
+      promptSnippetKk: 'жаңбырлы ауа райына',
       weather: 'rainy',
     ),
     StylistSuggestionChip(
       emoji: '✨',
-      label: 'elegant',
       promptSnippet: 'элегантный образ',
       promptSnippetEn: 'an elegant outfit',
+      promptSnippetKk: 'сәнді образ',
       mood: 'elegant',
     ),
   ];

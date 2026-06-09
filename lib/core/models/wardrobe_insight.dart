@@ -42,20 +42,20 @@ class WardrobeInsight {
 
   String get categoryLabel => switch (kind) {
         WardrobeInsightKind.style =>
-          AppLocale.pick(ru: 'Стиль', en: 'Style'),
+          AppLocale.pick(ru: 'Стиль', en: 'Style', kk: 'Стиль'),
         WardrobeInsightKind.color =>
-          AppLocale.pick(ru: 'Палитра', en: 'Palette'),
+          AppLocale.pick(ru: 'Палитра', en: 'Palette', kk: 'Палитра'),
         WardrobeInsightKind.balance =>
-          AppLocale.pick(ru: 'Баланс', en: 'Balance'),
+          AppLocale.pick(ru: 'Баланс', en: 'Balance', kk: 'Баланс'),
         WardrobeInsightKind.silhouette =>
-          AppLocale.pick(ru: 'Силуэт', en: 'Silhouette'),
+          AppLocale.pick(ru: 'Силуэт', en: 'Silhouette', kk: 'Силуэт'),
         WardrobeInsightKind.recommendation =>
-          AppLocale.pick(ru: 'Совет', en: 'Tip'),
+          AppLocale.pick(ru: 'Совет', en: 'Tip', kk: 'Кеңес'),
         WardrobeInsightKind.gap =>
-          AppLocale.pick(ru: 'Пробел', en: 'Gap'),
+          AppLocale.pick(ru: 'Пробел', en: 'Gap', kk: 'Бос орын'),
         WardrobeInsightKind.highlight =>
-          AppLocale.pick(ru: 'Акцент', en: 'Highlight'),
+          AppLocale.pick(ru: 'Акцент', en: 'Highlight', kk: 'Акцент'),
         WardrobeInsightKind.tip =>
-          AppLocale.pick(ru: 'Инсайт', en: 'Insight'),
+          AppLocale.pick(ru: 'Инсайт', en: 'Insight', kk: 'Инсайт'),
       };
 }

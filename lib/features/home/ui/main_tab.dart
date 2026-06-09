@@ -71,6 +71,7 @@ class _MainTabState extends State<MainTab> with SingleTickerProviderStateMixin {
 
   Future<void> _loadDashboardData() async {
     if (!mounted) return;
+    final locale = Localizations.localeOf(context);
     setState(() {
       _loadingWeather = true;
       _loadingInsights = true;
@@ -94,7 +95,7 @@ class _MainTabState extends State<MainTab> with SingleTickerProviderStateMixin {
     }
 
     try {
-      final insights = await StyleInsightsLoader.load();
+      final insights = await StyleInsightsLoader.load(locale: locale);
       if (mounted) {
         setState(() {
           _insights = insights.map((e) => e.title).take(3).toList();

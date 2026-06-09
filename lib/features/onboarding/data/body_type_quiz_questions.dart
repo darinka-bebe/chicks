@@ -27,8 +27,11 @@ class BodyTypeQuizQuestion {
 }
 
 abstract final class BodyTypeQuizQuestions {
-  static List<BodyTypeQuizQuestion> get questions =>
-      AppLocale.isRussian() ? _questionsRu : _questionsEn;
+  static List<BodyTypeQuizQuestion> get questions {
+    if (AppLocale.isKazakh()) return _questionsKk;
+    if (AppLocale.isRussian()) return _questionsRu;
+    return _questionsEn;
+  }
 
   static const _questionsRu = <BodyTypeQuizQuestion>[
     BodyTypeQuizQuestion(
@@ -275,6 +278,131 @@ abstract final class BodyTypeQuizQuestions {
         BodyTypeQuizOption(
           id: 'height_tall',
           label: 'Above average',
+        ),
+      ],
+    ),
+  ];
+
+  static const _questionsKk = <BodyTypeQuizQuestion>[
+    BodyTypeQuizQuestion(
+      id: 'body_shape',
+      title: 'Қай силуэт жақын?',
+      subtitle: 'Иық, бел және жамбас пропорцияларына қараңыз',
+      options: [
+        BodyTypeQuizOption(
+          id: 'shape_hourglass',
+          label: 'Құм сағаты',
+          hint: 'Бел иық пен жамбастан тар',
+        ),
+        BodyTypeQuizOption(
+          id: 'shape_pear',
+          label: 'Алмұрт',
+          hint: 'Төменгі бөлігі жоғарыдан кең',
+        ),
+        BodyTypeQuizOption(
+          id: 'shape_rectangle',
+          label: 'Төртбұрыш',
+          hint: 'Өте түзу сызық',
+        ),
+        BodyTypeQuizOption(
+          id: 'shape_apple',
+          label: 'Алма',
+          hint: 'Орталықта көлем',
+        ),
+        BodyTypeQuizOption(
+          id: 'shape_inverted',
+          label: 'Төңкерілген үшбұрыш',
+          hint: 'Иық жамбастан кең',
+        ),
+      ],
+    ),
+    BodyTypeQuizQuestion(
+      id: 'shoulder_hips',
+      title: 'Иық және жамбас',
+      subtitle: 'Қай жақ кеңірек — жоғары ма, төмен бе?',
+      options: [
+        BodyTypeQuizOption(
+          id: 'prop_narrow_shoulders',
+          label: 'Жоғары тар',
+          hint: 'Иық жамбастан тар',
+        ),
+        BodyTypeQuizOption(
+          id: 'prop_balanced',
+          label: 'Теңгерімді',
+          hint: 'Иық ≈ жамбас',
+        ),
+        BodyTypeQuizOption(
+          id: 'prop_broad_shoulders',
+          label: 'Жоғары кең',
+          hint: 'Иық жамбастан кең',
+        ),
+        BodyTypeQuizOption(
+          id: 'prop_wide_hips',
+          label: 'Төмен кең',
+          hint: 'Жамбас айқын кеңірек',
+        ),
+      ],
+    ),
+    BodyTypeQuizQuestion(
+      id: 'waist',
+      title: 'Бел сызығы',
+      subtitle: 'Иілгіштық қаншалықты айқын?',
+      options: [
+        BodyTypeQuizOption(
+          id: 'waist_defined',
+          label: 'Айқын бел',
+          hint: 'Нақты тарылу',
+        ),
+        BodyTypeQuizOption(
+          id: 'waist_soft',
+          label: 'Жұмсақ сызық',
+          hint: 'Байсалды өту',
+        ),
+        BodyTypeQuizOption(
+          id: 'waist_straight',
+          label: 'Өте түзу',
+          hint: 'Аз иілгі',
+        ),
+      ],
+    ),
+    BodyTypeQuizQuestion(
+      id: 'fit_pref',
+      title: 'Қалаулы отырыс',
+      subtitle: 'Киім сізге қалай отырады',
+      options: [
+        BodyTypeQuizOption(
+          id: 'fit_fitted',
+          label: 'Денеге сай',
+          hint: 'Тарылған',
+        ),
+        BodyTypeQuizOption(
+          id: 'fit_balanced',
+          label: 'Классикалық',
+          hint: 'Тым тар емес',
+        ),
+        BodyTypeQuizOption(
+          id: 'fit_oversized',
+          label: 'Бос',
+          hint: 'Oversize',
+        ),
+      ],
+    ),
+    BodyTypeQuizQuestion(
+      id: 'height',
+      title: 'Бой',
+      subtitle: 'Кеңес үшін пропорциялар',
+      options: [
+        BodyTypeQuizOption(
+          id: 'height_petite',
+          label: 'Орташа төмен',
+        ),
+        BodyTypeQuizOption(
+          id: 'height_average',
+          label: 'Орташа',
+        ),
+        BodyTypeQuizOption(
+          id: 'height_tall',
+          label: 'Орташа жоғары',
         ),
       ],
     ),

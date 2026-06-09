@@ -36,17 +36,28 @@ extension WardrobeOutfitSlotX on WardrobeOutfitSlot {
         WardrobeOutfitSlot.unknown => 'Прочее',
       };
 
-  String get displayName => AppLocale.pick(ru: displayNameRu, en: displayNameEn);
+  String get displayName => AppLocale.pick(
+        ru: displayNameRu,
+        en: displayNameEn,
+        kk: displayNameKk,
+      );
 
-  String get displayNameLower =>
-      AppLocale.pick(ru: displayNameRu.toLowerCase(), en: displayNameEnLower);
+  String get displayNameLower => AppLocale.pick(
+        ru: displayNameRu.toLowerCase(),
+        en: displayNameEnLower,
+        kk: displayNameKkLower,
+      );
 
-  String get statsStripLabel =>
-      AppLocale.pick(ru: statsStripLabelRu, en: statsStripLabelEn);
+  String get statsStripLabel => AppLocale.pick(
+        ru: statsStripLabelRu,
+        en: statsStripLabelEn,
+        kk: statsStripLabelKk,
+      );
 
   String get compositionLabel => AppLocale.pick(
         ru: compositionLabelRu,
         en: compositionLabelEn,
+        kk: displayNameKk,
       );
 
   String get displayNameRu => switch (this) {
@@ -82,6 +93,28 @@ extension WardrobeOutfitSlotX on WardrobeOutfitSlot {
         WardrobeOutfitSlot.unknown => 'item',
       };
 
+  String get displayNameKk => switch (this) {
+        WardrobeOutfitSlot.top => 'Жоғғы киім',
+        WardrobeOutfitSlot.bottom => 'Төменгі киім',
+        WardrobeOutfitSlot.dress => 'Көйлек',
+        WardrobeOutfitSlot.set => 'Комплект',
+        WardrobeOutfitSlot.outerwear => 'Сырт киім',
+        WardrobeOutfitSlot.shoes => 'Аяқ киім',
+        WardrobeOutfitSlot.accessory => 'Аксессуар',
+        WardrobeOutfitSlot.unknown => 'Зат',
+      };
+
+  String get displayNameKkLower => switch (this) {
+        WardrobeOutfitSlot.top => 'жоғғы киім',
+        WardrobeOutfitSlot.bottom => 'төменгі киім',
+        WardrobeOutfitSlot.dress => 'көйлек',
+        WardrobeOutfitSlot.set => 'комплект',
+        WardrobeOutfitSlot.outerwear => 'сырт киім',
+        WardrobeOutfitSlot.shoes => 'аяқ киім',
+        WardrobeOutfitSlot.accessory => 'аксессуар',
+        WardrobeOutfitSlot.unknown => 'зат',
+      };
+
   String get statsStripLabelRu => switch (this) {
         WardrobeOutfitSlot.top => 'Верх',
         WardrobeOutfitSlot.bottom => 'Низ',
@@ -102,6 +135,17 @@ extension WardrobeOutfitSlotX on WardrobeOutfitSlot {
         WardrobeOutfitSlot.dress => 'Dresses',
         WardrobeOutfitSlot.set => 'Sets',
         WardrobeOutfitSlot.unknown => 'Other',
+      };
+
+  String get statsStripLabelKk => switch (this) {
+        WardrobeOutfitSlot.top => 'Жоғғы киім',
+        WardrobeOutfitSlot.bottom => 'Төменгі киім',
+        WardrobeOutfitSlot.shoes => 'Аяқ киім',
+        WardrobeOutfitSlot.outerwear => 'Сырт киім',
+        WardrobeOutfitSlot.accessory => 'Аксессуарлар',
+        WardrobeOutfitSlot.dress => 'Көйлектер',
+        WardrobeOutfitSlot.set => 'Комплекттер',
+        WardrobeOutfitSlot.unknown => 'Басқа',
       };
 
   String get compositionLabelRu => displayNameRu;

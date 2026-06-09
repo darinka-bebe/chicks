@@ -27,7 +27,7 @@ class WardrobeItemCard extends StatelessWidget {
       WardrobeCatalog.displaySeason(item.season),
     ];
     if (item.styles.isNotEmpty) {
-      parts.add(item.styles.first);
+      parts.add(WardrobeCatalog.displayStyle(item.styles.first));
     } else if (item.vibes.isNotEmpty) {
       parts.add(WardrobeCatalog.displayVibe(item.vibes.first));
     }

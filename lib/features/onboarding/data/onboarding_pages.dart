@@ -17,8 +17,11 @@ class OnboardingPageData {
 }
 
 abstract final class OnboardingPages {
-  static List<OnboardingPageData> get slides =>
-      AppLocale.isRussian() ? _slidesRu : _slidesEn;
+  static List<OnboardingPageData> get slides {
+    if (AppLocale.isKazakh()) return _slidesKk;
+    if (AppLocale.isRussian()) return _slidesRu;
+    return _slidesEn;
+  }
 
   static const _slidesRu = <OnboardingPageData>[
     OnboardingPageData(
@@ -46,6 +49,37 @@ abstract final class OnboardingPages {
       title: 'Твой fashion-ассистент',
       subtitle:
           'Настроение, погода и повод — Chicks учитывает контекст и объясняет, почему образ работает.',
+      icon: Icons.spa_outlined,
+      accentIcon: Icons.wb_sunny_outlined,
+    ),
+  ];
+
+  static const _slidesKk = <OnboardingPageData>[
+    OnboardingPageData(
+      title: 'AI стилист ұсыныстары',
+      subtitle:
+          'Chicks ақылды көмекшісінен жеке стиль кеңестері мен дайын образдар алыңыз.',
+      icon: Icons.auto_awesome_rounded,
+      accentIcon: Icons.chat_bubble_outline_rounded,
+    ),
+    OnboardingPageData(
+      title: 'Гардеробыңыздан образдар',
+      subtitle:
+          'Стилист сізде бар заттардан образ жасайды — кездейсоқ кеңес емес.',
+      icon: Icons.checkroom_outlined,
+      accentIcon: Icons.style_outlined,
+    ),
+    OnboardingPageData(
+      title: 'Ұнаған образдарды сақтаңыз',
+      subtitle:
+          'Образ ұнады ма? Таңдаулыларға сақтап, кез келген уақытта оралыңыз.',
+      icon: Icons.favorite_rounded,
+      accentIcon: Icons.bookmark_outline_rounded,
+    ),
+    OnboardingPageData(
+      title: 'Сіздің fashion көмекшіңіз',
+      subtitle:
+          'Көңіл-күй, ауа райы және повод — Chicks контекстті ескереді және неге сәйкес екенін түсіндіреді.',
       icon: Icons.spa_outlined,
       accentIcon: Icons.wb_sunny_outlined,
     ),

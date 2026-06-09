@@ -1,7 +1,9 @@
 import '../../data/models/wardrobe_item.dart';
 import '../constants/wardrobe_catalog.dart';
 import '../localization/app_locale.dart';
+import '../localization/locale_tri.dart';
 import '../models/wardrobe_analysis_snapshot.dart';
+import '../models/wardrobe_inventory_profile.dart';
 import '../models/wardrobe_insight.dart';
 import '../models/wardrobe_outfit_slot.dart';
 import 'wardrobe_slot_classifier.dart';
@@ -20,19 +22,13 @@ abstract final class WardrobeAnalyzer {
     WardrobeOutfitSlot.accessory,
   ];
 
-  static const _essentialSlots = [
-    WardrobeOutfitSlot.top,
-    WardrobeOutfitSlot.bottom,
-    WardrobeOutfitSlot.shoes,
-  ];
-
   static WardrobeAnalysisSnapshot analyze(List<WardrobeItem> items) {
     if (items.isEmpty) {
-      return const WardrobeAnalysisSnapshot(
+      return WardrobeAnalysisSnapshot(
         totalItems: 0,
-        slotCounts: {},
-        colorCounts: {},
-        styleCounts: {},
+        slotCounts: const {},
+        colorCounts: const {},
+        styleCounts: const {},
         neutralItemCount: 0,
         darkToneCount: 0,
         formalItemCount: 0,
@@ -40,10 +36,13 @@ abstract final class WardrobeAnalyzer {
         mostUsedSlot: null,
         mostRepeatedColor: null,
         mostVersatileItem: null,
-        missingSlots: [],
-        overloadedSlots: [],
+        missingSlots: const [],
+        overloadedSlots: const [],
+        inventory: WardrobeInventoryProfile.fromItems(const []),
       );
     }
+
+    final inventory = WardrobeInventoryProfile.fromItems(items);
 
     final slotCounts = <WardrobeOutfitSlot, int>{};
     final colorCounts = <String, int>{};
@@ -70,7 +69,12 @@ abstract final class WardrobeAnalyzer {
       if (_isFormalItem(item)) formalCount++;
 
       final title = item.title.toLowerCase();
-      if (title.contains('худи') || title.contains('hoodie')) hoodieCount++;
+      if (title.contains('худи') ||
+          title.contains('hoodie') ||
+          title.contains('свитшот') ||
+          title.contains('sweatshirt')) {
+        hoodieCount++;
+      }
 
       for (final style in item.styles) {
         final key = style.trim().toLowerCase();
@@ -108,19 +112,22 @@ abstract final class WardrobeAnalyzer {
     final missing = <WardrobeOutfitSlot>[];
     final overloaded = <WardrobeOutfitSlot>[];
 
-    for (final slot in _analysisSlots) {
-      final count = slotCounts[slot] ?? 0;
-      if (count == 0 && _isSlotExpected(slot, total)) {
-        missing.add(slot);
+    if (total >= 4) {
+      if (!inventory.hasTop) {
+        missing.add(WardrobeOutfitSlot.top);
       }
-      if (total >= 6 && count >= 4 && count / total >= 0.38) {
-        overloaded.add(slot);
+      if (!inventory.hasBottomCoverage) {
+        missing.add(WardrobeOutfitSlot.bottom);
+      }
+      if (!inventory.hasShoes) {
+        missing.add(WardrobeOutfitSlot.shoes);
       }
     }
 
-    if (!_hasBottomCoverage(slotCounts) && total >= 3) {
-      if (!missing.contains(WardrobeOutfitSlot.bottom)) {
-        missing.add(WardrobeOutfitSlot.bottom);
+    for (final slot in _analysisSlots) {
+      final count = slotCounts[slot] ?? 0;
+      if (total >= 6 && count >= 4 && count / total >= 0.38) {
+        overloaded.add(slot);
       }
     }
 
@@ -138,6 +145,7 @@ abstract final class WardrobeAnalyzer {
       mostVersatileItem: versatileBest,
       missingSlots: missing,
       overloadedSlots: overloaded,
+      inventory: inventory,
     );
   }
 
@@ -173,8 +181,13 @@ abstract final class WardrobeAnalyzer {
       );
     }
 
-    if (snapshot.countFor(WardrobeOutfitSlot.shoes) <= 1 &&
-        snapshot.totalItems >= 5) {
+    final inv = snapshot.inventory;
+    final shoesCount = snapshot.countFor(WardrobeOutfitSlot.shoes);
+
+    if (shoesCount == 1 &&
+        snapshot.totalItems >= 8 &&
+        !inv.hasCasualShoes &&
+        !inv.hasDressyShoes) {
       insights.add(
         WardrobeInsight(
           id: nextId('gap'),
@@ -183,10 +196,30 @@ abstract final class WardrobeAnalyzer {
             'Not enough shoes for different looks',
           ),
           body: _l(
-            'С одной-двумя парами сложно менять настроение лука. '
-            'Подумай о повседневной паре и чуть более нарядной — так гардероб станет гибче.',
-            'With only one or two pairs it is hard to change the mood of a look. '
-            'Consider a casual pair and a slightly dressier one — your wardrobe will feel more flexible.',
+            'С одной парой сложно менять настроение лука. '
+            'Вторая пара в другом стиле сделает комбинации гибче.',
+            'With only one pair it is hard to change the mood of a look. '
+            'A second pair in a different style will make outfits more flexible.',
+          ),
+          kind: WardrobeInsightKind.gap,
+        ),
+      );
+    } else if (shoesCount == 1 &&
+        snapshot.totalItems >= 8 &&
+        inv.hasCasualShoes &&
+        !inv.hasDressyShoes) {
+      insights.add(
+        WardrobeInsight(
+          id: nextId('gap'),
+          title: _l(
+            'Нет более нарядной обуви',
+            'No dressier shoes yet',
+          ),
+          body: _l(
+            'Повседневная обувь уже есть — для свиданий и событий пригодится '
+            'пара чуть наряднее (лоферы, ботинки или туфли).',
+            'You already have casual shoes — for dates and events, '
+            'a slightly dressier pair (loafers, boots, or heels) would help.',
           ),
           kind: WardrobeInsightKind.gap,
         ),
@@ -194,17 +227,17 @@ abstract final class WardrobeAnalyzer {
     }
 
     if (snapshot.hoodieLikeCount >= 3 &&
-        snapshot.countFor(WardrobeOutfitSlot.shoes) <
-            snapshot.hoodieLikeCount) {
+        shoesCount < 2 &&
+        !inv.hasAccessory) {
       insights.add(
         WardrobeInsight(
           id: nextId('balance'),
           title: _l('Много похожих верхов', 'Many similar tops'),
           body: _l(
-            'Похоже, у тебя несколько худи или свитшотов, а обуви и аксессуаров меньше. '
-            'Добавь базовую обувь или один акцент — образы сразу станут разнообразнее.',
-            'It looks like you have several hoodies or sweatshirts but fewer shoes and accessories. '
-            'Add basic footwear or one accent piece — outfits will feel more varied right away.',
+            'Несколько худи или свитшотов — а акцентов мало. '
+            'Один яркий аксессуар разнообразит готовые комбинации без новых верхов.',
+            'Several hoodies or sweatshirts — but few accents. '
+            'One bold accessory will vary your combos without more tops.',
           ),
           kind: WardrobeInsightKind.balance,
         ),
@@ -216,27 +249,26 @@ abstract final class WardrobeAnalyzer {
           snapshot.hoodieLikeCount >= 3) {
         continue;
       }
+      final weak = _weakSlotLabels(inv);
       insights.add(
         WardrobeInsight(
           id: nextId('balance'),
           title: _l('Перекос по категории', 'Category imbalance'),
           body: _l(
             'В категории «${slot.displayNameLower}» уже ${snapshot.countFor(slot)} '
-            'из ${snapshot.totalItems} вещей. Попробуй усилить слабые слоты — '
-            'низ, обувь или аксессуары — для баланса.',
+            'из ${snapshot.totalItems} вещей. Сейчас слабее: $weak.',
             'You already have ${snapshot.countFor(slot)} of ${snapshot.totalItems} items '
-            'in «${slot.displayNameLower}». Try strengthening weaker slots — '
-            'bottoms, shoes, or accessories — for better balance.',
+            'in «${slot.displayNameLower}». Weaker areas now: $weak.',
+
+
+
           ),
           kind: WardrobeInsightKind.balance,
         ),
       );
     }
 
-    final neutralBottoms = snapshot.neutralItemCount;
-    if (snapshot.countFor(WardrobeOutfitSlot.bottom) > 0 &&
-        neutralBottoms < 2 &&
-        snapshot.totalItems >= 5) {
+    if (!inv.hasStrongNeutralBase && snapshot.totalItems >= 5) {
       insights.add(
         WardrobeInsight(
           id: nextId('gap'),
@@ -244,19 +276,15 @@ abstract final class WardrobeAnalyzer {
             'Мало базовых нейтральных вещей',
             'Few basic neutral pieces',
           ),
-          body: _l(
-            'Нейтральный низ или верх (беж, серый, джинс, белый) '
-            'связывает образы. Сейчас их мало — это усложняет комбинации.',
-            'Neutral bottoms or tops (beige, gray, denim, white) tie outfits together. '
-            'You have few of them right now — that makes mixing harder.',
-          ),
+          body: _missingNeutralBody(inv),
           kind: WardrobeInsightKind.gap,
         ),
       );
     }
 
     if (snapshot.darkToneCount >= (snapshot.totalItems * 0.55).ceil() &&
-        snapshot.totalItems >= 4) {
+        snapshot.totalItems >= 4 &&
+        !inv.hasLightAccent) {
       insights.add(
         WardrobeInsight(
           id: nextId('color'),
@@ -272,7 +300,9 @@ abstract final class WardrobeAnalyzer {
       );
     }
 
-    if (snapshot.formalItemCount == 0 && snapshot.totalItems >= 6) {
+    if (!inv.hasFormalPiece &&
+        snapshot.formalItemCount == 0 &&
+        snapshot.totalItems >= 8) {
       insights.add(
         WardrobeInsight(
           id: nextId('style'),
@@ -280,12 +310,19 @@ abstract final class WardrobeAnalyzer {
             'Мало нарядных / formal-вариантов',
             'Few dressy / formal options',
           ),
-          body: _l(
-            'Почти нет вещей для офиса, свидания или события. '
-            'Один более собранный верх или платье расширят сценарии образов.',
-            'Almost nothing for office, dates, or events. '
-            'One more polished top or dress will open up new outfit scenarios.',
-          ),
+          body: inv.hasDress
+              ? _l(
+                  'Почти нет вещей для офиса или события. '
+                  'Один более собранный верх или жакет расширит поводы.',
+                  'Little for office or events. '
+                  'One polished top or blazer will open more occasions.',
+                )
+              : _l(
+                  'Почти нет вещей для офиса, свидания или события. '
+                  'Один более собранный верх или платье расширят сценарии образов.',
+                  'Almost nothing for office, dates, or events. '
+                  'One more polished top or dress will open up new outfit scenarios.',
+                ),
           kind: WardrobeInsightKind.style,
         ),
       );
@@ -330,7 +367,8 @@ abstract final class WardrobeAnalyzer {
     }
 
     if (snapshot.mostRepeatedColor != null &&
-        (snapshot.colorCounts[snapshot.mostRepeatedColor!] ?? 0) >= 3) {
+        (snapshot.colorCounts[snapshot.mostRepeatedColor!] ?? 0) >= 3 &&
+        !inv.hasLightAccent) {
       final c = snapshot.mostRepeatedColor!;
       final colorLabel = WardrobeCatalog.displayColor(c);
       final n = snapshot.colorCounts[c]!;
@@ -340,9 +378,9 @@ abstract final class WardrobeAnalyzer {
           title: _l('Самый частый цвет', 'Most common color'),
           body: _l(
             'Оттенок «$colorLabel» встречается $n раз. '
-            'Добавь контрастный или нейтральный акцент — комбинации станут свежее.',
+            'Контрастный акцент из другой категории оживит готовые сочетания.',
             'The shade «$colorLabel» appears $n times. '
-            'Add a contrasting or neutral accent — combinations will feel fresher.',
+            'A contrasting accent from another category will freshen your combos.',
           ),
           kind: WardrobeInsightKind.highlight,
         ),
@@ -382,20 +420,80 @@ abstract final class WardrobeAnalyzer {
       );
     }
 
-    return insights.take(8).toList();
+    return _filterContradictory(insights, inv).take(8).toList();
   }
 
-  static bool _hasBottomCoverage(Map<WardrobeOutfitSlot, int> counts) {
-    return (counts[WardrobeOutfitSlot.bottom] ?? 0) > 0 ||
-        (counts[WardrobeOutfitSlot.dress] ?? 0) > 0 ||
-        (counts[WardrobeOutfitSlot.set] ?? 0) > 0;
+  static List<WardrobeInsight> filterContradictoryInsights(
+    List<WardrobeInsight> insights,
+    WardrobeInventoryProfile inventory,
+  ) =>
+      insights
+          .where(
+            (i) => !inventory.contradictsOwned('${i.title} ${i.body}'),
+          )
+          .toList();
+
+  static List<WardrobeInsight> _filterContradictory(
+    List<WardrobeInsight> insights,
+    WardrobeInventoryProfile inventory,
+  ) =>
+      filterContradictoryInsights(insights, inventory);
+
+  static String missingNeutralBody(WardrobeInventoryProfile inv) =>
+      _missingNeutralBody(inv);
+
+  static String _weakSlotLabels(WardrobeInventoryProfile inv) {
+    final weak = <String>[];
+    if (!inv.hasBottomCoverage) {
+      weak.add(_l('низ', 'bottoms'));
+    }
+    if (!inv.hasShoes) {
+      weak.add(_l('обувь', 'shoes'));
+    }
+    if (!inv.hasAccessory) {
+      weak.add(_l('аксессуары', 'accessories'));
+    }
+    if (!inv.hasOuterwear) {
+      weak.add(_l('верхняя одежда', 'outerwear'));
+    }
+    if (weak.isEmpty) {
+      return _l('другие категории', 'other categories');
+    }
+    return weak.join(_l(', ', ', '));
   }
 
-  static bool _isSlotExpected(WardrobeOutfitSlot slot, int total) {
-    if (total < 4) return false;
-    return _essentialSlots.contains(slot) ||
-        slot == WardrobeOutfitSlot.outerwear ||
-        slot == WardrobeOutfitSlot.accessory;
+  static String _missingNeutralBody(WardrobeInventoryProfile inv) {
+    if (!inv.hasNeutralTop && !inv.hasWhiteTop && !inv.hasNeutralBottom) {
+      return LocaleTri.pick(
+        ru: 'Не хватает связующих баз: нейтральный верх и универсальный низ '
+            'упрощают ежедневные комбинации.',
+        en: 'You are missing linking basics: a neutral top and versatile bottom '
+            'make everyday combos easier.',
+        kk: 'Негізгі базалар жетіспейді: нейтралды жоғғы және әмбебап төменгі '
+            'күнделікті үйлесімдерді жеңілдетеді.',
+      );
+    }
+    if (!inv.hasNeutralTop && !inv.hasWhiteTop) {
+      return LocaleTri.pick(
+        ru: 'Низ уже есть — добавь нейтральный верх (белый, беж, серый), '
+            'чтобы быстрее собирать образы.',
+        en: 'You already have bottoms — add a neutral top (white, beige, gray) '
+            'to build looks faster.',
+        kk: 'Төменгі киім бар — нейтралды жоғғы (ақ, беж, сұр) қосыңыз.',
+      );
+    }
+    if (inv.hasJeans) {
+      return LocaleTri.pick(
+        ru: 'Верх есть — добавь универсальные брюки или юбку нейтрального оттенка.',
+        en: 'You have tops — add versatile trousers or a neutral skirt.',
+        kk: 'Жоғғы киім бар — әмбебап шалбар немесе бейтарап юбка қосыңыз.',
+      );
+    }
+    return LocaleTri.pick(
+      ru: 'Верх есть — не хватает универсального низа (брюки или юбка нейтрального оттенка).',
+      en: 'You have tops — add a versatile bottom (trousers or a neutral skirt).',
+      kk: 'Жоғғы киім бар — әмбебап төменгі киім (шалбар немесе юбка) жетіспейді.',
+    );
   }
 
   static String _normalizeColor(String raw) {
@@ -417,7 +515,9 @@ abstract final class WardrobeAnalyzer {
         text.contains('темн') ||
         text.contains('уголь') ||
         text.contains('navy') ||
-        text.contains('бордо');
+        text.contains('бордо') ||
+        text.contains('black') ||
+        text.contains('dark');
   }
 
   static bool _isFormalItem(WardrobeItem item) {
@@ -532,5 +632,15 @@ abstract final class WardrobeAnalyzer {
     'крем',
     'экрю',
     'camel',
+    'white',
+    'gray',
+    'grey',
+    'beige',
+    'denim',
+    'cream',
+    'neutral',
+    'khaki',
+    'navy',
+    'black',
   ];
 }

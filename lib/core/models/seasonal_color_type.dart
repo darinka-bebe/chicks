@@ -41,12 +41,16 @@ extension SeasonalColorTypeX on SeasonalColorType {
 
   String get shortDescriptionRu => paletteId.shortDescriptionRu;
 
-  String get displayName =>
-      AppLocale.pick(ru: displayNameRu, en: englishLabel);
+  String get displayName => AppLocale.pick(
+        ru: displayNameRu,
+        en: englishLabel,
+        kk: paletteId.displayNameKk,
+      );
 
   String get shortDescription => AppLocale.pick(
         ru: shortDescriptionRu,
         en: paletteId.shortDescriptionEn,
+        kk: paletteId.shortDescriptionKk,
       );
 
   SeasonalPaletteId get paletteId => switch (this) {

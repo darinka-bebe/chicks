@@ -22,18 +22,28 @@ abstract final class WardrobeInsightsAiService {
     if (apiKey == null || apiKey.isEmpty) return const [];
     if (snapshot.totalItems < 3) return const [];
 
-    final isRu = AppLocale.isRussian();
-    final systemPrompt = isRu
-        ? '''
-Ты fashion-аналитик. По КРАТКОЙ сводке гардероба дай 1–2 коротких совета на русском.
-Тон: дружелюбный стилист, не робот. Без markdown.
+    final systemPrompt = AppLocale.pick(
+      ru: '''
+Ты fashion-аналитик. По сводке гардероба дай 1–2 коротких совета на русском.
+В сводке есть список owned= — это вещи, которые УЖЕ ЕСТЬ. НИКОГДА не советуй покупать или добавлять то, что уже в owned.
+Советуй только реальные пробелы или как лучше комбинировать имеющееся.
+Тон: дружелюбный стилист. Без markdown.
 JSON: {"insights":[{"title":"...","body":"..."}]}
-title ≤ 50 символов, body ≤ 180 символов. Только практичные наблюдения, не выдумывай вещи.'''
-        : '''
-You are a fashion analyst. From a SHORT wardrobe summary, give 1–2 brief tips in English.
-Tone: friendly stylist, not robotic. No markdown.
+title ≤ 50 символов, body ≤ 180 символов.''',
+      en: '''
+You are a fashion analyst. From the wardrobe summary, give 1–2 brief tips in English.
+The summary includes owned= — items the user ALREADY HAS. NEVER suggest buying or adding anything listed in owned.
+Only suggest real gaps or how to combine what they already own.
+Tone: friendly stylist. No markdown.
 JSON: {"insights":[{"title":"...","body":"..."}]}
-title ≤ 50 chars, body ≤ 180 chars. Only practical observations — do not invent items.''';
+title ≤ 50 chars, body ≤ 180 chars.''',
+      kk: '''
+Сен fashion-аналитиксің. Гардероб қорытындысынан қазақ тілінде 1–2 қысқа кеңес бер.
+owned= тізімінде бар заттарды ҚАЙТА ҰСЫНБА. Тек нақты бос орындарды немесе бар заттарды үйлестіруді айт.
+Тон: достық стилист. Markdown жоқ.
+JSON: {"insights":[{"title":"...","body":"..."}]}
+title ≤ 50 таңба, body ≤ 180 таңба.''',
+    );
 
     final body = jsonEncode({
       'model': _model,
@@ -45,9 +55,11 @@ title ≤ 50 chars, body ≤ 180 chars. Only practical observations — do not i
         },
         {
           'role': 'user',
-          'content': isRu
-              ? 'Сводка: ${snapshot.compactSummary}'
-              : 'Summary: ${snapshot.compactSummary}',
+          'content': AppLocale.pick(
+            ru: 'Сводка: ${snapshot.compactSummary}',
+            en: 'Summary: ${snapshot.compactSummary}',
+            kk: 'Қорытынды: ${snapshot.compactSummary}',
+          ),
         },
       ],
     });

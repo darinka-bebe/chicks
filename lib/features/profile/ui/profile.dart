@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/constants/stylist_suggestion_chips.dart';
 import '../../../core/services/demo_reset_service.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_brand_colors.dart';
@@ -158,13 +159,19 @@ class _ProfileTabState extends State<ProfileTab> {
             if (moods.isNotEmpty || occasions.isNotEmpty) ...[
               if (moods.isNotEmpty)
                 Text(
-                  loc.profileFrequentMoods(moods.join(', ')),
+                  loc.profileFrequentMoods(
+                    moods.map(StylistContextCatalog.displayMood).join(', '),
+                  ),
                   style: TextStyle(fontSize: 14, color: Colors.grey[700]),
                 ),
               if (occasions.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 Text(
-                  loc.profileFrequentOccasions(occasions.join(', ')),
+                  loc.profileFrequentOccasions(
+                    occasions
+                        .map(StylistContextCatalog.displayOccasion)
+                        .join(', '),
+                  ),
                   style: TextStyle(fontSize: 14, color: Colors.grey[700]),
                 ),
               ],

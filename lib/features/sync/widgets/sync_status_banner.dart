@@ -34,20 +34,24 @@ class SyncStatusBanner extends StatelessWidget {
                 ? AppLocale.pick(
                     ru: 'Синхронизируем данные…',
                     en: 'Syncing data…',
+                    kk: 'Деректер синхрондалады…',
                   )
                 : isError
                     ? AppLocale.pick(
                         ru: 'Не удалось синхронизировать. Попробуй снова.',
                         en: 'Could not sync. Try again.',
+                        kk: 'Синхрондау сәтсіз. Қайта көріңіз.',
                       )
                     : isOffline
                         ? AppLocale.pick(
                             ru: 'Нет сети. Продолжаем работать локально.',
                             en: 'No network. Working offline.',
+                            kk: 'Желі жоқ. Офлайн жұмыс істейміз.',
                           )
                         : AppLocale.pick(
                             ru: 'Синхронизация завершена',
                             en: 'Sync complete',
+                            kk: 'Синхрондау аяқталды',
                           ));
 
         final background = isError || isOffline
@@ -110,7 +114,11 @@ class SyncStatusBanner extends StatelessWidget {
                         TextButton(
                           onPressed: context.read<SyncStateController>().retry,
                           child: Text(
-                            AppLocale.pick(ru: 'Повторить', en: 'Retry'),
+                            AppLocale.pick(
+                              ru: 'Повторить',
+                              en: 'Retry',
+                              kk: 'Қайталау',
+                            ),
                           ),
                         ),
                     ],

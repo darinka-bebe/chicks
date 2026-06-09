@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/constants/stylist_suggestion_chips.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/theme/app_brand_colors.dart';
 import '../../../data/models/outfit_history_entry.dart';
@@ -160,9 +161,17 @@ class OutfitHistoryDetailsScreen extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: [
-                ...entry.moods.map((tag) => _ContextChip(tag)),
-                ...entry.occasions.map((tag) => _ContextChip(tag)),
-                ...entry.weather.map((tag) => _ContextChip(tag)),
+                ...entry.moods.map(
+                  (tag) => _ContextChip(StylistContextCatalog.displayMood(tag)),
+                ),
+                ...entry.occasions.map(
+                  (tag) =>
+                      _ContextChip(StylistContextCatalog.displayOccasion(tag)),
+                ),
+                ...entry.weather.map(
+                  (tag) =>
+                      _ContextChip(StylistContextCatalog.displayWeather(tag)),
+                ),
               ],
             ),
           ],

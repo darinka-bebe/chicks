@@ -37,7 +37,8 @@ class ProfileStyleInsightsSectionState
       _loadFailed = false;
     });
     try {
-      final insights = await StyleInsightsLoader.load();
+      final locale = Localizations.localeOf(context);
+      final insights = await StyleInsightsLoader.load(locale: locale);
       if (!mounted) return;
       setState(() {
         _insights = insights;

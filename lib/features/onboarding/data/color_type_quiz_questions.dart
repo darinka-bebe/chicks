@@ -31,8 +31,11 @@ class ColorTypeQuizQuestion {
 }
 
 abstract final class ColorTypeQuizQuestions {
-  static List<ColorTypeQuizQuestion> get questions =>
-      AppLocale.isRussian() ? _questionsRu : _questionsEn;
+  static List<ColorTypeQuizQuestion> get questions {
+    if (AppLocale.isKazakh()) return _questionsKk;
+    if (AppLocale.isRussian()) return _questionsRu;
+    return _questionsEn;
+  }
 
   static const _questionsRu = <ColorTypeQuizQuestion>[
     ColorTypeQuizQuestion(
@@ -278,6 +281,131 @@ abstract final class ColorTypeQuizQuestions {
         ColorTypeQuizOption(
           id: 'depth_deep',
           label: 'Deep / tan',
+          icon: Icons.brightness_high_outlined,
+        ),
+      ],
+    ),
+  ];
+
+  static const _questionsKk = <ColorTypeQuizQuestion>[
+    ColorTypeQuizQuestion(
+      id: 'eye_color',
+      title: 'Көз түсіңіз қандай?',
+      subtitle: 'Линзасыз табиғи рең',
+      options: [
+        ColorTypeQuizOption(
+          id: 'eye_light_blue',
+          label: 'Ашық көк немесе сұр',
+          icon: Icons.remove_red_eye_outlined,
+        ),
+        ColorTypeQuizOption(
+          id: 'eye_green_hazel',
+          label: 'Жасыл немесе қоңыр',
+          icon: Icons.remove_red_eye_outlined,
+        ),
+        ColorTypeQuizOption(
+          id: 'eye_warm_brown',
+          label: 'Жылы қоңыр / қызғылт',
+          icon: Icons.remove_red_eye_outlined,
+        ),
+        ColorTypeQuizOption(
+          id: 'eye_dark_brown',
+          label: 'Қою қоңыр немесе қара',
+          icon: Icons.remove_red_eye_outlined,
+        ),
+      ],
+    ),
+    ColorTypeQuizQuestion(
+      id: 'hair_color',
+      title: 'Табиғи шаш түсі',
+      subtitle: 'Табиғи түске қайсысы жақын',
+      options: [
+        ColorTypeQuizOption(
+          id: 'hair_light_blonde',
+          label: 'Ашық блонд / күлгін',
+          icon: Icons.face_retouching_natural_outlined,
+        ),
+        ColorTypeQuizOption(
+          id: 'hair_golden',
+          label: 'Алтын / қызғылт / мыс',
+          icon: Icons.face_retouching_natural_outlined,
+        ),
+        ColorTypeQuizOption(
+          id: 'hair_cool_brown',
+          label: 'Күлгін қоңыр',
+          icon: Icons.face_retouching_natural_outlined,
+        ),
+        ColorTypeQuizOption(
+          id: 'hair_dark',
+          label: 'Қою қоңыр / қара',
+          icon: Icons.face_retouching_natural_outlined,
+        ),
+      ],
+    ),
+    ColorTypeQuizQuestion(
+      id: 'skin_undertone',
+      title: 'Тері асты реңі',
+      subtitle: 'Табиғи жарықта не көбірек көрінеді',
+      options: [
+        ColorTypeQuizOption(
+          id: 'undertone_warm',
+          label: 'Жылы',
+          subtitle: 'Алтын, шабдалы, сүт түсті',
+          icon: Icons.wb_sunny_outlined,
+        ),
+        ColorTypeQuizOption(
+          id: 'undertone_cool',
+          label: 'Суық',
+          subtitle: 'Қызғылт, көгілдір, фарфор',
+          icon: Icons.ac_unit_outlined,
+        ),
+        ColorTypeQuizOption(
+          id: 'undertone_neutral',
+          label: 'Бейтарап',
+          subtitle: 'Айқын емес — аралас',
+          icon: Icons.balance_outlined,
+        ),
+      ],
+    ),
+    ColorTypeQuizQuestion(
+      id: 'contrast_level',
+      title: 'Контраст деңгейі',
+      subtitle: 'Шаш, тері және көз арасындағы айырмашылық',
+      options: [
+        ColorTypeQuizOption(
+          id: 'contrast_low',
+          label: 'Төмен',
+          subtitle: 'Ұқсас тереңдіктегі жұмсақ сызаттар',
+        ),
+        ColorTypeQuizOption(
+          id: 'contrast_medium',
+          label: 'Орташа',
+        ),
+        ColorTypeQuizOption(
+          id: 'contrast_high',
+          label: 'Жоғары',
+          subtitle: 'Реңдер арасында айқын айырмашылық',
+        ),
+      ],
+    ),
+    ColorTypeQuizQuestion(
+      id: 'skin_depth',
+      title: 'Тері тереңдігі',
+      subtitle: 'Жарықтанудың жалпы деңгейі',
+      options: [
+        ColorTypeQuizOption(
+          id: 'depth_light',
+          label: 'Ашық',
+          icon: Icons.brightness_low_outlined,
+        ),
+        ColorTypeQuizOption(
+          id: 'depth_medium',
+          label: 'Орташа',
+          icon: Icons.brightness_medium_outlined,
+        ),
+        ColorTypeQuizOption(
+          id: 'depth_deep',
+          label: 'Қою / бронза',
           icon: Icons.brightness_high_outlined,
         ),
       ],

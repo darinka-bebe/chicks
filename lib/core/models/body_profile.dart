@@ -22,9 +22,12 @@ class BodyProfile {
   final bool prefersFitted;
 
   String get displayFitPreference => switch (fitPreference) {
-        'fitted' => AppLocale.pick(ru: 'по фигуре', en: 'fitted'),
-        'oversized' => AppLocale.pick(ru: 'свободная', en: 'relaxed'),
-        _ => AppLocale.pick(ru: 'универсальная', en: 'balanced'),
+        'fitted' => AppLocale.pick(
+            ru: 'по фигуре', en: 'fitted', kk: 'денеге сай'),
+        'oversized' => AppLocale.pick(
+            ru: 'свободная', en: 'relaxed', kk: 'бос'),
+        _ => AppLocale.pick(
+            ru: 'универсальная', en: 'balanced', kk: 'классикалық'),
       };
 
   Map<String, dynamic> toJson() => {

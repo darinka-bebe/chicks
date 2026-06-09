@@ -1,0 +1,390 @@
+{
+  "@@locale": "kk",
+  "appName": "Chicks",
+  "@appName": {
+    "description": "Название приложения, отображается в заголовке и на сплэш-экране"
+  },
+  "splashLoading": "Жүктелуде...",
+  "@splashLoading": {
+    "description": "Текст на сплэш-экране во время загрузки приложения"
+  },
+  "loginTitle": "Қош келдіңіз",
+  "@loginTitle": {
+    "description": "Заголовок экрана входа"
+  },
+  "loginSubtitle": "Жалғастыру үшін кіру",
+  "@loginSubtitle": {
+    "description": "Подзаголовок экрана входа — подсказка пользователю"
+  },
+  "signInWithGoogle": "Google арқылы кіру",
+  "@signInWithGoogle": {
+    "description": "Текст кнопки входа через Google-аккаунт"
+  },
+  "signInError": "Кіру сәтсіз аяқталды. Қайта көріңіз.",
+  "@signInError": {
+    "description": "Сообщение об ошибке при неудачном входе"
+  },
+  "tabMain": "Басты",
+  "@tabMain": {
+    "description": "Название вкладки 'Главная' в нижней навигации"
+  },
+  "tabProfile": "Профиль",
+  "@tabProfile": {
+    "description": "Название вкладки 'Профиль' в нижней навигации"
+  },
+  "greeting": "Сәлем, {name}!",
+  "@greeting": {
+    "description": "Приветствие с именем пользователя на главной вкладке",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "John"
+      }
+    }
+  },
+  "profileTitle": "Профиль",
+  "@profileTitle": {
+    "description": "Заголовок экрана профиля в AppBar"
+  },
+  "email": "Email",
+  "@email": {
+    "description": "Подпись поля электронной почты на экране профиля"
+  },
+  "signOut": "Шығу",
+  "@signOut": {
+    "description": "Текст кнопки выхода из аккаунта"
+  },
+  "greetingFallback": "Сәлем! 👋",
+  "greetingSubtitlePersonalized": "AI стилист сізге арналған идеяларды таңдады",
+  "greetingSubtitleNoName": "Атыңызды қосыңыз — тәжірибе жекеленеді",
+  "homeWardrobeCardTitle": "Гардеробыңыз",
+  "homeWardrobeCardSubtitle": "Цифрлық гардероб құрып, образ идеяларын алыңыз",
+  "homeFavoritesCardTitle": "Таңдаулы образдар",
+  "homeFavoritesCardSubtitle": "Сақталған стилист ұсыныстары бір жерде",
+  "statWardrobe": "Гардероб",
+  "statFavorites": "Таңдаулылар",
+  "statAiOutfits": "AI образдар",
+  "chatTitle": "Стилист чаты",
+  "homeChatCardSubtitle": "Гардеробыңыздан образдар туралы AI-дан сұраңыз",
+  "homeWeatherUpdating": "Ауа райы жаңартылуда…",
+  "homeWeatherUnavailable": "Ауа райы қолжетімсіз",
+  "homeGenerateWeatherOutfit": "Ауа райына образ жасау",
+  "homeQuickAiSuggestions": "Жылдам AI ұсыныстары",
+  "homeOutfitOfDay": "Күннің образы",
+  "homeOutfitOfDayEmpty": "Чатта бірінші образды жасаңыз — ол осында пайда болады.",
+  "homeToRecommendations": "Ұсыныстарды көру",
+  "chatFavoritesTooltip": "Таңдаулы образдар",
+  "chatClearTooltip": "Чатты тазалау",
+  "chatClearDialogTitle": "Чатты тазалау керек пе?",
+  "chatClearDialogBody": "Стилистпен барлық хабарламалар осы құрылғыдан жойылады.",
+  "cancel": "Болдырмау",
+  "clear": "Тазалау",
+  "stylistLabel": "Chicks стилисті",
+  "outfitItemsHeader": "Бұл образдағы заттар",
+  "whyOutfitFits": "Неге бұл образ сәйкес",
+  "saveOutfit": "Образды сақтау",
+  "removeFromFavorites": "Таңдаулылардан алып тастау",
+  "dislikeOutfit": "Менің стилім емес",
+  "removeDislike": "Дизлайкты алып тастау",
+  "startupFirebaseError": "Firebase іске қосылмады",
+  "startupRetryHint": "Орындаңыз: flutter clean → flutter pub get → қолданбаны қайта құрастырыңыз.",
+  "favoritesTitle": "Таңдаулы образдар",
+  "favoritesEmptyTitle": "Әлі таңдаулы образдар жоқ",
+  "favoritesEmptySubtitle": "Чатта ұнаған образдарды сақтаңыз — олар осында көрінеді",
+  "favoritesEmptyHint": "Стилист чатында образдағы ♥ басыңыз",
+  "favoritesEmptyAction": "Стилист чатына өту",
+  "weatherOutfitPromptDefault": "Бүгінге ыңғайлы образ ұсыныңыз",
+  "weatherOutfitPromptWithLabel": "Бүгінге образ ұсыныңыз: {weather}",
+  "@weatherOutfitPromptWithLabel": {
+    "placeholders": {
+      "weather": {
+        "type": "String",
+        "example": "rainy, 12°C"
+      }
+    }
+  },
+  "homeStyleInsights": "Стиль инсайттары",
+  "homeInsightsFallback1": "Сіз көбінесе нейтралды ыңғайлы стильдер киесіз",
+  "homeInsightsFallback2": "Негізгі палитраңыз — жұмсақ жазғы",
+  "homeInsightsFallback3": "Негізгі эстетикаңыз — көше стилі",
+  "homeWeatherUpdateError": "Ауа райын жаңарту мүмкін болмады",
+  "homeInsightsLoadError": "Стиль инсайттарын жүктеу мүмкін болмады",
+  "homeWeatherAdviceDefault": "Қабатталы ыңғайлы образдар бүгін сенімді таңдау.",
+  "homeWeatherAdviceColdRainy": "Суық және жаңбырлы — жылы қабат пен жабық аяқ киім.",
+  "homeWeatherAdviceRainy": "Жаңбырлы күн — қабатталы ыңғайлы образдар мен ауа райына сай аяқ киім.",
+  "homeWeatherAdviceCold": "Жылы қабат пен байырақ фактуралар қосыңыз.",
+  "homeWeatherAdviceHot": "Жеңіл маталар мен ашық палитра таңдаңыз.",
+  "homeWeatherAdviceMild": "Жұмсақ қабатталы образдар бүгін жақсы.",
+  "homeEmptyWardrobeTitle": "Гардеробтан бастаңыз",
+  "homeEmptyWardrobeBody": "Кем дегенде 5 зат қосыңыз — AI ұсыныстары айқын жақсарады.",
+  "homeEmptyWardrobeAction": "Зат қосу",
+  "homeQuickPromptComfy": "ыңғайлы",
+  "homeQuickPromptSchool": "мектеп",
+  "homeQuickPromptDateNight": "кездесу",
+  "homeQuickPromptStreetwear": "көше стилі",
+  "homeQuickPromptRainy": "жаңбыр",
+  "homeQuickPromptMinimal": "минимализм",
+  "homeQuickPromptComfyFull": "Бүгінге ыңғайлы образ ұсыныңыз",
+  "homeQuickPromptSchoolFull": "Мектепке образ ұсыныңыз",
+  "homeQuickPromptDateNightFull": "Кездесуге образ ұсыныңыз",
+  "homeQuickPromptStreetwearFull": "Көше стиліндегі образ ұсыныңыз",
+  "homeQuickPromptRainyFull": "Жаңбырлы күнге образ ұсыныңыз",
+  "homeQuickPromptMinimalFull": "Минималистік образ ұсыныңыз",
+  "chatEmptyGreeting": "Сәлем! Мен сіздің AI стилистіңізбін 💗",
+  "chatEmptySubtitle": "Гардеробыңыздан образдар жасаймын — ұсынысты таңдаңыз немесе өз сұрағыңызды жазыңыз.",
+  "chatEmptyTryAsking": "Мысалы, сұраңыз",
+  "chatSuggestionSchoolTitle": "Мектепке образ",
+  "chatSuggestionSchoolPrompt": "Гардеробымнан мектепке ыңғайлы образ ұсыныңыз",
+  "chatSuggestionRainTitle": "Жаңбырлы ауа райы",
+  "chatSuggestionRainPrompt": "Суық жаңбырлы ауа райында гардеробымнан не кию керек?",
+  "chatSuggestionDateTitle": "Романтикалық кездесу",
+  "chatSuggestionDatePrompt": "Киімдерімнен романтикалық кездесуге образ жасаңыз",
+  "chatSuggestionCasualTitle": "Жай серуен",
+  "chatSuggestionCasualPrompt": "Гардеробымнан серуенге күнделікті образ жасаңыз",
+  "chatInputHint": "Стиль, гардероб немесе повод туралы сұраңыз…",
+  "chatOutfitSaved": "Образ сақталды",
+  "chatOutfitRemoved": "Таңдаулылардан алынды",
+  "chatOpenFavorites": "Ашу",
+  "chatTypingLabel": "Стилист образды дайындап жатыр",
+  "chatFavoritesUpdateFailed": "Таңдаулыларды жаңарту мүмкін болмады",
+  "chatDislikeSaved": "Түсіндім — ұқсас образдарды ұсынбаймыз",
+  "chatDislikeRemoved": "Дизлайк алынып тасталды",
+  "chatFeedbackSaveFailed": "Пікірді сақтау мүмкін болмады",
+  "chatNetworkError": "Желі мәселесі — байланысты тексеріңіз",
+  "chatRetry": "Қайталау",
+  "chatStylistError": "Стилист жауабын алу мүмкін болмады. Желіні тексеріп, қайта көріңіз.",
+  "chatShowOutfitAgain": "Бұл образды қайта көрсет",
+  "profileSignOutTitle": "Шығу керек пе?",
+  "profileSignOutBody": "Қайта кіру қажет болады.",
+  "profileStay": "Қалу",
+  "profileStyleMoodTitle": "Стиль және көңіл-күй",
+  "profileFrequentMoods": "Жиі көңіл-күй: {moods}",
+  "@profileFrequentMoods": {
+    "placeholders": {
+      "moods": {
+        "type": "String"
+      }
+    }
+  },
+  "profileFrequentOccasions": "Жиі поводтар: {occasions}",
+  "@profileFrequentOccasions": {
+    "placeholders": {
+      "occasions": {
+        "type": "String"
+      }
+    }
+  },
+  "profileFavoritesDislikes": "Таңдаулылар: {favorites} · дизлайк: {dislikes}",
+  "@profileFavoritesDislikes": {
+    "placeholders": {
+      "favorites": {
+        "type": "int"
+      },
+      "dislikes": {
+        "type": "int"
+      }
+    }
+  },
+  "profileStyleMoodEmpty": "Чатта ұсыныстарды таңдаңыз (романтик, ыңғайлы, мектеп, жаңбыр…) — қолданба көңіл-күй мен поводты есте сақтайды.",
+  "profileOpenStylistChat": "Стилист чатын ашу",
+  "profileLoadStyleError": "Профильді жекелендіруді жүктеу мүмкін болмады",
+  "settingsTitle": "Баптаулар",
+  "settingsAbout": "Chicks — жеке AI стилистіңіз\nНұсқа 1.0.0",
+  "settingsDemoSection": "Демо және деректер",
+  "settingsRepeatTutorial": "Нұсқаулықты қайта көру",
+  "settingsRepeatTutorialSub": "Гардероб, AI стилист және таңдаулылар бойынша қысқа тур",
+  "settingsResetDemo": "Демо деректерін қалпына келтіру",
+  "settingsResetDemoSub": "Гардероб, чат, таңдаулылар және образ тарихы",
+  "settingsResetAll": "Барлығын қалпына келтіру + квиздер",
+  "settingsResetAllSub": "Таза орнату сияқты (онбординг қайтадан)",
+  "settingsClose": "Жабу",
+  "profileResetAllTitle": "Барлығын қалпына келтіру керек пе?",
+  "profileResetDemoTitle": "Демо деректерін қалпына келтіру керек пе?",
+  "profileResetAllBody": "Гардероб, чат, таңдаулылар, тарих және квиз нәтижелері тазаланады. Аккаунт кірулі қалады.",
+  "profileResetDemoBody": "Гардероб демо заттармен толтырылады. Чат, таңдаулылар және тарих тазаланады.",
+  "profileResetAction": "Қалпына келтіру",
+  "profileResetAllDone": "Деректер қалпына келтірілді — онбординг ашылады",
+  "profileResetDemoDone": "Демо деректері қалпына келтірілді",
+  "profileResetFailed": "Деректерді қалпына келтіру мүмкін болмады",
+  "profileQuickActions": "Жылдам әрекеттер",
+  "profileYourStats": "Статистикаңыз",
+  "profileMyWardrobe": "Гардеробым",
+  "profileMyWardrobeSub": "Жекелендірілген образдарға арналған заттар",
+  "profileFavoriteLooks": "Таңдаулы образдар",
+  "profileFavoriteLooksSub": "Сақталған стилист ұсыныстары",
+  "profileOutfitHistory": "Образдар тарихы",
+  "profileOutfitHistorySub": "Гардероб заттарымен барлық AI ұсыныстары",
+  "profileStyleMoodAction": "Стиль және көңіл-күй",
+  "profileStyleMoodActionSub": "AI стилистіне арналған кеңестер",
+  "profileSettingsAction": "Баптаулар",
+  "profileSettingsActionSub": "Қолданба және деректер туралы",
+  "profileBodyType": "Дене типі",
+  "profileColorType": "Түс типі",
+  "profileNotSet": "Анықталмаған",
+  "profileBodyTypeHint": "Қысқа квиз өтіңіз — образдар силуэтіңізге сай болады",
+  "profileColorTypeHint": "Қысқа квиз өтіңіз — стилист түстерді дәлірек таңдайды",
+  "profileSavedPreferences": "Сақталған қалаулар",
+  "profilePrefColorType": "Түс типі",
+  "profilePrefSilhouette": "Силуэт",
+  "profilePrefFit": "Отырысы",
+  "profilePrefMood": "Көңіл-күй",
+  "profilePrefOccasions": "Поводтар",
+  "profilePrefFavorites": "Таңдаулылар",
+  "profilePrefDislikes": "Менің стилім емес",
+  "profilePrefAvoid": "Бас тарту",
+  "profilePrefEmpty": "Квиздерді өтіп, стилистпен сөйлесіңіз — қалаулар осы құрылғыда сақталады.",
+  "profileStyleInsightsTitle": "Стиль инсайттары",
+  "profileStyleInsightsSub": "Гардеробыңызға негізделген жеке талдау",
+  "profileStyleInsightsLoadError": "Инсайттарды жүктеу мүмкін болмады",
+  "profileStyleInsightsEmpty": "Гардеробқа заттар қосыңыз — стиль, түс және силуэт туралы инсайттар осында пайда болады.",
+  "profileEditTitle": "Профильді өңдеу",
+  "profileEditNameHint": "Аты",
+  "profileEditCityHint": "Қала (ауа райы үшін)",
+  "profileEditUsernameHint": "Пайдаланушы аты (міндетті емес)",
+  "profileEditSave": "Сақтау",
+  "profileEditEmailNote": "Email тек Google аккаунтында өзгереді",
+  "profileUserFallback": "Пайдаланушы",
+  "profileAvatarHint": "Фотоны басыңыз — аватарды таңдап, қиыңыз",
+  "profileAvatarChangeLabel": "Профиль фотосын өзгерту",
+  "profileAvatarPermissionDenied": "Фотоға рұқсат жоқ",
+  "profileAvatarPickFailed": "Фото таңдау мүмкін болмады",
+  "profileAvatarUpdated": "Профиль фотосы жаңартылды",
+  "profileAvatarSaveFailed": "Фотоны сақтау мүмкін болмады",
+  "profileAvatarCropTitle": "Фотоны қию",
+  "profileAvatarCropDone": "Дайын",
+  "profileAvatarFileNotFound": "Файл табылмады",
+  "profileAvatarEmptyFile": "Бос сурет файлы",
+  "profileAvatarOpenFailed": "Фотоны ашу мүмкін болмады",
+  "profileAvatarCropSaveFailed": "Қиюды сақтау мүмкін болмады",
+  "profileAvatarCropFailed": "Фотоны қию мүмкін болмады",
+  "profileStatWardrobe": "Гардероб заттары",
+  "profileStatFavoritesSaved": "Сақталған образдар",
+  "profileStatStylistRequests": "Стилист сұраулары",
+  "profileEditNameRequired": "Атын енгізіңіз",
+  "profileEditCityRequired": "Қаланы енгізіңіз (кемінде 2 таңба)",
+  "favoritesLoadError": "Таңдаулыларды жүктеу мүмкін болмады",
+  "favoriteOutfitTitle": "Образ",
+  "favoriteDeleteTitle": "Образды жою керек пе?",
+  "favoriteDeleteBody": "«{title}» таңдаулылардан алынып тасталады.",
+  "@favoriteDeleteBody": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "delete": "Жою",
+  "favoriteDeleted": "Таңдаулылардан алынды",
+  "wardrobeTitle": "Гардеробыңыз",
+  "wardrobeInsightsTooltip": "Гардероб талдауы",
+  "wardrobeItemAdded": "«{title}» гардеробқа қосылды",
+  "@wardrobeItemAdded": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "wardrobeItemDeleted": "Зат жойылды",
+  "wardrobeItemUpdated": "«{title}» жаңартылды",
+  "@wardrobeItemUpdated": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "wardrobeLoadError": "Гардеробты жүктеу мүмкін болмады",
+  "wardrobeEmptyTitle": "Гардероб бос",
+  "wardrobeEmptyMessage": "Киімдеріңізді қосыңыз — AI жеке образдар жасай алады",
+  "wardrobeEmptyHint": "Жақсырақ ұсыныстар үшін кемінде 5 зат қосыңыз",
+  "wardrobeAddItem": "Зат қосу",
+  "wardrobeSearchHint": "Атау, түс немесе стиль бойынша іздеу…",
+  "wardrobeFilterFavorites": "Таңдаулылар",
+  "wardrobeFilterCategory": "Санат",
+  "wardrobeFilterSeason": "Маусым",
+  "wardrobeFilterColor": "Түс",
+  "wardrobeFilterStyle": "Стиль",
+  "wardrobeFilterAll": "Барлығы",
+  "wardrobeFilterReset": "Тазалау",
+  "wardrobeNoResultsTitle": "Ештеңе табылмады",
+  "wardrobeNoResultsMessage": "Басқа сөзді көріңіз — атау, түс немесе стиль",
+  "wardrobeNoResultsHint": "Мысалы: «ақ», «casual», «ыңғайлы»",
+  "wardrobeNoFavoritesTitle": "Таңдаулы заттар жоқ",
+  "wardrobeNoFavoritesMessage": "Карточкалардағы ♥ басыңыз — олар осында көрінеді",
+  "wardrobeNoFavoritesHint": "Таңдаулылар осы құрылғыда сақталады",
+  "wardrobeNoFilterTitle": "Сүзгілерге сәйкес заттар жоқ",
+  "wardrobeNoFilterMessage": "Санат, маусым немесе стильді өзгертіңіз — немесе сүзгілерді тазалаңыз",
+  "wardrobeDetailsTitle": "Зат туралы",
+  "wardrobeDeleteTitle": "Затты жою керек пе?",
+  "wardrobeDeleteBody": "Бұл әрекетті болдырмау мүмкін емес.",
+  "wardrobeDeleteItem": "Затты жою",
+  "wardrobeDeleting": "Жойылуда…",
+  "wardrobeEdit": "Өңдеу",
+  "wardrobeAddToFavorites": "Таңдаулыларға қосу",
+  "wardrobeRemoveFromFavorites": "Таңдаулылардан алып тастау",
+  "wardrobeDeleteFailed": "Затты жою мүмкін болмады",
+  "wardrobeFieldCategory": "Санат",
+  "wardrobeFieldColor": "Түс",
+  "wardrobeStyleContext": "Стиль және контекст",
+  "wardrobeStyleAesthetic": "Стиль / эстетика",
+  "wardrobeOccasion": "Повод",
+  "wardrobeFit": "Отырысы",
+  "wardrobeSeason": "Маусым",
+  "wardrobeVibe": "Вайб",
+  "wardrobeNoStyleTags": "Стиль тегтері жоқ — қосу үшін затты өңдеңіз.",
+  "wardrobeAddNewTitle": "Жаңа зат",
+  "wardrobeAddEditTitle": "Затты өңдеу",
+  "wardrobeFieldName": "Атауы",
+  "wardrobeFieldNameHint": "мысалы, ақ жейде",
+  "wardrobeFieldNameRequired": "Атауын енгізіңіз",
+  "wardrobeFieldCategoryRequired": "Санатты таңдаңыз",
+  "wardrobeFieldColorHint": "мысалы, беж (міндетті емес)",
+  "wardrobeStyleContextHint": "AI стилист образдарды дәлірек таңдауына көмектеседі",
+  "wardrobeMultiSelectHint": "Бірнешеуін таңдауға болады",
+  "wardrobeSave": "Сақтау",
+  "wardrobeAddPhoto": "Фото қосу",
+  "wardrobeChangePhoto": "Фотоны өзгерту",
+  "wardrobePhotoSourceHint": "Галерея немесе файл",
+  "wardrobeAiAnalyzing": "AI затты талдап жатыр…",
+  "wardrobeAiRetry": "Қайталау",
+  "wardrobeAiFailed": "AI затты танымады. Қолмен толтырыңыз немесе қайталаңыз.",
+  "wardrobeSaveFailed": "Затты сақтау мүмкін болмады",
+  "wardrobePhotoAdded": "Фото қосылды",
+  "wardrobePhotoSaveFailed": "Фотоны сақтау мүмкін болмады",
+  "wardrobeGalleryDenied": "Галереяға рұқсат жоқ",
+  "wardrobePhotoPickFailed": "Фото таңдау мүмкін болмады",
+  "wardrobeAiFilledSnack": "AI өрістерді толтырды — тексеріп, қажет болса өңдеңіз",
+  "wardrobeDuplicateSnack": "Бұл зат гардеробта бар сияқты — сақтамас бұрын тексеріңіз",
+  "wardrobeAddPhotoDialogTitle": "Фото қосу",
+  "wardrobeEmulatorHint": "Эмуляторда Файл → Downloads сенімдірек",
+  "wardrobeSourceGallery": "Галерея",
+  "wardrobeSourceGallerySub": "Жүйелік фото таңдағыш",
+  "wardrobeSourceFile": "Файл",
+  "wardrobeSourceFileSub": "Downloads, Documents, Files",
+  "wardrobeDuplicateSimilarTitle": "Гардеробта ұқсас зат",
+  "wardrobeDuplicateExistsTitle": "Зат гардеробта бар",
+  "wardrobeDuplicateDialogBody": "{label} сәйкес келеді.\n\n{hint}",
+  "@wardrobeDuplicateDialogBody": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "hint": {
+        "type": "String"
+      }
+    }
+  },
+  "wardrobeDuplicateEditHint": "Бұл басқа зат болса — Сақтау батырмасын басыңыз.",
+  "wardrobeDuplicateAddHint": "Фотода басқа зат болса — Қосу батырмасын басыңыз.",
+  "wardrobeDuplicateSaveAnyway": "Бәрібір сақтау",
+  "wardrobeDuplicateAddAnyway": "Бәрібір қосу",
+  "wardrobeDuplicateBanner": "Сол затты қайта қосып жатқан сияқтысыз: {label}. Басқа зат болса (мысалы, басқа джинсы) — сақтаңыз, атауын түзетеміз.",
+  "@wardrobeDuplicateBanner": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  }
+}

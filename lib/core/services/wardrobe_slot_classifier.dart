@@ -19,22 +19,40 @@ abstract final class WardrobeSlotClassifier {
   }
 
   static WardrobeOutfitSlot _fromCategory(String category) {
-    if (category == 'верх') return WardrobeOutfitSlot.top;
-    if (category == 'низ') return WardrobeOutfitSlot.bottom;
-    if (category == 'платья' || category == 'платье') {
+    if (category == 'верх' || category == 'tops' || category == 'top') {
+      return WardrobeOutfitSlot.top;
+    }
+    if (category == 'низ' ||
+        category == 'bottoms' ||
+        category == 'bottom') {
+      return WardrobeOutfitSlot.bottom;
+    }
+    if (category == 'платья' ||
+        category == 'платье' ||
+        category == 'dresses' ||
+        category == 'dress') {
       return WardrobeOutfitSlot.dress;
     }
     if (category == 'комплекты' ||
         category == 'комплект' ||
         category == 'костюм' ||
-        category == 'костюмы') {
+        category == 'костюмы' ||
+        category == 'sets' ||
+        category == 'set') {
       return WardrobeOutfitSlot.set;
     }
-    if (category == 'верхняя одежда' || category == 'outerwear') {
+    if (category == 'верхняя одежда' ||
+        category == 'outerwear' ||
+        category == 'jackets') {
       return WardrobeOutfitSlot.outerwear;
     }
-    if (category == 'обувь') return WardrobeOutfitSlot.shoes;
-    if (category == 'аксессуары' || category == 'аксессуар') {
+    if (category == 'обувь' || category == 'shoes' || category == 'footwear') {
+      return WardrobeOutfitSlot.shoes;
+    }
+    if (category == 'аксессуары' ||
+        category == 'аксессуар' ||
+        category == 'accessories' ||
+        category == 'accessory') {
       return WardrobeOutfitSlot.accessory;
     }
     return WardrobeOutfitSlot.unknown;

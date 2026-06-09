@@ -30,9 +30,13 @@ class WardrobeInsightsController extends ChangeNotifier {
       var cards = WardrobeAnalyzer.buildInsights(stats);
 
       final aiCards = await WardrobeInsightsAiService.fetchExtraInsights(stats);
-      if (aiCards.isNotEmpty) {
+      final filteredAi = WardrobeAnalyzer.filterContradictoryInsights(
+        aiCards,
+        stats.inventory,
+      );
+      if (filteredAi.isNotEmpty) {
         usedAi = true;
-        cards = [...cards, ...aiCards].take(9).toList();
+        cards = [...cards, ...filteredAi].take(9).toList();
       }
 
       snapshot = stats;

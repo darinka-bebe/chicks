@@ -28,6 +28,7 @@ abstract final class OutfitDisplay {
   static String compositionHeading() => AppLocale.pick(
         ru: 'Состав образа',
         en: 'Outfit breakdown',
+        kk: 'Образ құрамы',
       );
 
   /// Title for the home «Outfit of the day» card.
@@ -40,7 +41,11 @@ abstract final class OutfitDisplay {
     final extracted = OutfitTitleExtractor.fromRecommendation(entry.aiResponseText);
     if (!isGenericTitle(extracted)) return extracted;
 
-    return AppLocale.pick(ru: 'Сохранённый образ', en: 'Saved look');
+    return AppLocale.pick(
+      ru: 'Сохранённый образ',
+      en: 'Saved look',
+      kk: 'Сақталған образ',
+    );
   }
 
   /// Subtitle for the home card — never raw Russian user text on EN UI.
@@ -56,18 +61,21 @@ abstract final class OutfitDisplay {
       return AppLocale.pick(
         ru: '$count ${_itemsLabelRu(count)} из гардероба',
         en: '$count ${_itemsLabelEn(count)} from your wardrobe',
+        kk: 'Гардеробтан $count ${_itemsLabelKk(count)}',
       );
     }
 
     return AppLocale.pick(
       ru: 'Открой чат, чтобы посмотреть образ',
       en: 'Open chat to view your latest look',
+      kk: 'Соңғы образды көру үшін чатты ашыңыз',
     );
   }
 
   static bool _matchesLocale(String text) {
     final hasCyrillic = _cyrillic.hasMatch(text);
     if (AppLocale.isRussian()) return true;
+    if (AppLocale.isKazakh()) return !hasCyrillic;
     return !hasCyrillic;
   }
 
@@ -115,6 +123,8 @@ abstract final class OutfitDisplay {
 
   static String _itemsLabelEn(int count) => count == 1 ? 'item' : 'items';
 
+  static String _itemsLabelKk(int count) => 'зат';
+
   /// Title for favorite look cards.
   static String favoriteTitle(FavoriteOutfit outfit) {
     final stored = outfit.title.trim();
@@ -126,7 +136,11 @@ abstract final class OutfitDisplay {
         OutfitTitleExtractor.fromRecommendation(outfit.recommendation);
     if (!isGenericTitle(extracted)) return extracted;
 
-    return AppLocale.pick(ru: 'Сохранённый образ', en: 'Saved look');
+    return AppLocale.pick(
+      ru: 'Сохранённый образ',
+      en: 'Saved look',
+      kk: 'Сақталған образ',
+    );
   }
 
   /// Excerpt for favorite look list cards — hides Russian AI text on EN UI.
@@ -139,12 +153,14 @@ abstract final class OutfitDisplay {
       return AppLocale.pick(
         ru: '$count ${_itemsLabelRu(count)} из гардероба',
         en: '$count ${_itemsLabelEn(count)} from your wardrobe',
+        kk: 'Гардеробтан $count ${_itemsLabelKk(count)}',
       );
     }
 
     return AppLocale.pick(
       ru: 'Открой, чтобы прочитать рекомендацию',
       en: 'Open to read the full recommendation',
+      kk: 'Толық ұсынысты оқу үшін ашыңыз',
     );
   }
 }

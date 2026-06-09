@@ -37,12 +37,27 @@ extension SeasonalPaletteIdX on SeasonalPaletteId {
         SeasonalPaletteId.coolSpring => 'Cool Spring',
       };
 
-  String get displayName =>
-      AppLocale.pick(ru: displayNameRu, en: displayNameEn);
+  String get displayNameKk => switch (this) {
+        SeasonalPaletteId.lightSpring => 'Жарық көктем',
+        SeasonalPaletteId.coolSummer => 'Суық жаз',
+        SeasonalPaletteId.warmAutumn => 'Жылы күз',
+        SeasonalPaletteId.brightWinter => 'Жарқын қыс',
+        SeasonalPaletteId.deepAutumn => 'Терең күз',
+        SeasonalPaletteId.deepSummer => 'Терең жаз',
+        SeasonalPaletteId.darkWinter => 'Қараңғы қыс',
+        SeasonalPaletteId.coolSpring => 'Суық көктем',
+      };
+
+  String get displayName => AppLocale.pick(
+        ru: displayNameRu,
+        en: displayNameEn,
+        kk: displayNameKk,
+      );
 
   String get shortDescription => AppLocale.pick(
         ru: shortDescriptionRu,
         en: shortDescriptionEn,
+        kk: shortDescriptionKk,
       );
 
   String get shortDescriptionRu => switch (this) {
@@ -81,6 +96,25 @@ extension SeasonalPaletteIdX on SeasonalPaletteId {
           'Rich cool colors with deep contrast.',
         SeasonalPaletteId.coolSpring =>
           'Light fresh shades with a cool undertone.',
+      };
+
+  String get shortDescriptionKk => switch (this) {
+        SeasonalPaletteId.lightSpring =>
+          'Жарық жылы реңктер, жеңіл әрі жаңа үйлесімдер.',
+        SeasonalPaletteId.coolSummer =>
+          'Жұмсақ суық тондар, нәзік контрастпен.',
+        SeasonalPaletteId.warmAutumn =>
+          'Жылы табиғи тондар: терракота, карамель, зәйтүн, шоколад.',
+        SeasonalPaletteId.brightWinter =>
+          'Таза қанық реңктер және айқын контраст.',
+        SeasonalPaletteId.deepAutumn =>
+          'Терең жер тондары: тот, зәйтүн, махагон.',
+        SeasonalPaletteId.deepSummer =>
+          'Бәсеңдетілген суық реңктер, жұмсақ тереңдікпен.',
+        SeasonalPaletteId.darkWinter =>
+          'Қанық суық түстер және терең контраст.',
+        SeasonalPaletteId.coolSpring =>
+          'Жарық жаңа реңктер, суық астыңғы тонмен.',
       };
 }
 
