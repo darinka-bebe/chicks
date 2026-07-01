@@ -1,37 +1,110 @@
 # Chicks
 
-**Chicks** — your personal AI fashion stylist. A Flutter app that helps you choose outfits, combine clothes, and stay on trend through a friendly Russian-speaking AI assistant.
+Chicks — мобильное приложение, которое я разработала на Flutter. Это AI-стилист, который помогает подобрать одежду, собрать образ и получить советы по стилю через чат с искусственным интеллектом.
 
-## Features
+Проект создавался как MVP сервиса, который можно развивать дальше: добавить гардероб пользователя, анализ одежды по фотографии, сохранение образов и другие функции.
 
-- Splash and authentication flow
-- Home hub with stylist chat entry
-- AI chat powered by OpenAI GPT-4o-mini
-- Profile and sign-out
+---
 
-## Quick Start
+## Что есть сейчас
+
+- регистрация и вход в аккаунт;
+- главный экран приложения;
+- чат со стилистом на базе OpenAI;
+- профиль пользователя;
+- выход из аккаунта;
+- навигация между экранами;
+- адаптивный интерфейс.
+
+---
+
+## Стек
+
+- Flutter
+- Dart
+- flutter_bloc
+- go_router
+- Firebase Authentication
+- Cloud Firestore
+- OpenAI API
+- flutter_dotenv
+
+---
+
+## Структура проекта
+
+```
+lib/
+├── features/
+├── services/
+├── widgets/
+├── models/
+├── core/
+└── main.dart
+```
+
+Проект разделён по функциональности. Для управления состоянием используется BLoC, навигация реализована через go_router. Настройки и API-ключи хранятся в `.env`.
+
+---
+
+## Как запустить
+
+Установить зависимости:
 
 ```bash
 flutter pub get
-cp .env.example .env
-# Add your OPENAI_API_KEY to .env
+```
+
+Создать файл `.env`:
+
+```
+OPENAI_API_KEY=ваш_ключ
+```
+
+Запустить приложение:
+
+```bash
 flutter run
 ```
 
-## Documentation
+---
 
-| Document | Description |
-|----------|-------------|
-| [FULL_PROJECT_DOCUMENTATION.md](./FULL_PROJECT_DOCUMENTATION.md) | Complete technical reference |
-| [ARCHITECTURE.md](./ARCHITECTURE.md) | Architecture, routing, data flow |
-| [BUSINESS_REQUIREMENTS.md](./BUSINESS_REQUIREMENTS.md) | Product goals and MVP scope |
-| [SYSTEM_REQUIREMENTS.md](./SYSTEM_REQUIREMENTS.md) | Functional & non-functional requirements |
-| [TEST_CASES.md](./TEST_CASES.md) | QA test scenarios |
+## Скачать приложение
 
-## Tech Stack
+APK находится в папке:
 
-Flutter · Dart · BLoC · GoRouter · OpenAI API · flutter_dotenv
+```
+apk/app-release.apk
+```
 
-## License
+или в разделе **Releases**, если проект опубликован на GitHub.
 
-Private project — see repository owner for terms.
+---
+
+## Документация
+
+В проекте есть отдельные документы:
+
+- `ARCHITECTURE.md` — описание архитектуры;
+- `FULL_PROJECT_DOCUMENTATION.md` — подробная техническая документация;
+- `BUSINESS_REQUIREMENTS.md` — требования к продукту;
+- `SYSTEM_REQUIREMENTS.md` — системные требования;
+- `TEST_CASES.md` — сценарии тестирования.
+
+---
+
+## Что хочу добавить дальше
+
+- личный гардероб;
+- анализ одежды по фотографии;
+- сохранение понравившихся образов;
+- рекомендации с учётом погоды;
+- историю переписки с AI.
+
+---
+
+## Автор
+
+Дарина Хван
+
+Flutter Developer
